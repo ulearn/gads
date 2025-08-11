@@ -3,6 +3,7 @@
  * /scripts/analytics/hubspot-data.js
  * 
  * FIXES:
+ * - Fixed column name: 'closed_lost_reason' instead of 'hs_closed_lost_reason'
  * - All missing functions that dashboard.js needs
  * - Correct database column names from schema
  * - Proper error handling
@@ -54,6 +55,20 @@ function loadCountryClassifications() {
 }
 
 /**
+ * Build Google Ads attribution query for consistent filtering
+ */
+function buildGoogleAdsAttributionQuery() {
+  return `(
+    hs_analytics_source = 'PAID_SEARCH' 
+    OR hs_object_source = 'FORM'
+    OR gclid IS NOT NULL 
+    OR hs_object_source_label LIKE '%google%'
+    OR hs_analytics_first_touch_converting_campaign IS NOT NULL
+    OR hs_analytics_last_touch_converting_campaign IS NOT NULL
+  )`;
+}
+
+/**
  * Get dashboard summary data with analysis mode support
  */
 async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'pipeline') {
@@ -71,18 +86,15 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       console.log(`📊 Getting dashboard summary for ${days} days...`);
       
       // Get summary contact data with Google Ads attribution
+      const attributionQuery = buildGoogleAdsAttributionQuery();
+      
       const [summaryResult] = await connection.execute(`
         SELECT 
           COUNT(*) as totalContacts,
           COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as contactsWithDeals,
           COUNT(DISTINCT hs_analytics_source_data_1) as uniqueCampaigns
         FROM hub_contacts 
-        WHERE (
-          hs_analytics_source = 'PAID_SEARCH' 
-          OR hs_object_source = 'FORM'
-          OR gclid IS NOT NULL 
-          OR hs_object_source_label LIKE '%google%'
-        )
+        WHERE ${attributionQuery}
           AND createdate >= ? 
           AND createdate <= ?
           AND hs_analytics_source_data_1 IS NOT NULL
@@ -106,6 +118,8 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
           OR c.hs_object_source = 'FORM'
           OR c.gclid IS NOT NULL 
           OR c.hs_object_source_label LIKE '%google%'
+          OR c.hs_analytics_first_touch_converting_campaign IS NOT NULL
+          OR c.hs_analytics_last_touch_converting_campaign IS NOT NULL
         )
           AND d.createdate >= ? 
           AND d.createdate <= ?
@@ -167,6 +181,8 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
       console.log(`🎯 Getting campaign performance for ${days} days...`);
       
       // FIXED: Get campaign performance using correct column names
+      const attributionQuery = buildGoogleAdsAttributionQuery();
+      
       const [campaignResults] = await connection.execute(`
         SELECT 
           hs_analytics_source_data_1 as campaignId,
@@ -176,12 +192,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
           COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as dealsCreated,
           AVG(CASE WHEN num_associated_deals > 0 THEN 1 ELSE 0 END) * 100 as conversionRate
         FROM hub_contacts 
-        WHERE (
-          hs_analytics_source = 'PAID_SEARCH' 
-          OR hs_object_source = 'FORM'
-          OR gclid IS NOT NULL 
-          OR hs_object_source_label LIKE '%google%'
-        )
+        WHERE ${attributionQuery}
           AND createdate >= ? 
           AND createdate <= ?
           AND hs_analytics_source_data_1 IS NOT NULL
@@ -246,7 +257,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
 }
 
 /**
- * Get territory analysis data - SIMPLIFIED: Use HubSpot's existing logic
+ * Get territory analysis data - FIXED: Use correct column name 'closed_lost_reason'
  */
 async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
@@ -263,18 +274,15 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
       console.log(`🌍 Getting territory analysis for ${days} days (${analysisMode} mode)...`);
       
       // SIMPLIFIED: Just get basic territory breakdown from contacts
+      const attributionQuery = buildGoogleAdsAttributionQuery();
+      
       const [territoryResults] = await connection.execute(`
         SELECT 
           COALESCE(nationality, country, territory, ip_country, 'Unknown') as territoryName,
           COUNT(*) as contacts,
           COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as dealsCreated
         FROM hub_contacts 
-        WHERE (
-          hs_analytics_source = 'PAID_SEARCH' 
-          OR hs_object_source = 'FORM'
-          OR gclid IS NOT NULL 
-          OR hs_object_source_label LIKE '%google%'
-        )
+        WHERE ${attributionQuery}
           AND createdate >= ? 
           AND createdate <= ?
           AND hs_analytics_source_data_1 IS NOT NULL
@@ -291,12 +299,7 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
           COUNT(*) as totalContacts,
           COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as contactsWithDeals
         FROM hub_contacts 
-        WHERE (
-          hs_analytics_source = 'PAID_SEARCH' 
-          OR hs_object_source = 'FORM'
-          OR gclid IS NOT NULL 
-          OR hs_object_source_label LIKE '%google%'
-        )
+        WHERE ${attributionQuery}
           AND createdate >= ? 
           AND createdate <= ?
           AND hs_analytics_source_data_1 IS NOT NULL
@@ -307,7 +310,7 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
       const contactsWithDeals = parseInt(summaryData.contactsWithDeals) || 0;
       const failedInitialValidation = totalContacts - contactsWithDeals;
       
-      // Also get contacts who passed initial validation but later marked as unsupported
+      // FIXED: Use correct column name 'closed_lost_reason' instead of 'hs_closed_lost_reason'
       const [additionalUnsupported] = await connection.execute(`
         SELECT 
           COUNT(*) as later_unsupported
@@ -319,14 +322,15 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
           OR c.hs_object_source = 'FORM'
           OR c.gclid IS NOT NULL 
           OR c.hs_object_source_label LIKE '%google%'
+          OR c.hs_analytics_first_touch_converting_campaign IS NOT NULL
+          OR c.hs_analytics_last_touch_converting_campaign IS NOT NULL
         )
           AND c.createdate >= ? 
           AND c.createdate <= ?
           AND c.hs_analytics_source_data_1 IS NOT NULL
           AND d.dealstage = 'closedlost'
           AND (d.closed_lost_reason LIKE '%Unsupported Territory%' 
-               OR d.closed_lost_reason LIKE '%unsupported%'
-               OR d.hs_closed_lost_reason LIKE '%Unsupported Territory%')
+               OR d.closed_lost_reason LIKE '%unsupported%')
       `, [startDateStr, endDateStr]);
       
       const laterUnsupported = parseInt(additionalUnsupported[0]?.later_unsupported) || 0;
@@ -461,10 +465,69 @@ async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode 
   }
 }
 
+/**
+ * Test Google Ads attribution logic
+ */
+async function testGoogleAdsAttribution(getDbConnection, days = 7) {
+  try {
+    const connection = await getDbConnection();
+    
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const startDateStr = startDate.toISOString().slice(0, 19).replace('T', ' ');
+      const endDateStr = endDate.toISOString().slice(0, 19).replace('T', ' ');
+      
+      console.log(`🔍 Testing Google Ads attribution for ${days} days...`);
+      
+      const attributionQuery = buildGoogleAdsAttributionQuery();
+      
+      // Test the attribution query
+      const [attributionTest] = await connection.execute(`
+        SELECT 
+          COUNT(*) as total_contacts_matched,
+          COUNT(CASE WHEN hs_analytics_source = 'PAID_SEARCH' THEN 1 END) as paid_search,
+          COUNT(CASE WHEN hs_object_source = 'FORM' THEN 1 END) as form_source,
+          COUNT(CASE WHEN gclid IS NOT NULL THEN 1 END) as has_gclid,
+          COUNT(CASE WHEN hs_object_source_label LIKE '%google%' THEN 1 END) as google_label,
+          COUNT(CASE WHEN hs_analytics_first_touch_converting_campaign IS NOT NULL THEN 1 END) as first_touch,
+          COUNT(CASE WHEN hs_analytics_last_touch_converting_campaign IS NOT NULL THEN 1 END) as last_touch
+        FROM hub_contacts 
+        WHERE ${attributionQuery}
+          AND createdate >= ? 
+          AND createdate <= ?
+      `, [startDateStr, endDateStr]);
+      
+      return {
+        success: true,
+        attribution_test: attributionTest[0] || {},
+        attribution_query: attributionQuery,
+        date_range: { start: startDateStr, end: endDateStr, days },
+        timestamp: new Date().toISOString()
+      };
+      
+    } finally {
+      await connection.end();
+    }
+    
+  } catch (error) {
+    console.error('❌ Attribution test failed:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 module.exports = {
   getDashboardSummary,
   getCampaignPerformance,
   getTerritoryAnalysis,
   getTrendData,
-  getMQLValidationMetrics
+  getMQLValidationMetrics,
+  testGoogleAdsAttribution,
+  buildGoogleAdsAttributionQuery
 };
