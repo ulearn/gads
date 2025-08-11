@@ -16241,3 +16241,166 @@
 [2025-08-11T07:13:10.682Z]    🔧 MySQL Updater: Missing
 [2025-08-11T07:13:10.682Z]    📊 Dashboard: Available
 [2025-08-11T07:13:10.682Z]    📈 Pipeline: Available
+[2025-08-11T07:15:10.602Z] 🎯 MQL Validation API: 30 days, pipeline mode
+[2025-08-11T07:15:10.959Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:15:10.969Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:15:11.090Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:15:11.120Z] ✅ Territory analysis: 20 territories, 0/250 lost to unsupported
+[2025-08-11T07:15:11.261Z] 🌍 Territory data API: 30 days, pipeline mode
+[2025-08-11T07:15:11.271Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:15:11.348Z] ✅ Territory analysis: 20 territories, 0/250 lost to unsupported
+[2025-08-11T07:15:44.355Z] 📊 Dashboard data API: 30 days, pipeline mode
+[2025-08-11T07:15:44.360Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:15:44.394Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:20:10.772Z] 🎯 MQL Validation API: 30 days, pipeline mode
+[2025-08-11T07:20:10.855Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:20:10.871Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:20:11.198Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:20:11.292Z] ✅ Territory analysis: 20 territories, 0/250 lost to unsupported
+[2025-08-11T07:20:11.355Z] 🌍 Territory data API: 30 days, pipeline mode
+[2025-08-11T07:20:11.364Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:20:11.443Z] ✅ Territory analysis: 20 territories, 0/250 lost to unsupported
+[2025-08-11T07:25:00.338Z] Logger initialized - logging to gads.log with auto-rotation at 5000 lines
+[2025-08-11T07:25:00.351Z] ✅ Pipeline Probabilities loaded
+[2025-08-11T07:25:00.351Z] ✅ Dashboard Server loaded
+[2025-08-11T07:25:00.363Z] 🎉 Google Ads AI Iterator started on port 8080 - RECOVERY MODE v6
+[2025-08-11T07:25:00.363Z] 📊 Dashboard: https://hub.ulearnschool.com/gads/
+[2025-08-11T07:25:00.364Z] 🏥 Health: https://hub.ulearnschool.com/gads/health
+[2025-08-11T07:25:00.364Z] 
+[2025-08-11T07:25:00.364Z] ⚠️  RECOVERY MODE v6 ACTIVE:
+[2025-08-11T07:25:00.365Z]    🔧 MySQL Updater: Missing
+[2025-08-11T07:25:00.365Z]    📊 Dashboard: Available
+[2025-08-11T07:25:00.365Z]    📈 Pipeline: Available
+[2025-08-11T07:25:00.402Z] 📊 Dashboard data API: 30 days, pipeline mode
+[2025-08-11T07:25:00.455Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:25:00.488Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:25:10.515Z] 🎯 MQL Validation API: 30 days, pipeline mode
+[2025-08-11T07:25:10.539Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:25:10.563Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:25:10.596Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:25:10.609Z] ERROR: ❌ Territory analysis failed: summary is not defined
+[2025-08-11T07:25:10.613Z] ERROR: ❌ MQL validation metrics failed: Failed to fetch MQL validation data
+[2025-08-11T07:30:27.076Z] Logger initialized - logging to gads.log with auto-rotation at 5000 lines
+[2025-08-11T07:30:27.094Z] ✅ Pipeline Probabilities loaded
+[2025-08-11T07:30:27.094Z] ✅ Dashboard Server loaded
+[2025-08-11T07:30:27.113Z] 🎉 Google Ads AI Iterator started on port 8080 - RECOVERY MODE v6
+[2025-08-11T07:30:27.114Z] 📊 Dashboard: https://hub.ulearnschool.com/gads/
+[2025-08-11T07:30:27.115Z] 🏥 Health: https://hub.ulearnschool.com/gads/health
+[2025-08-11T07:30:27.115Z] 
+[2025-08-11T07:30:27.116Z] ⚠️  RECOVERY MODE v6 ACTIVE:
+[2025-08-11T07:30:27.116Z]    🔧 MySQL Updater: Missing
+[2025-08-11T07:30:27.117Z]    📊 Dashboard: Available
+[2025-08-11T07:30:27.117Z]    📈 Pipeline: Available
+[2025-08-11T07:30:27.182Z] 🎯 MQL Validation API: 30 days, pipeline mode
+[2025-08-11T07:30:27.185Z] 🎯 Getting MQL validation metrics for 30 days (pipeline mode)...
+[2025-08-11T07:30:27.219Z] 🔄 Dashboard server: Loading React component...
+[2025-08-11T07:30:27.221Z] ✅ Dashboard component loaded, size: 20940 chars
+[2025-08-11T07:30:27.221Z] ✅ Dashboard component validated, serving HTML...
+[2025-08-11T07:30:27.234Z] ✅ Dashboard HTML served successfully
+[2025-08-11T07:30:27.278Z] 📊 Getting dashboard summary for 30 days...
+[2025-08-11T07:30:27.282Z] 🌍 Getting territory analysis for 30 days (pipeline mode)...
+[2025-08-11T07:30:27.368Z] ✅ Dashboard summary generated: {
+  "totalContacts": 241,
+  "contactsWithDeals": 142,
+  "uniqueCampaigns": 37,
+  "totalDeals": 142,
+  "wonDeals": 6,
+  "lostDeals": 48,
+  "totalRevenue": 93349,
+  "avgDealValue": 657.387324,
+  "conversionRate": "58.9"
+}
+[2025-08-11T07:30:27.384Z] ERROR: ❌ Territory analysis failed: Unknown column 'd.hs_closed_lost_reason' in 'where clause'
+[2025-08-11T07:30:27.385Z] ERROR: ❌ MQL validation metrics failed: Territory analysis failed: Unknown column 'd.hs_closed_lost_reason' in 'where clause'
+[2025-08-11T07:30:27.983Z] 🎯 Campaign data API: 7 days, pipeline mode
+[2025-08-11T07:30:27.994Z] 📊 Dashboard data API: 7 days, pipeline mode
+[2025-08-11T07:30:28.000Z] 🌍 Territory data API: 7 days, pipeline mode
+[2025-08-11T07:30:28.012Z] 🎯 Getting campaign performance for 7 days...
+[2025-08-11T07:30:28.016Z] 📊 Getting dashboard summary for 7 days...
+[2025-08-11T07:30:28.034Z] 🌍 Getting territory analysis for 7 days (pipeline mode)...
+[2025-08-11T07:30:28.110Z] ✅ Dashboard summary generated: {
+  "totalContacts": 44,
+  "contactsWithDeals": 29,
+  "uniqueCampaigns": 19,
+  "totalDeals": 22,
+  "wonDeals": 0,
+  "lostDeals": 0,
+  "totalRevenue": 7100,
+  "avgDealValue": 322.727273,
+  "conversionRate": "65.9"
+}
+[2025-08-11T07:30:28.120Z] ERROR: ❌ Territory analysis failed: Unknown column 'd.hs_closed_lost_reason' in 'where clause'
+[2025-08-11T07:30:28.197Z] 🎯 Found 22 campaigns with data
+[2025-08-11T07:30:36.019Z] 🔄 Dashboard server: Loading React component...
+[2025-08-11T07:30:36.020Z] ✅ Dashboard component loaded, size: 20940 chars
+[2025-08-11T07:30:36.020Z] ✅ Dashboard component validated, serving HTML...
+[2025-08-11T07:30:36.021Z] ✅ Dashboard HTML served successfully
+[2025-08-11T07:30:36.461Z] 🎯 Campaign data API: 7 days, pipeline mode
+[2025-08-11T07:30:36.465Z] 🌍 Territory data API: 7 days, pipeline mode
+[2025-08-11T07:30:36.469Z] 📊 Dashboard data API: 7 days, pipeline mode
+[2025-08-11T07:30:36.473Z] 🎯 Getting campaign performance for 7 days...
+[2025-08-11T07:30:36.477Z] 🌍 Getting territory analysis for 7 days (pipeline mode)...
+[2025-08-11T07:30:36.482Z] 📊 Getting dashboard summary for 7 days...
+[2025-08-11T07:30:36.507Z] ✅ Dashboard summary generated: {
+  "totalContacts": 44,
+  "contactsWithDeals": 29,
+  "uniqueCampaigns": 19,
+  "totalDeals": 22,
+  "wonDeals": 0,
+  "lostDeals": 0,
+  "totalRevenue": 7100,
+  "avgDealValue": 322.727273,
+  "conversionRate": "65.9"
+}
+[2025-08-11T07:30:36.515Z] ERROR: ❌ Territory analysis failed: Unknown column 'd.hs_closed_lost_reason' in 'where clause'
+[2025-08-11T07:30:36.571Z] 🎯 Found 22 campaigns with data

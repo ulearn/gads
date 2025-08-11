@@ -284,14 +284,36 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
         LIMIT 20
       `, [startDateStr, endDateStr]);
       
-      // Get burn rate from HubSpot's existing LOST deals with "Unsupported Territory"
-      const [burnRateResult] = await connection.execute(`
+      // SIMPLIFIED: Calculate burn rate the simple way
+      // First get the basic summary data we need
+      const [summaryForBurnRate] = await connection.execute(`
         SELECT 
-          COUNT(CASE WHEN d.dealstage = 'closedlost' AND d.closed_lost_reason LIKE '%Unsupported Territory%' THEN 1 END) as unsupported_lost,
-          COUNT(*) as total_contacts
-        FROM hub_contacts c
-        LEFT JOIN hub_contact_deal_associations a ON c.hubspot_id = a.contact_hubspot_id
-        LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
+          COUNT(*) as totalContacts,
+          COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as contactsWithDeals
+        FROM hub_contacts 
+        WHERE (
+          hs_analytics_source = 'PAID_SEARCH' 
+          OR hs_object_source = 'FORM'
+          OR gclid IS NOT NULL 
+          OR hs_object_source_label LIKE '%google%'
+        )
+          AND createdate >= ? 
+          AND createdate <= ?
+          AND hs_analytics_source_data_1 IS NOT NULL
+      `, [startDateStr, endDateStr]);
+      
+      const summaryData = summaryForBurnRate[0] || {};
+      const totalContacts = parseInt(summaryData.totalContacts) || 0;
+      const contactsWithDeals = parseInt(summaryData.contactsWithDeals) || 0;
+      const failedInitialValidation = totalContacts - contactsWithDeals;
+      
+      // Also get contacts who passed initial validation but later marked as unsupported
+      const [additionalUnsupported] = await connection.execute(`
+        SELECT 
+          COUNT(*) as later_unsupported
+        FROM hub_deals d
+        JOIN hub_contact_deal_associations a ON d.hubspot_deal_id = a.deal_hubspot_id
+        JOIN hub_contacts c ON a.contact_hubspot_id = c.hubspot_id
         WHERE (
           c.hs_analytics_source = 'PAID_SEARCH' 
           OR c.hs_object_source = 'FORM'
@@ -301,9 +323,16 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
           AND c.createdate >= ? 
           AND c.createdate <= ?
           AND c.hs_analytics_source_data_1 IS NOT NULL
+          AND d.dealstage = 'closedlost'
+          AND (d.closed_lost_reason LIKE '%Unsupported Territory%' 
+               OR d.closed_lost_reason LIKE '%unsupported%'
+               OR d.hs_closed_lost_reason LIKE '%Unsupported Territory%')
       `, [startDateStr, endDateStr]);
       
-      const burnData = burnRateResult[0] || {};
+      const laterUnsupported = parseInt(additionalUnsupported[0]?.later_unsupported) || 0;
+      const totalUnsupported = failedInitialValidation + laterUnsupported;
+      
+      console.log(`✅ Territory calculation: ${totalContacts} total → ${contactsWithDeals} got deals → ${failedInitialValidation} failed initial + ${laterUnsupported} later unsupported = ${totalUnsupported} total rejected`);
       
       const territories = territoryResults.map((territory, index) => ({
         name: territory.territoryName,
@@ -315,18 +344,18 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
         color: `hsl(${index * 137.5 % 360}, 70%, 50%)`
       }));
       
-      const totalContacts = parseInt(burnData.total_contacts) || 0;
-      const unsupportedLost = parseInt(burnData.unsupported_lost) || 0;
-      
-      console.log(`✅ Territory analysis: ${territories.length} territories, ${unsupportedLost}/${totalContacts} lost to unsupported`);
-      
       return {
         success: true,
         territories: territories,
         burnRateSummary: {
-          unsupportedContacts: unsupportedLost, // From HubSpot LOST deals
+          unsupportedContacts: totalUnsupported, // Simple calculation
           totalContacts: totalContacts,
-          burnRatePercentage: totalContacts > 0 ? ((unsupportedLost / totalContacts) * 100).toFixed(1) : 0
+          burnRatePercentage: totalContacts > 0 ? ((totalUnsupported / totalContacts) * 100).toFixed(1) : 0,
+          breakdown: {
+            failed_initial_validation: failedInitialValidation,
+            later_marked_unsupported: laterUnsupported,
+            passed_validation: contactsWithDeals
+          }
         },
         period: `Last ${days} days`,
         mode: analysisMode,
@@ -372,24 +401,36 @@ async function getTrendData(getDbConnection, days = 30, analysisMode = 'pipeline
 }
 
 /**
- * Get MQL validation metrics (for burn rate analysis)
+ * Get MQL validation metrics - FIXED: Proper error handling
  */
 async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
+    console.log(`🎯 Getting MQL validation metrics for ${days} days (${analysisMode} mode)...`);
+    
+    // Get both summary and territory data independently
     const [summaryResult, territoriesResult] = await Promise.all([
       getDashboardSummary(getDbConnection, days, analysisMode),
       getTerritoryAnalysis(getDbConnection, days, analysisMode)
     ]);
     
-    if (!summaryResult.success || !territoriesResult.success) {
-      throw new Error('Failed to fetch MQL validation data');
+    if (!summaryResult.success) {
+      throw new Error(`Dashboard summary failed: ${summaryResult.error}`);
+    }
+    if (!territoriesResult.success) {
+      throw new Error(`Territory analysis failed: ${territoriesResult.error}`);
     }
     
     // Calculate MQL validation metrics
     const totalContacts = summaryResult.summary.totalContacts || 0;
-    const unsupportedContacts = territoriesResult.burnRateSummary?.unsupportedContacts || 0;
-    const supportedContacts = totalContacts - unsupportedContacts;
+    const contactsWithDeals = summaryResult.summary.contactsWithDeals || 0;
     const totalDeals = summaryResult.summary.totalDeals || 0;
+    
+    // Use territory analysis burn rate data
+    const burnRateData = territoriesResult.burnRateSummary || {};
+    const unsupportedContacts = burnRateData.unsupportedContacts || 0;
+    const supportedContacts = totalContacts - unsupportedContacts;
+    
+    console.log(`✅ MQL Validation: ${totalContacts} MQLs → ${totalDeals} SQLs (${totalContacts > 0 ? ((totalDeals / totalContacts) * 100).toFixed(1) : 0}% conversion)`);
     
     return {
       success: true,
