@@ -1,0 +1,608 @@
+const express = require('express');
+const mysql = require('mysql2/promise');
+const hubspot = require('@hubspot/api-client');
+const { google } = require('googleapis');
+const { GoogleAdsApi } = require('google-ads-api');
+const dashboardServer = require('./scripts/analytics/dashboard-server');
+const pipelineProb = require('./scripts/analytics/pipeline-probs');
+
+// Load environment variables
+require('dotenv').config();
+
+// Set up logging with auto-rotation (only if logger exists)
+let logger = null;
+try {
+  logger = require('./logger');
+  logger.setupLogger();
+} catch (error) {
+  console.warn('⚠️ Logger not found, using console logging');
+  logger = {
+    getLogStats: () => ({ message: 'Console logging active' })
+  };
+}
+
+const app = express();
+const router = express.Router();
+
+// Use router for all your routes, then mount it
+app.use('/gads', router);
+const PORT = process.env.PORT || 8080;
+
+// Middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - ${req.ip}`);
+  next();
+});
+
+//=============================================================================//
+//   CENTRALIZED API CLIENT SETUP
+//=============================================================================//
+
+// HubSpot Client - Initialized once
+const hubspotClient = new hubspot.Client({ 
+  accessToken: process.env.HubAccess 
+});
+
+// Google Ads OAuth Client - Initialized once  
+const googleOAuth = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  process.env.REDIRECT_URI
+);
+
+// Set refresh token
+googleOAuth.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+});
+
+// Database Connection Pool - Reusable
+const dbConfig = {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+};
+
+// Create database connection helper
+const getDbConnection = async () => {
+  return await mysql.createConnection(dbConfig);
+};
+
+//=============================================================================//
+//   SAFE MODULE LOADING
+//=============================================================================//
+
+const modules = {
+  mysqlCampaignUpdater: null,
+  pipelineProb: null,
+  dashboardServer: null
+};
+
+// Load MySQL Campaign Updater
+try {
+  modules.mysqlCampaignUpdater = require('./update-mysql-campaigns.js');
+  console.log('✅ MySQL Campaign Updater loaded');
+} catch (error) {
+  console.warn('⚠️ MySQL Campaign Updater not found');
+}
+
+// Load Pipeline Probabilities
+try {
+  modules.pipelineProb = require('./scripts/analytics/pipeline-probs');
+  console.log('✅ Pipeline Probabilities loaded');
+} catch (error) {
+  console.warn('⚠️ Pipeline Probabilities not found');
+}
+
+// Load Dashboard Server
+try {
+  modules.dashboardServer = require('./scripts/analytics/dashboard-server');
+  console.log('✅ Dashboard Server loaded');
+} catch (error) {
+  console.warn('⚠️ Dashboard Server not found');
+}
+
+//=============================================================================//
+//   BASIC ROUTES
+//=============================================================================//
+
+// Root dashboard
+router.get('/', (req, res) => {
+  const hasUpdater = !!modules.mysqlCampaignUpdater;
+  const hasDashboard = !!modules.dashboardServer;
+  const hasPipeline = !!modules.pipelineProb;
+  
+  res.send(`
+    <h1>🎯 Google Ads AI Iterator - RECOVERY MODE v6</h1>
+    <p><strong>System Status:</strong> Running | <strong>Build:</strong> ${new Date().toISOString()}</p>
+    
+    <h2>🏥 System Health</h2>
+    <p><a href="/gads/health">Health Check</a> | <a href="/gads/test">Environment Test</a></p>
+    
+    <h2>📊 Available Features</h2>
+    ${hasDashboard ? `
+      <h3>✅ Analytics Dashboard</h3>
+      <p><a href="/gads/dashboard">📊 Main Dashboard</a></p>
+    ` : `
+      <p style="color: #d63384;">❌ Dashboard Server not available</p>
+    `}
+    
+    ${hasPipeline ? `
+      <h3>✅ Pipeline Analysis</h3>
+      <p><a href="/gads/analytics/pipeline">📈 Pipeline Analysis</a></p>
+      <p><a href="/gads/analytics/prob?days=30">📈 Pipeline Probabilities (API)</a></p>
+    ` : `
+      <p style="color: #d63384;">❌ Pipeline Analysis not available</p>
+    `}
+    
+    <h3>📁 Direct File Access</h3>
+    <p><a href="/gads/scripts/analytics/burn-rate.html">Burn Rate HTML</a></p>
+    
+    <h2>🔧 Recovery</h2>
+    <p><a href="/gads/recovery/status">Recovery Status</a></p>
+  `);
+});
+
+// Health check
+router.get('/health', async (req, res) => {
+  const health = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'unknown',
+      hubspot: 'unknown', 
+      google_ads: 'unknown'
+    },
+    recovery_mode: true,
+    loaded_modules: {
+      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      pipeline_probabilities: !!modules.pipelineProb,
+      dashboard_server: !!modules.dashboardServer
+    }
+  };
+
+  // Test database
+  try {
+    const connection = await getDbConnection();
+    await connection.execute('SELECT 1');
+    await connection.end();
+    health.services.database = 'connected';
+  } catch (error) {
+    health.services.database = 'error';
+    health.status = 'degraded';
+  }
+
+  // Test HubSpot
+  try {
+    await hubspotClient.crm.contacts.basicApi.getPage(1);
+    health.services.hubspot = 'connected';
+  } catch (error) {
+    health.services.hubspot = 'error';
+    health.status = 'degraded';
+  }
+
+  // Test Google OAuth
+  try {
+    await googleOAuth.refreshAccessToken();
+    health.services.google_ads = 'connected';
+  } catch (error) {
+    health.services.google_ads = 'error';
+    health.status = 'degraded';
+  }
+
+  res.json(health);
+});
+
+// Environment test
+router.get('/test', (req, res) => {
+  res.json({
+    timestamp: new Date().toISOString(),
+    recovery_mode: true,
+    api_clients: {
+      hubspot_token: process.env.HubAccess ? 'Present' : 'Missing',
+      google_client_id: process.env.CLIENT_ID ? 'Present' : 'Missing',
+      google_refresh_token: process.env.GOOGLE_REFRESH_TOKEN ? 'Present' : 'Missing'
+    },
+    database: {
+      host: process.env.DB_HOST || 'Missing',
+      name: process.env.DB_NAME || 'Missing',
+      user: process.env.DB_USER ? 'Present' : 'Missing'
+    },
+    logging: logger ? logger.getLogStats() : { message: 'Console logging' },
+    loaded_modules: {
+      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      pipeline_probabilities: !!modules.pipelineProb,
+      dashboard_server: !!modules.dashboardServer
+    }
+  });
+});
+
+//=============================================================================//
+//   MYSQL ROUTES
+//=============================================================================//
+
+if (modules.mysqlCampaignUpdater) {
+  router.post('/mysql/bulk-update-campaigns', (req, res) => {
+    modules.mysqlCampaignUpdater.handleBulkCampaignUpdate(req, res, getDbConnection);
+  });
+
+  router.get('/mysql/campaign-stats', (req, res) => {
+    modules.mysqlCampaignUpdater.handleCampaignStats(req, res, getDbConnection);
+  });
+}
+
+//=============================================================================//
+//   ANALYTICS ROUTES
+//=============================================================================//
+
+// Dashboard Route
+router.get('/dashboard', (req, res) => {
+  const dashboardServer = require('./scripts/analytics/dashboard-server');
+  dashboardServer.serveDashboard(req, res);
+});
+
+// Pipeline Analysis Route  
+router.get('/analytics/pipeline', (req, res) => {
+  const fs = require('fs');
+  const dashboardHTML = fs.readFileSync('./scripts/analytics/pipeline-analysis.html', 'utf8');
+  res.send(dashboardHTML);
+});
+
+// Pipeline Probabilities API (you already have this)
+router.get('/analytics/prob', (req, res) => {
+  pipelineProb.handleGetProbabilities(req, res, hubspotClient);
+});
+
+// Dashboard Data API - Enhanced with analysis mode
+router.get('/analytics/dashboard-data', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const analysisMode = req.query.mode || 'pipeline';
+    
+    console.log(`📊 Dashboard data API: ${days} days, ${analysisMode} mode`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getDashboardSummary(getDbConnection, days, analysisMode);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Dashboard data API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Campaign Performance API - Enhanced with analysis mode
+router.get('/analytics/campaigns', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const analysisMode = req.query.mode || 'pipeline';
+    
+    console.log(`🎯 Campaign data API: ${days} days, ${analysisMode} mode`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getCampaignPerformance(getDbConnection, days, analysisMode);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Campaign data API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Territory Analysis API - Enhanced with analysis mode
+router.get('/analytics/territories', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const analysisMode = req.query.mode || 'pipeline';
+    
+    console.log(`🌍 Territory data API: ${days} days, ${analysisMode} mode`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, days, analysisMode);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Territory data API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Trend Data API - Enhanced with analysis mode
+router.get('/analytics/trends', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const analysisMode = req.query.mode || 'pipeline';
+    
+    console.log(`📈 Trend data API: ${days} days, ${analysisMode} mode`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getTrendData(getDbConnection, days, analysisMode);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Trend data API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// NEW: MQL Validation Metrics API - The core Issue #2 fix
+router.get('/analytics/mql-validation', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const analysisMode = req.query.mode || 'pipeline';
+    
+    console.log(`🎯 MQL Validation API: ${days} days, ${analysisMode} mode`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getMQLValidationMetrics(getDbConnection, days, analysisMode);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ MQL validation API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// CLEANED: Google Ads Attribution Test API - Business Logic Moved
+router.get('/analytics/attribution-test', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    
+    console.log(`🔍 Testing Google Ads attribution logic for ${days} days...`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.testGoogleAdsAttribution(getDbConnection, days);
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Attribution test failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+//=============================================================================//
+//   DEBUG & TESTING ROUTES - CLEANED
+//=============================================================================//
+
+// NEW: Debug Territory Validation - Business Logic Moved
+router.get('/debug/territory-validation', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    
+    console.log(`🔍 DEBUG: Territory validation for ${days} days...`);
+    
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const connection = await getDbConnection();
+    
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const startDateStr = startDate.toISOString().slice(0, 19).replace('T', ' ');
+      const endDateStr = endDate.toISOString().slice(0, 19).replace('T', ' ');
+      
+      // Get MQL validation breakdown
+      const mqlValidation = await hubspotData.getMQLValidationMetrics(getDbConnection, days, 'pipeline');
+      
+      // Get sample contacts for verification
+      const attributionQuery = hubspotData.buildGoogleAdsAttributionQuery();
+      
+      const [sampleContacts] = await connection.execute(`
+        SELECT 
+          hubspot_id,
+          email,
+          firstname,
+          lastname,
+          COALESCE(nationality, country, territory) as territory,
+          gclid,
+          hs_analytics_source,
+          hs_object_source_label,
+          createdate,
+          num_associated_deals
+        FROM hub_contacts 
+        WHERE ${attributionQuery}
+          AND createdate >= ? AND createdate <= ?
+        ORDER BY createdate DESC
+        LIMIT 10
+      `, [startDateStr, endDateStr]);
+      
+      res.json({
+        success: true,
+        debug_info: {
+          date_range: { start: startDateStr, end: endDateStr, days },
+          mql_validation_metrics: mqlValidation,
+          sample_contacts: sampleContacts,
+          attribution_query: attributionQuery
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+    } finally {
+      await connection.end();
+    }
+    
+  } catch (error) {
+    console.error('❌ Territory validation debug failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Pipeline Data API
+router.get('/analytics/pipeline-data', async (req, res) => {
+  try {
+    const pipelineServer = require('./scripts/analytics/pipeline-server');
+    const result = await pipelineServer.getFastPipelineData(getDbConnection, req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Pipeline data API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Burn Rate Data API
+router.get('/analytics/burn-rate-data', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const hubspotData = require('./scripts/analytics/hubspot-data');
+    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, days);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Burn rate data failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+//=============================================================================//
+//   STATIC FILE ROUTES
+//=============================================================================//
+
+router.get('/scripts/analytics/burn-rate.html', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'burn-rate.html');
+    
+    if (fs.existsSync(filePath)) {
+      const htmlContent = fs.readFileSync(filePath, 'utf8');
+      res.send(htmlContent);
+    } else {
+      res.status(404).send('<h1>File not found</h1><p>burn-rate.html not found</p>');
+    }
+  } catch (error) {
+    res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+  }
+});
+
+router.get('/scripts/analytics/pipeline-analysis.html', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'pipeline-analysis.html');
+    
+    if (fs.existsSync(filePath)) {
+      const htmlContent = fs.readFileSync(filePath, 'utf8');
+      res.send(htmlContent);
+    } else {
+      res.status(404).send('<h1>File not found</h1><p>pipeline-analysis.html not found</p>');
+    }
+  } catch (error) {
+    res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+  }
+});
+
+//=============================================================================//
+//   RECOVERY ROUTES
+//=============================================================================//
+
+router.get('/recovery/status', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  
+  const checkFile = (filePath) => {
+    try {
+      return fs.existsSync(path.join(__dirname, filePath));
+    } catch {
+      return false;
+    }
+  };
+
+  res.json({
+    recovery_mode: true,
+    timestamp: new Date().toISOString(),
+    loaded_modules: {
+      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      pipeline_probabilities: !!modules.pipelineProb,
+      dashboard_server: !!modules.dashboardServer
+    },
+    file_check: {
+      'scripts/analytics/pipeline-probs.js': checkFile('scripts/analytics/pipeline-probs.js'),
+      'scripts/analytics/dashboard-server.js': checkFile('scripts/analytics/dashboard-server.js'),
+      'scripts/analytics/burn-rate.html': checkFile('scripts/analytics/burn-rate.html'),
+      'scripts/analytics/pipeline-analysis.html': checkFile('scripts/analytics/pipeline-analysis.html'),
+      'update-mysql-campaigns.js': checkFile('update-mysql-campaigns.js')
+    }
+  });
+});
+
+// Logs endpoint
+router.get('/logs', (req, res) => {
+  try {
+    const fs = require('fs');
+    const logFile = './gads.log';
+    
+    if (!fs.existsSync(logFile)) {
+      return res.json({
+        message: 'No log file found yet',
+        timestamp: new Date().toISOString(),
+        recovery_mode: true
+      });
+    }
+    
+    const logs = fs.readFileSync(logFile, 'utf8');
+    const lines = logs.split('\n').filter(line => line.trim()).slice(-50);
+    
+    res.json({
+      recent_logs: lines,
+      recovery_mode: true,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Log retrieval failed:', error.message);
+    res.status(500).json({
+      error: error.message,
+      recovery_mode: true,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Error handling
+router.use((error, req, res, next) => {
+  console.error('❌ Unhandled error:', error.message);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: error.message,
+    recovery_mode: true,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler
+router.use((req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    path: req.path,
+    recovery_mode: true,
+    available_endpoints: [
+      '/gads/',
+      '/gads/health', 
+      '/gads/test',
+      '/gads/recovery/status',
+      '/gads/logs',
+      modules.dashboardServer ? '/gads/dashboard' : null,
+      modules.pipelineProb ? '/gads/analytics/prob' : null,
+      '/gads/scripts/analytics/burn-rate.html',
+      '/gads/scripts/analytics/pipeline-analysis.html'
+    ].filter(Boolean),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🎉 Google Ads AI Iterator started on port ${PORT} - RECOVERY MODE v6`);
+  console.log(`📊 Dashboard: https://hub.ulearnschool.com/gads/`);
+  console.log(`🏥 Health: https://hub.ulearnschool.com/gads/health`);
+  console.log('');
+  console.log('⚠️  RECOVERY MODE v6 ACTIVE:');
+  console.log(`   🔧 MySQL Updater: ${modules.mysqlCampaignUpdater ? 'Available' : 'Missing'}`);
+  console.log(`   📊 Dashboard: ${modules.dashboardServer ? 'Available' : 'Missing'}`);
+  console.log(`   📈 Pipeline: ${modules.pipelineProb ? 'Available' : 'Missing'}`);
+});
+
+module.exports = app;
