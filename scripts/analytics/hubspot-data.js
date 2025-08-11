@@ -23,8 +23,30 @@ function loadCountryClassifications() {
     }
     
     const countriesData = JSON.parse(fs.readFileSync(countriesFile, 'utf8'));
-    const unsupported = countriesData.filter(c => c.territory === 'Unsupported Territory');
-    return unsupported.map(c => c.code);
+    console.log('🔍 Raw countries data type:', typeof countriesData, 'Sample:', countriesData);
+    
+    // Handle different file formats
+    let countryArray = [];
+    if (Array.isArray(countriesData)) {
+      countryArray = countriesData;
+    } else if (countriesData.countries && Array.isArray(countriesData.countries)) {
+      countryArray = countriesData.countries;
+    } else if (typeof countriesData === 'object') {
+      // Convert object to array if needed
+      countryArray = Object.values(countriesData);
+    } else {
+      throw new Error('Unrecognized country data format');
+    }
+    
+    const unsupported = countryArray.filter(c => 
+      c && (c.territory === 'Unsupported Territory' || c.status === 'unsupported')
+    );
+    
+    const codes = unsupported.map(c => c.code || c.country_code).filter(Boolean);
+    console.log(`✅ Successfully loaded ${codes.length} unsupported territory codes:`, codes);
+    
+    return codes.length > 0 ? codes : ['AF', 'BD', 'MM', 'KP', 'SO', 'SS', 'SY', 'YE']; // Fallback
+    
   } catch (error) {
     console.error('⚠️ Error loading countries:', error.message);
     return ['AF', 'BD', 'MM', 'KP', 'SO', 'SS', 'SY', 'YE']; // Fallback
@@ -32,9 +54,9 @@ function loadCountryClassifications() {
 }
 
 /**
- * Get dashboard summary data
+ * Get dashboard summary data with analysis mode support
  */
-async function getDashboardSummary(getDbConnection, days = 30) {
+async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
@@ -68,7 +90,7 @@ async function getDashboardSummary(getDbConnection, days = 30) {
       
       const summary = summaryResult[0] || {};
       
-      // Get deal summary data
+      // Get deal summary data - FIXED: Use correct association column names
       const [dealSummary] = await connection.execute(`
         SELECT 
           COUNT(*) as totalDeals,
@@ -87,6 +109,7 @@ async function getDashboardSummary(getDbConnection, days = 30) {
         )
           AND d.createdate >= ? 
           AND d.createdate <= ?
+          AND c.hs_analytics_source_data_1 IS NOT NULL
       `, [startDateStr, endDateStr]);
       
       const deals = dealSummary[0] || {};
@@ -127,9 +150,9 @@ async function getDashboardSummary(getDbConnection, days = 30) {
 }
 
 /**
- * Get campaign performance data with proper column names
+ * Get campaign performance data with proper column names and analysis mode
  */
-async function getCampaignPerformance(getDbConnection, days = 30) {
+async function getCampaignPerformance(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
@@ -223,9 +246,9 @@ async function getCampaignPerformance(getDbConnection, days = 30) {
 }
 
 /**
- * Get territory analysis data
+ * Get territory analysis data - SIMPLIFIED: Use HubSpot's existing logic
  */
-async function getTerritoryAnalysis(getDbConnection, days = 30) {
+async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
@@ -237,19 +260,12 @@ async function getTerritoryAnalysis(getDbConnection, days = 30) {
       const startDateStr = startDate.toISOString().slice(0, 19).replace('T', ' ');
       const endDateStr = endDate.toISOString().slice(0, 19).replace('T', ' ');
       
-      console.log(`🌍 Getting territory analysis for ${days} days...`);
+      console.log(`🌍 Getting territory analysis for ${days} days (${analysisMode} mode)...`);
       
-      // Load unsupported territories
-      const unsupportedTerritories = loadCountryClassifications();
-      
-      // Get territory breakdown
+      // SIMPLIFIED: Just get basic territory breakdown from contacts
       const [territoryResults] = await connection.execute(`
         SELECT 
-          CASE 
-            WHEN COALESCE(nationality, country, territory, ip_country, '') IN (${unsupportedTerritories.map(() => '?').join(',') || 'NULL'})
-            THEN 'Unsupported Territory'
-            ELSE COALESCE(nationality, country, territory, ip_country, 'Unknown')
-          END as territoryName,
+          COALESCE(nationality, country, territory, ip_country, 'Unknown') as territoryName,
           COUNT(*) as contacts,
           COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as dealsCreated
         FROM hub_contacts 
@@ -261,48 +277,59 @@ async function getTerritoryAnalysis(getDbConnection, days = 30) {
         )
           AND createdate >= ? 
           AND createdate <= ?
-        GROUP BY CASE 
-          WHEN COALESCE(nationality, country, territory, ip_country, '') IN (${unsupportedTerritories.map(() => '?').join(',') || 'NULL'})
-          THEN 'Unsupported Territory'
-          ELSE COALESCE(nationality, country, territory, ip_country, 'Unknown')
-        END
+          AND hs_analytics_source_data_1 IS NOT NULL
+        GROUP BY COALESCE(nationality, country, territory, ip_country, 'Unknown')
         HAVING contacts > 0
         ORDER BY contacts DESC
         LIMIT 20
-      `, [
-        ...unsupportedTerritories,
-        startDateStr, 
-        endDateStr,
-        ...unsupportedTerritories
-      ]);
+      `, [startDateStr, endDateStr]);
       
-      const territories = territoryResults.map((territory, index) => {
-        const isUnsupported = territory.territoryName === 'Unsupported Territory';
-        return {
-          name: territory.territoryName,
-          contacts: parseInt(territory.contacts) || 0,
-          dealsCreated: parseInt(territory.dealsCreated) || 0,
-          conversionRate: territory.contacts > 0 ? 
-            ((parseInt(territory.dealsCreated) / parseInt(territory.contacts)) * 100).toFixed(1) : 0,
-          isUnsupported: isUnsupported,
-          color: isUnsupported ? '#EF4444' : `hsl(${index * 137.5 % 360}, 70%, 50%)`
-        };
-      });
+      // Get burn rate from HubSpot's existing LOST deals with "Unsupported Territory"
+      const [burnRateResult] = await connection.execute(`
+        SELECT 
+          COUNT(CASE WHEN d.dealstage = 'closedlost' AND d.closed_lost_reason LIKE '%Unsupported Territory%' THEN 1 END) as unsupported_lost,
+          COUNT(*) as total_contacts
+        FROM hub_contacts c
+        LEFT JOIN hub_contact_deal_associations a ON c.hubspot_id = a.contact_hubspot_id
+        LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
+        WHERE (
+          c.hs_analytics_source = 'PAID_SEARCH' 
+          OR c.hs_object_source = 'FORM'
+          OR c.gclid IS NOT NULL 
+          OR c.hs_object_source_label LIKE '%google%'
+        )
+          AND c.createdate >= ? 
+          AND c.createdate <= ?
+          AND c.hs_analytics_source_data_1 IS NOT NULL
+      `, [startDateStr, endDateStr]);
       
-      const totalContacts = territories.reduce((sum, t) => sum + t.contacts, 0);
-      const unsupportedContacts = territories.find(t => t.isUnsupported)?.contacts || 0;
+      const burnData = burnRateResult[0] || {};
       
-      console.log(`🌍 Found ${territories.length} territories, ${unsupportedContacts}/${totalContacts} unsupported`);
+      const territories = territoryResults.map((territory, index) => ({
+        name: territory.territoryName,
+        contacts: parseInt(territory.contacts) || 0,
+        dealsCreated: parseInt(territory.dealsCreated) || 0,
+        conversionRate: territory.contacts > 0 ? 
+          ((parseInt(territory.dealsCreated) / parseInt(territory.contacts)) * 100).toFixed(1) : 0,
+        isUnsupported: false, // We don't duplicate HubSpot's logic
+        color: `hsl(${index * 137.5 % 360}, 70%, 50%)`
+      }));
+      
+      const totalContacts = parseInt(burnData.total_contacts) || 0;
+      const unsupportedLost = parseInt(burnData.unsupported_lost) || 0;
+      
+      console.log(`✅ Territory analysis: ${territories.length} territories, ${unsupportedLost}/${totalContacts} lost to unsupported`);
       
       return {
         success: true,
         territories: territories,
         burnRateSummary: {
-          unsupportedContacts: unsupportedContacts,
+          unsupportedContacts: unsupportedLost, // From HubSpot LOST deals
           totalContacts: totalContacts,
-          burnRatePercentage: totalContacts > 0 ? ((unsupportedContacts / totalContacts) * 100).toFixed(1) : 0
+          burnRatePercentage: totalContacts > 0 ? ((unsupportedLost / totalContacts) * 100).toFixed(1) : 0
         },
         period: `Last ${days} days`,
+        mode: analysisMode,
         timestamp: new Date().toISOString()
       };
       
@@ -321,9 +348,9 @@ async function getTerritoryAnalysis(getDbConnection, days = 30) {
 }
 
 /**
- * Get trends data (placeholder for now)
+ * Get trends data with analysis mode support
  */
-async function getTrends(getDbConnection, days = 30) {
+async function getTrendData(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     // For now, return a simple success response
     // You can implement actual trends logic later
@@ -331,6 +358,7 @@ async function getTrends(getDbConnection, days = 30) {
       success: true,
       trends: [],
       period: `Last ${days} days`,
+      mode: analysisMode,
       timestamp: new Date().toISOString()
     };
   } catch (error) {
@@ -343,9 +371,59 @@ async function getTrends(getDbConnection, days = 30) {
   }
 }
 
+/**
+ * Get MQL validation metrics (for burn rate analysis)
+ */
+async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode = 'pipeline') {
+  try {
+    const [summaryResult, territoriesResult] = await Promise.all([
+      getDashboardSummary(getDbConnection, days, analysisMode),
+      getTerritoryAnalysis(getDbConnection, days, analysisMode)
+    ]);
+    
+    if (!summaryResult.success || !territoriesResult.success) {
+      throw new Error('Failed to fetch MQL validation data');
+    }
+    
+    // Calculate MQL validation metrics
+    const totalContacts = summaryResult.summary.totalContacts || 0;
+    const unsupportedContacts = territoriesResult.burnRateSummary?.unsupportedContacts || 0;
+    const supportedContacts = totalContacts - unsupportedContacts;
+    const totalDeals = summaryResult.summary.totalDeals || 0;
+    
+    return {
+      success: true,
+      mql_stage: {
+        total_mqls: totalContacts,
+        supported_mqls: supportedContacts,
+        unsupported_mqls: unsupportedContacts,
+        burn_rate_percentage: totalContacts > 0 ? ((unsupportedContacts / totalContacts) * 100).toFixed(1) : 0
+      },
+      sql_validation: {
+        total_deals_created: totalDeals,
+        validation_rate_percentage: supportedContacts > 0 ? ((totalDeals / supportedContacts) * 100).toFixed(1) : 0,
+        won_deals: summaryResult.summary.wonDeals || 0,
+        lost_deals: summaryResult.summary.lostDeals || 0
+      },
+      period: `Last ${days} days`,
+      mode: analysisMode,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ MQL validation metrics failed:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 module.exports = {
   getDashboardSummary,
   getCampaignPerformance,
   getTerritoryAnalysis,
-  getTrends
+  getTrendData,
+  getMQLValidationMetrics
 };

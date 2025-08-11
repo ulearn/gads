@@ -21,43 +21,53 @@ const GoogleAdsDashboard = () => {
     fetchDashboardData();
   }, [dateRange, analysisMode, selectedCampaign]);
 
-  // Fetch data from APIs - FIXED: Correct endpoint paths
+  // Fetch data from APIs - ENHANCED CONSOLE LOGGING
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log(`📊 Fetching dashboard data: ${dateRange} days, ${analysisMode} mode`);
+      console.log(`🔄 DASHBOARD FETCH START: ${dateRange} days, ${analysisMode} mode`);
       
-      // FIXED: Use actual working API paths from index.js
+      // FIXED: Use correct dashboard endpoint from index.js 
       const baseParams = `days=${dateRange}&mode=${analysisMode}`;
       
-      // Fetch data in parallel with ACTUAL WORKING PATHS
+      console.log(`📡 Fetching from endpoints:`);
+      console.log(`   • /gads/analytics/dashboard-data?${baseParams}`);
+      console.log(`   • /gads/analytics/campaigns?${baseParams}`);
+      console.log(`   • /gads/analytics/territories?${baseParams}`);
+      
+      // Fetch data in parallel with CORRECT PATHS from index.js
       const [summaryRes, campaignsRes, territoriesRes] = await Promise.all([
-        fetch(`/gads/api/dashboard-data?${baseParams}`),
-        fetch(`/gads/api/campaigns?${baseParams}`),
-        fetch(`/gads/api/territories?${baseParams}`)
+        fetch(`/gads/analytics/dashboard-data?${baseParams}`),
+        fetch(`/gads/analytics/campaigns?${baseParams}`),
+        fetch(`/gads/analytics/territories?${baseParams}`)
       ]);
 
-      console.log('📡 API Response Status:', {
-        summary: summaryRes.status,
-        campaigns: campaignsRes.status,
-        territories: territoriesRes.status
+      console.log('📊 Raw response status:', {
+        summary: `${summaryRes.status} ${summaryRes.statusText}`,
+        campaigns: `${campaignsRes.status} ${campaignsRes.statusText}`,
+        territories: `${territoriesRes.status} ${territoriesRes.statusText}`
       });
 
       // Check for errors with detailed reporting
       if (!summaryRes.ok) {
         const errorText = await summaryRes.text();
+        console.error('❌ Summary API error:', errorText);
         throw new Error(`Summary API failed: ${summaryRes.status} - ${errorText}`);
       }
       if (!campaignsRes.ok) {
         const errorText = await campaignsRes.text();
+        console.error('❌ Campaigns API error:', errorText);
         throw new Error(`Campaigns API failed: ${campaignsRes.status} - ${errorText}`);
       }
       if (!territoriesRes.ok) {
         const errorText = await territoriesRes.text();
+        console.error('❌ Territories API error:', errorText);
         throw new Error(`Territories API failed: ${territoriesRes.status} - ${errorText}`);
       }
+
+      console.log('✅ All API responses OK, parsing JSON...');
 
       const [summaryData, campaignsData, territoriesData] = await Promise.all([
         summaryRes.json(),
@@ -65,20 +75,36 @@ const GoogleAdsDashboard = () => {
         territoriesRes.json()
       ]);
 
-      console.log('📊 Raw API Data:', {
-        summary: summaryData,
-        campaigns: campaignsData,
-        territories: territoriesData
+      console.log('📊 Parsed API data:', {
+        summary: {
+          success: summaryData.success,
+          contacts: summaryData.summary?.totalContacts,
+          deals: summaryData.summary?.totalDeals,
+          error: summaryData.error
+        },
+        campaigns: {
+          success: campaignsData.success,
+          count: campaignsData.campaigns?.length,
+          error: campaignsData.error
+        },
+        territories: {
+          success: territoriesData.success,
+          count: territoriesData.territories?.length,
+          error: territoriesData.error
+        }
       });
 
       // Check API success with detailed error reporting
       if (!summaryData.success) {
+        console.error('❌ Summary data error:', summaryData.error);
         throw new Error(`Summary API error: ${summaryData.error || 'Unknown error'}`);
       }
       if (!campaignsData.success) {
+        console.error('❌ Campaigns data error:', campaignsData.error);
         throw new Error(`Campaigns API error: ${campaignsData.error || 'Unknown error'}`);
       }
       if (!territoriesData.success) {
+        console.error('❌ Territories data error:', territoriesData.error);
         throw new Error(`Territories API error: ${territoriesData.error || 'Unknown error'}`);
       }
 
@@ -92,11 +118,21 @@ const GoogleAdsDashboard = () => {
         analysisMode: analysisMode
       };
 
-      console.log('✅ Dashboard data loaded:', combinedData);
+      console.log('✅ DASHBOARD FETCH SUCCESS:', {
+        summary_keys: Object.keys(combinedData.summary),
+        campaigns_count: combinedData.campaigns.length,
+        territories_count: combinedData.territories.length,
+        period: combinedData.period
+      });
+      
       setDashboardData(combinedData);
 
     } catch (err) {
-      console.error('❌ Dashboard data fetch failed:', err);
+      console.error('❌ DASHBOARD FETCH FAILED:', err);
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack
+      });
       setError(err.message);
     }
     
