@@ -1,8 +1,11 @@
 /**
- * Enhanced HubSpot Sync with Contact-Deal Associations using API v4
+ * FIXED: Enhanced HubSpot Sync with True Update Detection
  * /scripts/hubspot/hubspot-sync.js
  * 
- * Now captures the association data between contacts and deals using Associations API v4
+ * CRITICAL FIX: Uses lastmodifieddate instead of createdate
+ * - Now picks up updates to existing records (like deal stage changes)
+ * - Captures both new records AND modifications
+ * - Fixes the "Aika deal not updating" issue
  */
 
 const fieldMap = require('./fieldmap');
@@ -72,12 +75,14 @@ async function saveContactAssociations(connection, contactId, associations) {
 }
 
 /**
- * FIXED: Enhanced sync function that captures associations
- * The issue was missing 'associations' parameter in the API calls
+ * FIXED: Enhanced sync function that captures BOTH new records AND updates
+ * CRITICAL CHANGE: Uses lastmodifieddate instead of createdate
  */
 async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connection, objectType, startDate, endDate, allPropertyNames) {
   try {
     console.log(`🔄 Syncing ${objectType} with associations (${allPropertyNames.length} properties)...`);
+    console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`🔧 USING lastmodifieddate filter (captures both new records AND updates)`);
     
     let after = undefined;
     let totalSynced = 0;
@@ -87,12 +92,16 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
     while (true) {
       let response;
       
+      // 🔧 FIXED: Use correct field names for each object type
+      const lastModifiedFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
+      console.log(`🔍 Using field: ${lastModifiedFieldName} for ${objectType}`);
+      
       if (objectType === 'contacts') {
         response = await hubspotClient.crm.contacts.searchApi.doSearch({
           filterGroups: [{
             filters: [
               {
-                propertyName: 'createdate',
+                propertyName: lastModifiedFieldName, // ✅ 'lastmodifieddate' for contacts
                 operator: 'BETWEEN',
                 value: startDate.getTime().toString(),
                 highValue: endDate.getTime().toString()
@@ -105,22 +114,23 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
             ]
           }],
           properties: allPropertyNames,
-          associations: ['deals'], // 🔥 CRITICAL FIX: This was missing!
+          associations: ['deals'], // Capture contact-deal associations
           limit: 100,
           after: after
         });
+        
       } else if (objectType === 'deals') {
         response = await hubspotClient.crm.deals.searchApi.doSearch({
           filterGroups: [{
             filters: [{
-              propertyName: 'createdate',
+              propertyName: lastModifiedFieldName, // ✅ 'hs_lastmodifieddate' for deals
               operator: 'BETWEEN', 
               value: startDate.getTime().toString(),
               highValue: endDate.getTime().toString()
             }]
           }],
           properties: allPropertyNames,
-          associations: ['contacts'], // 🔥 ALSO ADD for deals
+          associations: ['contacts'], // Capture deal-contact associations
           limit: 100,
           after: after
         });
@@ -136,6 +146,14 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
       
       // Process objects
       for (const obj of objects) {
+        // Debug logging for important records
+        if (objectType === 'deals' && (obj.properties?.dealname?.includes('Aika') || obj.properties?.amount)) {
+          console.log(`   🔍 Processing deal: ${obj.properties?.dealname} | Stage: ${obj.properties?.dealstage} | Amount: ${obj.properties?.amount}`);
+        }
+        if (objectType === 'contacts' && obj.properties?.email?.includes('aika')) {
+          console.log(`   🔍 Processing contact: ${obj.properties?.email} | Modified: ${obj.properties?.lastmodifieddate}`);
+        }
+        
         // Save the main object (contact or deal)
         const success = await fieldMap.processHubSpotObject(obj, connection, objectType);
         
@@ -143,12 +161,11 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
           totalSynced++;
           
           // For contacts: save associations to deals
-          // CORRECT (fixed code):
           if (objectType === 'contacts') {
-            const dealAssociations = obj.associations || [];
-            console.log(`   🔗 Contact ${obj.id} has ${dealAssociations.length} deal associations:`, dealAssociations);
+            const dealAssociations = obj.associations?.deals?.results?.map(d => d.id) || [];
             
             if (dealAssociations.length > 0) {
+              console.log(`   🔗 Contact ${obj.id} has ${dealAssociations.length} deal associations`);
               const associationCount = await saveContactAssociations(
                 connection, 
                 obj.id, 
@@ -159,7 +176,6 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
           }
         }
       }
-      
       
       after = response.paging?.next?.after;
       if (!after) {
@@ -509,7 +525,7 @@ async function syncContactDealAssociations(hubspotClient, connection) {
 }
 
 /**
- * Enhanced sync function that ensures schema is up-to-date before syncing data WITH associations
+ * FIXED: Enhanced sync function with proper date handling for lastmodifieddate
  */
 async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = {}) {
   try {
@@ -525,31 +541,37 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
     const contactPropertyNames = contactProperties.map(p => p.name);
     const dealPropertyNames = dealProperties.map(p => p.name);
     
-    // Step 3: Run data sync
-    console.log('🚀 STEP 3: Syncing data...');
+    // Step 3: FIXED date range calculation - includes TODAY
+    console.log('🚀 STEP 3: Calculating date range for sync...');
     
-    // Handle date range
     let startDate, endDate;
     if (options.startDate && options.endDate) {
       startDate = new Date(options.startDate);
       endDate = new Date(options.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      endDate.setHours(23, 59, 59, 999); // End of day
     } else if (options.daysBack) {
       endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of today
+      
       startDate = new Date();
-      startDate.setDate(startDate.getDate() - options.daysBack);
+      startDate.setDate(startDate.getDate() - (options.daysBack - 1)); // Include today in count
+      startDate.setHours(0, 0, 0, 0); // Start of day
     } else {
       endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+      
       startDate = new Date();
-      startDate.setDate(startDate.getDate() - 365);
+      startDate.setDate(startDate.getDate() - 364); // Last 365 days including today
+      startDate.setHours(0, 0, 0, 0);
     }
     
-    console.log(`📅 Date range: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+    console.log(`📅 SYNC DATE RANGE: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+    console.log(`🔧 USING lastmodifieddate filter - captures NEW records AND updates!`);
     
     const connection = await getDbConnection();
     
     try {
-      // Sync contacts and deals
+      // Sync contacts and deals using lastmodifieddate
       const contactResult = await syncObjectsWithAllPropertiesAndAssociations(
         hubspotClient, connection, 'contacts', startDate, endDate, contactPropertyNames
       );
@@ -558,13 +580,14 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
         hubspotClient, connection, 'deals', startDate, endDate, dealPropertyNames
       );
       
-      // Step 4: NEW - Sync associations using Associations API v4
+      // Step 4: Sync associations using Associations API v4
       console.log('🔗 STEP 4: Syncing contact-deal associations...');
       const associationsResult = await syncContactDealAssociations(hubspotClient, connection);
       
-      console.log('🎉 Enhanced sync completed successfully!');
+      console.log('🎉 FIXED sync completed successfully!');
       console.log(`📊 Synced: ${contactResult.synced} contacts, ${dealResult.synced} deals`);
       console.log(`🔗 Contact-Deal Associations: ${associationsResult.associations} via API v4`);
+      console.log(`🔧 Using lastmodifieddate: Captures both new records AND updates`);
       
       return {
         success: true,
@@ -573,6 +596,7 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
         associations_synced: associationsResult.associations,
         contact_properties_used: contactPropertyNames.length,
         deal_properties_used: dealPropertyNames.length,
+        sync_method: 'lastmodifieddate (new + updates)',
         date_range: {
           start: startDate.toISOString(),
           end: endDate.toISOString()

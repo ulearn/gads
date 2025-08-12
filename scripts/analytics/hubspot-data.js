@@ -2,9 +2,9 @@
  * FINAL FIXED: HubSpot Dashboard Data API Module
  * /scripts/analytics/hubspot-data.js
  * 
- * FIXED: Pipeline vs Revenue Analysis Mode Support
- * - Pipeline Mode: Filters by deal createdate (new deals in timeframe)
- * - Revenue Mode: Filters by deal closedate (deals won/lost in timeframe)
+ * FIXED: Date range to properly include TODAY's deals
+ * - Revenue Mode: Filters by deal closedate including today
+ * - Pipeline Mode: Filters by contact createdate including today
  */
 
 const fs = require('fs');
@@ -57,7 +57,7 @@ function buildGoogleAdsAttributionQuery() {
 }
 
 /**
- * FIXED: Get dashboard summary with proper Pipeline vs Revenue analysis
+ * FIXED: Get dashboard summary with proper date ranges including TODAY
  */
 async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
@@ -65,6 +65,19 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
     
     try {
       console.log(`📊 Getting Google Ads B2C ${analysisMode} summary for ${days} days...`);
+      
+      // FIXED: Better date range calculation that definitely includes today
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of today
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
+      startDate.setHours(0, 0, 0, 0); // Start of start day
+      
+      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
+      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
+      
+      console.log(`📅 Date range: ${startDateStr} to ${endDateStr} (${days} days including today)`);
       
       // CARD 3: MQLs Created - Total Google Ads B2C contacts (always filter by contact createdate)
       const [mqlsCreated] = await connection.execute(`
@@ -76,9 +89,9 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
                 OR c.hubspot_owner_id IS NULL
                 OR c.hubspot_owner_id = ''
               )
-          AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-      `, [days - 1]);
+          AND DATE(c.createdate) >= ?
+          AND DATE(c.createdate) <= ?
+      `, [startDateStr, endDateStr]);
       
       const totalContacts = parseInt(mqlsCreated[0]?.contact_count) || 0;
       console.log(`✅ CARD 3 - MQLs Created: ${totalContacts}`);
@@ -94,9 +107,9 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
                 OR c.hubspot_owner_id = ''
               )
           AND c.territory = 'Unsupported Territory'
-          AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-      `, [days - 1]);
+          AND DATE(c.createdate) >= ?
+          AND DATE(c.createdate) <= ?
+      `, [startDateStr, endDateStr]);
       
       const failedContacts = parseInt(mqlsFailed[0]?.contact_count) || 0;
       console.log(`✅ CARD 4 - MQLs Failed: ${failedContacts}`);
@@ -113,9 +126,9 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
               )
           AND c.territory != 'Unsupported Territory'
           AND c.num_associated_deals > 0
-          AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-      `, [days - 1]);
+          AND DATE(c.createdate) >= ?
+          AND DATE(c.createdate) <= ?
+      `, [startDateStr, endDateStr]);
       
       const sqlsPassedCount = parseInt(sqlsPassed[0]?.contact_count) || 0;
       console.log(`✅ CARD 5 - SQLs Passed: ${sqlsPassedCount}`);
@@ -127,7 +140,7 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       
       if (analysisMode === 'revenue') {
         // REVENUE MODE: Filter by deal closedate (deals that closed in timeframe)
-        dealLogicDescription = "Deals closed in timeframe (any contact create date)";
+        dealLogicDescription = `Deals closed ${startDateStr} to ${endDateStr} (any contact create date)`;
         [dealResults] = await connection.execute(`
           SELECT 
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
@@ -143,14 +156,14 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             AND c.territory != 'Unsupported Territory'
             AND c.num_associated_deals > 0
             AND d.pipeline = 'default'
-            AND d.closedate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)  -- FILTER BY CLOSE DATE
-            AND d.closedate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
+            AND DATE(d.closedate) <= ?
             AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')  -- Only closed deals
-        `, [days - 1]);
+        `, [startDateStr, endDateStr]);
         
       } else {
         // PIPELINE MODE: Filter by contact createdate (deals from contacts created in timeframe)
-        dealLogicDescription = "Deals from contacts created in timeframe (any deal close date)";
+        dealLogicDescription = `Deals from contacts created ${startDateStr} to ${endDateStr} (any deal close date)`;
         [dealResults] = await connection.execute(`
           SELECT 
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
@@ -165,10 +178,10 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             AND c.hs_analytics_source = 'PAID_SEARCH'
             AND c.territory != 'Unsupported Territory'
             AND c.num_associated_deals > 0
-            AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)  -- FILTER BY CONTACT CREATE DATE
-            AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            AND DATE(c.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(c.createdate) <= ?
             AND d.pipeline = 'default'
-        `, [days - 1]);
+        `, [startDateStr, endDateStr]);
       }
       
       const deals = dealResults[0] || {};
@@ -212,6 +225,7 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
         },
         analysisMode: analysisMode,
         dealLogic: dealLogicDescription,
+        dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
         timestamp: new Date().toISOString()
       };
@@ -242,7 +256,7 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
 }
 
 /**
- * FIXED: Get campaign performance with proper analysis mode support
+ * FIXED: Get campaign performance with proper date ranges including TODAY
  */
 async function getCampaignPerformance(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
@@ -250,6 +264,17 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
     
     try {
       console.log(`🎯 Getting Google Ads B2C campaign performance for ${days} days (${analysisMode} mode)...`);
+      
+      // FIXED: Better date range calculation that definitely includes today
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of today
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
+      startDate.setHours(0, 0, 0, 0); // Start of start day
+      
+      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
+      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
       
       let campaignResults;
       
@@ -273,8 +298,8 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
           LEFT JOIN hub_contact_deal_associations a ON c.hubspot_id = a.contact_hubspot_id
           LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id 
             AND d.pipeline = 'default'
-            AND d.closedate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)  -- FILTER BY CLOSE DATE
-            AND d.closedate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
+            AND DATE(d.closedate) <= ?
             AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')
           WHERE c.hs_analytics_source = 'PAID_SEARCH'
             AND (
@@ -286,7 +311,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
           HAVING totalDeals > 0  -- Only show campaigns with closed deals
           ORDER BY revenue DESC, contacts DESC
           LIMIT 50
-        `, [days - 1]);
+        `, [startDateStr, endDateStr]);
         
       } else {
         // PIPELINE MODE: Show campaigns with contacts created in timeframe
@@ -314,13 +339,13 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
                   OR c.hubspot_owner_id IS NULL
                   OR c.hubspot_owner_id = ''
                 )
-            AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)  -- FILTER BY CONTACT CREATE DATE
-            AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            AND DATE(c.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(c.createdate) <= ?
           GROUP BY c.hs_analytics_source_data_1, c.google_ads_campaign, c.adgroup
           HAVING contacts > 0
           ORDER BY revenue DESC, contacts DESC
           LIMIT 50
-        `, [days - 1]);
+        `, [startDateStr, endDateStr]);
       }
       
       const campaigns = campaignResults.map(campaign => ({
@@ -342,6 +367,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
         success: true,
         campaigns: campaigns,
         analysisMode: analysisMode,
+        dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
         timestamp: new Date().toISOString()
       };
@@ -361,7 +387,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
 }
 
 /**
- * Get territory analysis data with corrected filtering
+ * Get territory analysis data with corrected date ranges
  */
 async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
@@ -369,6 +395,17 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
     
     try {
       console.log(`🌍 Getting Google Ads B2C territory analysis for ${days} days...`);
+      
+      // FIXED: Better date range calculation that definitely includes today
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of today
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
+      startDate.setHours(0, 0, 0, 0); // Start of start day
+      
+      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
+      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
       
       // Get territory breakdown from Google Ads contacts (always by contact createdate)
       const [territoryResults] = await connection.execute(`
@@ -387,13 +424,13 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
                 OR hubspot_owner_id IS NULL
                 OR hubspot_owner_id = ''
               )
-          AND createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+          AND DATE(createdate) >= ?
+          AND DATE(createdate) <= ?
         GROUP BY COALESCE(territory, 'Unknown/Not Set')
         HAVING contacts > 0
         ORDER BY contacts DESC
         LIMIT 20
-      `, [days - 1]);
+      `, [startDateStr, endDateStr]);
       
       const territories = territoryResults.map((territory, index) => ({
         name: territory.territoryName,
@@ -409,6 +446,7 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
         success: true,
         territories: territories,
         analysisMode: analysisMode,
+        dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
         timestamp: new Date().toISOString()
       };
@@ -503,6 +541,17 @@ async function testGoogleAdsAttribution(getDbConnection, days = 7) {
     try {
       console.log(`🔍 Testing Google Ads attribution for ${days} days...`);
       
+      // FIXED: Better date range calculation that definitely includes today
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999); // End of today
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
+      startDate.setHours(0, 0, 0, 0); // Start of start day
+      
+      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
+      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
+      
       const [attributionTest] = await connection.execute(`
         SELECT 
           COUNT(*) as total_contacts_matched,
@@ -525,13 +574,14 @@ async function testGoogleAdsAttribution(getDbConnection, days = 7) {
                 OR hubspot_owner_id IS NULL
                 OR hubspot_owner_id = ''
               )
-          AND createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-      `, [days - 1]);
+          AND DATE(createdate) >= ?
+          AND DATE(createdate) <= ?
+      `, [startDateStr, endDateStr]);
       
       return {
         success: true,
         attribution_test: attributionTest[0] || {},
+        dateRange: `${startDateStr} to ${endDateStr}`,
         timestamp: new Date().toISOString()
       };
       
