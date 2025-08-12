@@ -21,7 +21,7 @@ const GoogleAdsDashboard = () => {
     fetchDashboardData();
   }, [dateRange, analysisMode, selectedCampaign]);
 
-  // Fetch data from APIs - ENHANCED CONSOLE LOGGING
+// Fetch data from APIs - ENHANCED CONSOLE LOGGING
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
@@ -123,6 +123,20 @@ const GoogleAdsDashboard = () => {
         campaigns_count: combinedData.campaigns.length,
         territories_count: combinedData.territories.length,
         period: combinedData.period
+      });
+
+      // ✨ CRITICAL DEBUG: Show exactly what's in the summary for the cards
+      console.log('🔍 DETAILED SUMMARY DATA FOR CARDS:', combinedData.summary);
+      console.log('🔍 SUMMARY FIELDS FOR CARD VALUES:', {
+        totalContacts: combinedData.summary?.totalContacts,
+        contactsWithDeals: combinedData.summary?.contactsWithDeals,
+        totalDeals: combinedData.summary?.totalDeals,
+        wonDeals: combinedData.summary?.wonDeals,
+        lostDeals: combinedData.summary?.lostDeals,
+        totalRevenue: combinedData.summary?.totalRevenue,
+        avgDealValue: combinedData.summary?.avgDealValue,
+        conversionRate: combinedData.summary?.conversionRate,
+        uniqueCampaigns: combinedData.summary?.uniqueCampaigns
       });
       
       setDashboardData(combinedData);
@@ -389,35 +403,35 @@ const GoogleAdsDashboard = () => {
       ])
     ]),
 
-    // Key Metrics Summary
+  // Key Metrics Summary - FIXED FIELD NAMES
     React.createElement('div', {
       className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8',
       key: 'metrics-grid'
     }, [
       createMetricCard(
         'Total Deals',
-        formatNumber(summary.total_deals || 0),
-        summary.active_deals > 0 ? `${summary.active_deals} active` : null,
+        formatNumber(summary.totalDeals || 0),
+        summary.contactsWithDeals > 0 ? `${summary.contactsWithDeals} with deals` : null,
         '📊'
       ),
       createMetricCard(
         'Won Deals',
-        formatNumber(summary.won_deals || 0),
-        summary.lost_deals > 0 ? `${summary.lost_deals} lost` : null,
+        formatNumber(summary.wonDeals || 0),
+        summary.lostDeals > 0 ? `${summary.lostDeals} lost` : null,
         '🏆',
         'green'
       ),
       createMetricCard(
         'Total Revenue',
-        formatCurrency(summary.total_value || 0),
-        summary.avg_deal_size > 0 ? `Avg: ${formatCurrency(summary.avg_deal_size)}` : null,
+        formatCurrency(summary.totalRevenue || 0),
+        summary.avgDealValue > 0 ? `Avg: ${formatCurrency(summary.avgDealValue)}` : null,
         '💰',
         'green'
       ),
       createMetricCard(
         'Conversion Rate',
-        `${summary.conversion_rate || 0}%`,
-        null,
+        `${summary.conversionRate || 0}%`,
+        summary.totalContacts > 0 ? `${summary.totalContacts} contacts` : null,
         '📈',
         'purple'
       )
