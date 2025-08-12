@@ -1,11 +1,12 @@
 /**
- * FIXED: Google Ads Dashboard - Correct API Endpoints
+ * FINAL FIXED: Google Ads Dashboard - Pipeline vs Revenue Analysis
  * /scripts/analytics/dashboard.js
  * 
- * FIXES:
- * - Changed /gads/api/ to /gads/analytics/ (correct paths)
- * - Enhanced error handling
- * - Proper data validation
+ * FIXED:
+ * - Enhanced debug logging to see exactly what backend returns
+ * - Proper analysis mode parameter passing
+ * - Better error handling for missing data
+ * - Visual indicators for analysis mode differences
  */
 
 const GoogleAdsDashboard = () => {
@@ -21,7 +22,7 @@ const GoogleAdsDashboard = () => {
     fetchDashboardData();
   }, [dateRange, analysisMode, selectedCampaign]);
 
-// Fetch data from APIs - ENHANCED CONSOLE LOGGING
+  // Fetch data from APIs - ENHANCED DEBUG LOGGING
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
@@ -29,15 +30,15 @@ const GoogleAdsDashboard = () => {
     try {
       console.log(`🔄 DASHBOARD FETCH START: ${dateRange} days, ${analysisMode} mode`);
       
-      // FIXED: Use correct dashboard endpoint from index.js 
+      // CORRECTED: Use proper parameter names that match index.js
       const baseParams = `days=${dateRange}&mode=${analysisMode}`;
       
-      console.log(`📡 Fetching from endpoints:`);
+      console.log(`📡 Fetching from endpoints with params: ${baseParams}`);
       console.log(`   • /gads/analytics/dashboard-data?${baseParams}`);
       console.log(`   • /gads/analytics/campaigns?${baseParams}`);
       console.log(`   • /gads/analytics/territories?${baseParams}`);
       
-      // Fetch data in parallel with CORRECT PATHS from index.js
+      // Fetch data in parallel
       const [summaryRes, campaignsRes, territoriesRes] = await Promise.all([
         fetch(`/gads/analytics/dashboard-data?${baseParams}`),
         fetch(`/gads/analytics/campaigns?${baseParams}`),
@@ -75,23 +76,36 @@ const GoogleAdsDashboard = () => {
         territoriesRes.json()
       ]);
 
-      console.log('📊 Parsed API data:', {
-        summary: {
-          success: summaryData.success,
-          contacts: summaryData.summary?.totalContacts,
-          deals: summaryData.summary?.totalDeals,
-          error: summaryData.error
-        },
-        campaigns: {
-          success: campaignsData.success,
-          count: campaignsData.campaigns?.length,
-          error: campaignsData.error
-        },
-        territories: {
-          success: territoriesData.success,
-          count: territoriesData.territories?.length,
-          error: territoriesData.error
-        }
+      console.log('📊 RAW API RESPONSES:', {
+        summaryData,
+        campaignsData,
+        territoriesData
+      });
+
+      // CRITICAL DEBUG: Log exactly what each API returns
+      console.log('🔍 SUMMARY DATA STRUCTURE:', {
+        success: summaryData.success,
+        summary_keys: summaryData.summary ? Object.keys(summaryData.summary) : 'NO SUMMARY',
+        summary_content: summaryData.summary,
+        analysis_mode: summaryData.analysisMode,
+        deal_logic: summaryData.dealLogic,
+        error: summaryData.error
+      });
+
+      console.log('🔍 CAMPAIGNS DATA STRUCTURE:', {
+        success: campaignsData.success,
+        campaigns_count: campaignsData.campaigns?.length || 0,
+        campaigns_sample: campaignsData.campaigns?.slice(0, 2),
+        analysis_mode: campaignsData.analysisMode,
+        error: campaignsData.error
+      });
+
+      console.log('🔍 TERRITORIES DATA STRUCTURE:', {
+        success: territoriesData.success,
+        territories_count: territoriesData.territories?.length || 0,
+        territories_sample: territoriesData.territories?.slice(0, 2),
+        analysis_mode: territoriesData.analysisMode,
+        error: territoriesData.error
       });
 
       // Check API success with detailed error reporting
@@ -108,35 +122,41 @@ const GoogleAdsDashboard = () => {
         throw new Error(`Territories API error: ${territoriesData.error || 'Unknown error'}`);
       }
 
-      // Combine data
+      // Combine data with enhanced debugging
       const combinedData = {
         summary: summaryData.summary || {},
         campaigns: campaignsData.campaigns || [],
         territories: territoriesData.territories || [],
         mqlValidation: summaryData.mql_validation_details || null,
         period: summaryData.period || `Last ${dateRange} days`,
-        analysisMode: analysisMode
+        analysisMode: analysisMode,
+        backendMode: summaryData.analysisMode || 'unknown',
+        dealLogic: summaryData.dealLogic || 'unknown'
       };
 
-      console.log('✅ DASHBOARD FETCH SUCCESS:', {
+      console.log('✅ DASHBOARD FETCH SUCCESS - FINAL COMBINED DATA:', {
         summary_keys: Object.keys(combinedData.summary),
         campaigns_count: combinedData.campaigns.length,
         territories_count: combinedData.territories.length,
-        period: combinedData.period
+        period: combinedData.period,
+        frontend_mode: combinedData.analysisMode,
+        backend_mode: combinedData.backendMode,
+        deal_logic: combinedData.dealLogic
       });
 
-      // ✨ CRITICAL DEBUG: Show exactly what's in the summary for the cards
-      console.log('🔍 DETAILED SUMMARY DATA FOR CARDS:', combinedData.summary);
-      console.log('🔍 SUMMARY FIELDS FOR CARD VALUES:', {
-        totalContacts: combinedData.summary?.totalContacts,
-        contactsWithDeals: combinedData.summary?.contactsWithDeals,
-        totalDeals: combinedData.summary?.totalDeals,
-        wonDeals: combinedData.summary?.wonDeals,
-        lostDeals: combinedData.summary?.lostDeals,
-        totalRevenue: combinedData.summary?.totalRevenue,
-        avgDealValue: combinedData.summary?.avgDealValue,
-        conversionRate: combinedData.summary?.conversionRate,
-        uniqueCampaigns: combinedData.summary?.uniqueCampaigns
+      // 🚨 CRITICAL DEBUG: Show exactly what's in the summary for the dashboard cards
+      console.log('🎯 DASHBOARD CARD VALUES DEBUG:', {
+        'MQLs Created (totalContacts)': combinedData.summary?.totalContacts,
+        'MQLs Failed (failed_validation)': combinedData.summary?.failed_validation,
+        'Burn Rate': combinedData.summary?.burn_rate,
+        'SQLs Passed (contactsWithDeals)': combinedData.summary?.contactsWithDeals,
+        'Conversion Rate': combinedData.summary?.conversionRate,
+        'Total Deals': combinedData.summary?.totalDeals,
+        'WON Deals': combinedData.summary?.wonDeals,
+        'LOST Deals': combinedData.summary?.lostDeals,
+        'Total Revenue': combinedData.summary?.totalRevenue,
+        'Avg Deal Value': combinedData.summary?.avgDealValue,
+        'Unique Campaigns': combinedData.summary?.uniqueCampaigns
       });
       
       setDashboardData(combinedData);
@@ -169,14 +189,17 @@ const GoogleAdsDashboard = () => {
 
   // Event handlers
   const handleDateRangeChange = (newRange) => {
+    console.log(`📅 Date range changed: ${newRange} days`);
     setDateRange(newRange);
   };
 
   const handleAnalysisModeChange = (newMode) => {
+    console.log(`🔄 Analysis mode changed: ${newMode}`);
     setAnalysisMode(newMode);
   };
 
   const handleCampaignChange = (newCampaign) => {
+    console.log(`🎯 Campaign filter changed: ${newCampaign}`);
     setSelectedCampaign(newCampaign);
   };
 
@@ -241,11 +264,11 @@ const GoogleAdsDashboard = () => {
     ]);
   }
 
-  // Helper function to create metric cards
+  // Helper function to create metric cards with enhanced debugging
   const createMetricCard = (title, value, trend, icon, color = 'blue') => {
     return React.createElement('div', {
       className: 'bg-white rounded-lg shadow p-6',
-      key: `card-${title.replace(/\s+/g, '-').toLowerCase()}`
+      key: `card-${title.replace(/\\s+/g, '-').toLowerCase()}`
     }, [
       React.createElement('div', {
         className: 'flex items-center justify-between',
@@ -259,7 +282,12 @@ const GoogleAdsDashboard = () => {
           React.createElement('p', {
             className: `text-2xl font-bold text-${color}-600`,
             key: 'card-value'
-          }, value)
+          }, value),
+          // DEBUG: Show raw value in small text
+          React.createElement('p', {
+            className: 'text-xs text-gray-400 mt-1',
+            key: 'card-debug'
+          }, `Raw: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
         ]),
         React.createElement('div', {
           className: `text-${color}-600`,
@@ -364,16 +392,16 @@ const GoogleAdsDashboard = () => {
               React.createElement('option', { value: 'all', key: 'all' }, 'All Campaigns'),
               ...campaigns.slice(0, 10).map((campaign, index) => 
                 React.createElement('option', { 
-                  value: campaign.name, 
+                  value: campaign.campaignName || campaign.name || `campaign-${index}`, 
                   key: `campaign-${index}` 
-                }, campaign.name)
+                }, campaign.campaignName || campaign.name || `Campaign ${index + 1}`)
               )
             ])
           ])
         ])
       ]),
 
-      // Mode Explanation
+      // Mode Explanation with Debug Info
       React.createElement('div', {
         className: 'mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200',
         key: 'mode-explanation'
@@ -397,79 +425,81 @@ const GoogleAdsDashboard = () => {
               analysisMode === 'pipeline' 
                 ? ' - Shows deals created in date range (up-to-the-minute pipeline data)'
                 : ' - Shows deals closed in date range (revenue focus, excludes active pipeline)'
-            )
+            ),
+            React.createElement('div', { 
+              key: 'debug-info',
+              className: 'mt-2 text-xs text-blue-600'
+            }, [
+              `Frontend Mode: ${dashboardData.analysisMode} | `,
+              `Backend Mode: ${dashboardData.backendMode} | `,
+              `Deal Logic: ${dashboardData.dealLogic}`
+            ])
           ])
         ])
       ])
     ]),
 
-/**
- * TOP LEVEL DASHBOARD - 7 Key Metrics Overview
- * Replace the existing metrics cards section in dashboard.js
- */
+    // Key Metrics Summary - 6-CARD GOOGLE ADS FUNNEL
+    React.createElement('div', {
+      className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8',
+      key: 'metrics-grid'
+    }, [
+      // 1. GAd Clicks (TODO: Get from Google Ads API)
+      createMetricCard(
+        'GAd Clicks',
+        formatNumber(summary.gad_clicks || 0),
+        'From Google Ads',
+        '👆',
+        'blue'
+      ),
+      
+      // 2. GAd CTAs (TODO: Get from pipeline data)
+      createMetricCard(
+        'GAd CTAs',
+        formatNumber(summary.gad_ctas || 0),
+        'Form submissions',
+        '🎯',
+        'indigo'
+      ),
+      
+      // 3. MQLs Created (Google Ads contacts)
+      createMetricCard(
+        'MQLs Created',
+        formatNumber(summary.totalContacts || 0),
+        'B2C Contacts',
+        '👥',
+        'purple'
+      ),
+      
+      // 4. MQLs Failed (territory validation failures)
+      createMetricCard(
+        'MQLs Failed',
+        formatNumber(summary.failed_validation || 0),
+        `${summary.burn_rate || 0}% burn rate`,
+        '❌',
+        'red'
+      ),
+      
+      // 5. SQLs → Deals Created (MERGED: contacts who became deals)
+      createMetricCard(
+        'SQLs → Deals',
+        `${formatNumber(summary.contactsWithDeals || 0)} → ${formatNumber(summary.totalDeals || 0)}`,
+        `${summary.conversionRate || 0}% SQL rate`,
+        '✅',
+        'green'
+      ),
+      
+      // 6. Deals WON (with lost subtitle) - CRITICAL CARD FOR TESTING
+      createMetricCard(
+        `Deals WON ${analysisMode === 'revenue' ? '🏆' : '⏳'}`,
+        formatNumber(summary.wonDeals || 0),
+        `Lost: ${formatNumber(summary.lostDeals || 0)} | Mode: ${analysisMode}`,
+        analysisMode === 'revenue' ? '🏆' : '⏳',
+        analysisMode === 'revenue' ? 'green' : 'yellow'
+      )
+    ]),
 
-// Key Metrics Summary - 5-CARD GOOGLE ADS FUNNEL
-React.createElement('div', {
-  className: 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8',
-  key: 'metrics-grid'
-}, [
-  // 1. GAd Clicks (TODO: Get from Google Ads API)
-  createMetricCard(
-    'GAd Clicks',
-    formatNumber(summary.gad_clicks || 0),
-    'From Google Ads',
-    '👆',
-    'blue'
-  ),
-  
-  // 2. GAd CTAs (TODO: Get from pipeline data)
-  createMetricCard(
-    'GAd CTAs',
-    formatNumber(summary.gad_ctas || 0),
-    'Form submissions',
-    '🎯',
-    'indigo'
-  ),
-  
-  // 3. MQLs Created (Google Ads contacts)
-  createMetricCard(
-    'MQLs Created',
-    formatNumber(summary.totalContacts || 0),
-    'B2C Contacts',
-    '👥',
-    'purple'
-  ),
-  
-  // 4. MQLs Failed (territory validation failures)
-  createMetricCard(
-    'MQLs Failed',
-    formatNumber(summary.failed_validation || 0),
-    `${summary.burn_rate || 0}% burn rate`,
-    '❌',
-    'red'
-  ),
-  
-  // 5. SQLs → Deals Created (MERGED: contacts who became deals)
-  createMetricCard(
-    'SQLs → Deals',
-    `${formatNumber(summary.contactsWithDeals || 0)} → ${formatNumber(summary.totalDeals || 0)}`,
-    `${summary.conversionRate || 0}% SQL rate`,
-    '✅',
-    'green'
-  ),
-  
-  // 6. Deals WON (with lost subtitle)
-  createMetricCard(
-    'Deals WON',
-    formatNumber(summary.wonDeals || 0),
-    `Lost: ${summary.lostDeals || 0}`,
-    '🏆',
-    'green'
-  )
-]),
-
-
-// Territory and Campaign Analysis
+    // Territory and Campaign Analysis
     React.createElement('div', {
       className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8',
       key: 'analysis-section'
@@ -522,13 +552,10 @@ React.createElement('div', {
               }, `👥 ${formatNumber(territory.contacts)} contacts`),
               React.createElement('div', {
                 key: 'deals-stat'
-              }, `🎯 ${formatNumber(territory.deals || territory.deals_created)} deals`),
-              React.createElement('div', {
-                key: 'revenue-stat'
-              }, `💰 ${formatCurrency(territory.revenue || 0)}`),
+              }, `🎯 ${formatNumber(territory.dealsCreated || 0)} deals`),
               React.createElement('div', {
                 key: 'conversion-stat'
-              }, `📊 ${territory.mql_to_sql_rate || territory.conversion_rate || 0}% conversion`),
+              }, `📊 ${territory.conversionRate || 0}% conversion`),
               territory.name === 'Unsupported Territory' && React.createElement('div', {
                 className: 'text-red-600 font-medium',
                 key: 'burn-indicator'
@@ -537,8 +564,6 @@ React.createElement('div', {
           ])
         ))
       ]),
-
-
 
       // Campaign Performance
       React.createElement('div', {
@@ -565,23 +590,51 @@ React.createElement('div', {
               React.createElement('h4', {
                 className: 'font-medium text-gray-900 truncate',
                 key: 'campaign-name'
-              }, campaign.name || campaign.campaignName || 'Unknown Campaign'),
+              }, campaign.campaignName || campaign.name || 'Unknown Campaign'),
               React.createElement('span', {
                 className: 'text-sm text-green-600 font-medium',
                 key: 'campaign-won'
-              }, `${campaign.won_deals || campaign.wonDeals || 0} won`)
+              }, `${formatNumber(campaign.wonDeals || 0)} won`)
             ]),
             React.createElement('div', {
               className: 'grid grid-cols-2 gap-4 text-sm text-gray-600',
               key: 'campaign-stats'
             }, [
               React.createElement('div', { key: 'contacts' }, `👥 ${formatNumber(campaign.contacts || 0)} contacts`),
-              React.createElement('div', { key: 'deals' }, `🎯 ${formatNumber(campaign.deals || campaign.dealsCreated || 0)} deals`),
+              React.createElement('div', { key: 'deals' }, `🎯 ${formatNumber(campaign.totalDeals || 0)} deals`),
               React.createElement('div', { key: 'revenue' }, `💰 ${formatCurrency(campaign.revenue || 0)}`),
-              React.createElement('div', { key: 'rate' }, `📊 ${campaign.mql_to_sql_rate || campaign.conversion_rate || campaign.conversionRate || 0}%`)
+              React.createElement('div', { key: 'rate' }, `📊 ${campaign.conversionRate || 0}%`)
             ])
           ])
         ))
+      ])
+    ]),
+
+    // Debug Panel (only show in development)
+    React.createElement('div', {
+      className: 'mt-8 bg-gray-100 p-4 rounded-lg text-xs text-gray-600',
+      key: 'debug-panel'
+    }, [
+      React.createElement('h4', {
+        className: 'font-bold mb-2',
+        key: 'debug-title'
+      }, '🔧 Debug Info'),
+      React.createElement('div', {
+        className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
+        key: 'debug-content'
+      }, [
+        React.createElement('div', { key: 'debug-summary' }, [
+          React.createElement('strong', { key: 'summary-title' }, 'Summary Keys: '),
+          React.createElement('code', { key: 'summary-keys' }, Object.keys(summary).join(', '))
+        ]),
+        React.createElement('div', { key: 'debug-campaigns' }, [
+          React.createElement('strong', { key: 'campaigns-title' }, 'Campaigns: '),
+          React.createElement('code', { key: 'campaigns-count' }, `${campaigns.length} found`)
+        ]),
+        React.createElement('div', { key: 'debug-territories' }, [
+          React.createElement('strong', { key: 'territories-title' }, 'Territories: '),
+          React.createElement('code', { key: 'territories-count' }, `${territories.length} found`)
+        ])
       ])
     ]),
 
@@ -596,7 +649,7 @@ React.createElement('div', {
         `Campaign: ${selectedCampaign === 'all' ? 'All Campaigns' : selectedCampaign}`
       ),
       React.createElement('p', { key: 'footer-note', className: 'mt-2' }, 
-        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with schema corrections'
+        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with Pipeline vs Revenue analysis'
       )
     ])
   ]);

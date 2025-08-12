@@ -1,6 +1,8 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const hubspot = require('@hubspot/api-client');
+const hubspotSync = require('./scripts/hubspot/hubspot-sync');
+const hubspotTest = require('./scripts/hubspot/hubspot-test');
 const { google } = require('googleapis');
 const { GoogleAdsApi } = require('google-ads-api');
 const dashboardServer = require('./scripts/analytics/dashboard-server');
@@ -224,6 +226,123 @@ router.get('/test', (req, res) => {
     }
   });
 });
+
+//=============================================================================//
+//   HUBSPOT MAIN SYNC ROUTES
+//=============================================================================//
+
+// Main HubSpot sync route - MINIMAL ROUTING ONLY
+router.get('/hubspot/sync', async (req, res) => {
+  try {
+    // Parse query parameters for different sync options
+    const { days, start, end, month } = req.query;
+    
+    let syncOptions = {};
+    let description = '';
+    
+    // Determine sync type from parameters
+    if (start && end) {
+      // Date range sync
+      syncOptions = { startDate: start, endDate: end };
+      description = `Date range sync: ${start} to ${end}`;
+    } else if (month) {
+      // Month sync (format: YYYY-MM)
+      const [year, monthNum] = month.split('-');
+      const startDate = new Date(year, monthNum - 1, 1);
+      const endDate = new Date(year, monthNum, 0); // Last day of month
+      syncOptions = { 
+        startDate: startDate.toISOString().split('T')[0], 
+        endDate: endDate.toISOString().split('T')[0] 
+      };
+      description = `Month sync: ${month}`;
+    } else if (days) {
+      // Days back sync (backwards compatibility)
+      const daysBack = parseInt(days) || 30;
+      syncOptions = { daysBack };
+      description = `Sync last ${daysBack} days`;
+    } else {
+      // Default: last 30 days
+      syncOptions = { daysBack: 30 };
+      description = 'Default sync (last 30 days)';
+    }
+    
+    console.log(`🔄 Starting HubSpot sync: ${description}`);
+    
+    // Return immediately, run sync in background
+    res.json({
+      success: true,
+      service: 'HubSpot',
+      message: description,
+      status: 'running',
+      options: syncOptions,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Run sync with authenticated clients in background
+    (async () => {
+      try {
+        // Call the schema-aware function
+        const result = await hubspotSync.runSyncWithSchemaCheck(hubspotClient, getDbConnection, syncOptions);
+        console.log(`✅ HubSpot sync completed:`, result);
+      } catch (error) {
+        console.error('❌ Background sync failed:', error.message);
+      }
+    })();
+    
+  } catch (error) {
+    console.error('❌ HubSpot sync failed:', error.message);
+    res.status(500).json({
+      success: false,
+      service: 'HubSpot',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// HubSpot contact fetch route
+router.get('/hubspot/contact/:id', async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    console.log(`🔍 Fetching HubSpot contact ${contactId}...`);
+    
+    const hubspotTest = require('./scripts/hubspot/hubspot-test');
+    const result = await hubspotTest.fetchSpecificContact(hubspotClient, contactId);
+    
+    // Return summary (full data is saved to file)
+    res.json({
+      success: true,
+      service: 'HubSpot',
+      contactId: contactId,
+      summary: {
+        totalProperties: Object.keys(result.allProperties).length,
+        nonNullProperties: Object.entries(result.allProperties)
+          .filter(([k, v]) => v !== null && v !== '').length,
+        hasDeals: result.associations && result.associations.length > 0,
+        dealCount: result.associations ? result.associations.length : 0
+      },
+      keyData: {
+        email: result.allProperties.email,
+        name: `${result.allProperties.firstname || ''} ${result.allProperties.lastname || ''}`.trim(),
+        country: result.allProperties.country,
+        lifecyclestage: result.allProperties.lifecyclestage,
+        created: result.allProperties.createdate
+      },
+      message: `Full data saved to contact-${contactId}-export.json`,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Contact fetch failed:', error.message);
+    res.status(500).json({
+      success: false,
+      service: 'HubSpot',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 
 //=============================================================================//
 //   MYSQL ROUTES
