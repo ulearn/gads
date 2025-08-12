@@ -306,25 +306,40 @@ const GoogleAdsDashboard = () => {
   return React.createElement('div', {
     className: 'min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6'
   }, [
-    // Header
-    React.createElement('div', {
-      className: 'mb-8',
-      key: 'header'
+// Header
+React.createElement('div', {
+  className: 'mb-8',
+  key: 'header'
+}, [
+  React.createElement('div', {
+    className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between',
+    key: 'header-content'
+  }, [
+    // Logo and Title Section
+    React.createElement('div', { 
+      key: 'header-text',
+      className: 'flex items-center space-x-4'
     }, [
-      React.createElement('div', {
-        className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between',
-        key: 'header-content'
-      }, [
-        React.createElement('div', { key: 'header-text' }, [
-          React.createElement('h1', {
-            className: 'text-3xl font-bold text-gray-900 mb-2',
-            key: 'title'
-          }, 'Google Ads Pipeline Dashboard'),
-          React.createElement('p', {
-            className: 'text-gray-600',
-            key: 'subtitle'
-          }, `Real HubSpot data from MySQL (${dashboardData.period})`)
-        ]),
+      // ULearn Logo
+      React.createElement('img', {
+        src: 'https://ulearnschool.com/sites/default/files/images/logos/ulearn-trans.png',
+        alt: 'ULearn School Logo',
+        className: 'h-12 w-auto',
+        key: 'ulearn-logo'
+      }),
+      
+      // Title and Subtitle
+      React.createElement('div', { key: 'title-section' }, [
+        React.createElement('h1', {
+          className: 'text-3xl font-bold text-gray-900 mb-2',
+          key: 'title'
+        }, 'Google Ads Pipeline Dashboard'),
+        React.createElement('p', {
+          className: 'text-gray-600',
+          key: 'subtitle'
+        }, `Real Google Ads + HubSpot data from MySQL (${dashboardData.period})`)
+      ])
+    ]),
         
         // Controls Panel
         React.createElement('div', {
