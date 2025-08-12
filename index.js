@@ -3,6 +3,7 @@ const mysql = require('mysql2/promise');
 const hubspot = require('@hubspot/api-client');
 const hubspotSync = require('./scripts/hubspot/hubspot-sync');
 const hubspotTest = require('./scripts/hubspot/hubspot-test');
+const hubspotData = require('./scripts/analytics/hubspot-data');
 const { google } = require('googleapis');
 const { GoogleAdsApi } = require('google-ads-api');
 const dashboardServer = require('./scripts/analytics/dashboard-server');
@@ -414,6 +415,20 @@ router.get('/analytics/campaigns', async (req, res) => {
   }
 });
 
+// Google Ads Metrics API - NEW: Dedicated endpoint for Google Ads data
+router.get('/analytics/google-ads-metrics', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    
+    console.log(`📊 Google Ads metrics API: ${days} days`);
+    
+    const result = await hubspotData.getGoogleAdsMetrics(getDbConnection, days);
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Google Ads metrics API failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Territory Analysis API - Enhanced with analysis mode
 router.get('/analytics/territories', async (req, res) => {
@@ -482,6 +497,7 @@ router.get('/analytics/attribution-test', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 //=============================================================================//
 //   DEBUG & TESTING ROUTES - CLEANED

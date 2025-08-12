@@ -9,6 +9,77 @@
 
 const fs = require('fs');
 const path = require('path');
+const pipelineServer = require('./pipeline-server');
+
+
+/**
+ * NEW: Get Google Ads metrics by calling pipeline server (proven to work)
+ */
+async function getGoogleAdsMetricsFromPipeline(getDbConnection, days = 30) {
+  try {
+    console.log(`📊 Getting Google Ads metrics from pipeline server for ${days} days...`);
+    
+    // Import and call the proven pipeline server
+    const pipelineServer = require('./pipeline-server');
+    const pipelineResult = await pipelineServer.getFastPipelineData(getDbConnection, { days, campaign: 'all' });
+    
+    if (!pipelineResult.success) {
+      throw new Error(`Pipeline server failed: ${pipelineResult.error}`);
+    }
+    
+    const { mqlStages, summary } = pipelineResult;
+    
+    console.log(`✅ Pipeline data extracted:`, {
+      clicks: mqlStages.clicks?.count || 0,
+      ctas: mqlStages.ctaComplete?.count || 0,
+      impressions: mqlStages.impressions?.count || 0,
+      total_cost: summary.totalCost || 0
+    });
+    
+    return {
+      success: true,
+      metrics: {
+        // CARD 1: GAd Clicks - from pipeline mqlStages
+        gad_clicks: parseInt(mqlStages.clicks?.count) || 0,
+        gad_impressions: parseInt(mqlStages.impressions?.count) || 0,
+        gad_cost: parseFloat(summary.totalCost) || 0,
+        gad_ctr: parseFloat(mqlStages.clicks?.ctr) || 0,
+        
+        // CARD 2: GAd CTAs - from pipeline mqlStages  
+        gad_ctas: parseInt(mqlStages.ctaComplete?.count) || 0,
+        gad_conversion_rate: parseFloat(mqlStages.ctaComplete?.conversionRate) || 0,
+        
+        // Additional metrics from pipeline
+        active_campaigns: parseInt(summary.activeCampaigns) || 0,
+        avg_cpc: parseFloat(summary.avgCPC) || 0,
+        cost_per_cta: mqlStages.ctaComplete?.count > 0 ? 
+          (parseFloat(summary.totalCost) / parseInt(mqlStages.ctaComplete.count)) : 0
+      },
+      period: summary.period || `Last ${days} days`,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Google Ads metrics from pipeline failed:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      metrics: {
+        gad_clicks: 0,
+        gad_ctas: 0,
+        gad_impressions: 0,
+        gad_cost: 0,
+        gad_ctr: 0,
+        gad_conversion_rate: 0,
+        active_campaigns: 0,
+        avg_cpc: 0,
+        cost_per_cta: 0
+      },
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
 
 // Load country classifications for territory analysis
 function loadCountryClassifications() {
@@ -66,6 +137,12 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
     try {
       console.log(`📊 Getting Google Ads B2C ${analysisMode} summary for ${days} days...`);
       
+            // NEW: Get Google Ads metrics from proven pipeline server
+      const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, days);
+      const googleMetrics = googleAdsResult.metrics || {};
+      
+      console.log(`📊 Google Ads metrics from pipeline:`, googleMetrics);
+
       // FIXED: Better date range calculation that definitely includes today
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999); // End of today
@@ -200,6 +277,19 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       const result = {
         success: true,
         summary: {
+          // CARD 1 & 2: REAL Google Ads data from pipeline server
+          gad_clicks: googleMetrics.gad_clicks || 0,
+          gad_ctas: googleMetrics.gad_ctas || 0,
+          gad_impressions: googleMetrics.gad_impressions || 0,
+          gad_cost: googleMetrics.gad_cost || 0,
+          gad_ctr: googleMetrics.gad_ctr || 0,
+          gad_conversion_rate: googleMetrics.gad_conversion_rate || 0,
+
+
+
+
+
+
           // CARD 3: MQLs Created (always by contact createdate)
           totalContacts: totalContacts,
           
@@ -217,11 +307,11 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
           lostDeals: parseInt(deals.lostDeals) || 0,
           totalRevenue: parseFloat(deals.totalRevenue) || 0,
           avgDealValue: parseFloat(deals.avgDealValue) || 0,
-          
-          // Placeholder metrics for future
-          gad_clicks: 0,
-          gad_ctas: 0,
-          uniqueCampaigns: 0
+
+          // Additional metrics from pipeline
+          uniqueCampaigns: googleMetrics.active_campaigns || 0,
+          avgCPC: googleMetrics.avg_cpc || 0,
+          costPerCTA: googleMetrics.cost_per_cta || 0
         },
         analysisMode: analysisMode,
         dealLogic: dealLogicDescription,
@@ -606,5 +696,6 @@ module.exports = {
   getTrendData,
   getMQLValidationMetrics,
   testGoogleAdsAttribution,
-  buildGoogleAdsAttributionQuery
+  buildGoogleAdsAttributionQuery,
+  getGoogleAdsMetricsFromPipeline  // NEW: Export the pipeline-based Google Ads function
 };
