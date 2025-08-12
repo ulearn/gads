@@ -99,28 +99,28 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       console.log(`✅ Google Ads contacts found: ${summary.totalContacts}`);
       console.log(`✅ Google Ads SQLs (passed validation): ${summary.contactsWithDeals}`);
       
-      // CORRECTED: Get deals from Google Ads SQLs only (Phase 4 contacts + their deals)
+      // FIXED: Get ALL deals from the qualifying contacts (no deal date filter)
       const [dealSummary] = await connection.execute(`
         SELECT 
-          COUNT(*) as totalDeals,
-          COUNT(CASE WHEN d.dealstage = 'closedwon' THEN 1 END) as wonDeals,
-          COUNT(CASE WHEN d.dealstage = 'closedlost' THEN 1 END) as lostDeals,
+          COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
+          COUNT(CASE WHEN d.dealstage = 'closedwon' THEN d.hubspot_deal_id END) as wonDeals,
+          COUNT(CASE WHEN d.dealstage = 'closedlost' THEN d.hubspot_deal_id END) as lostDeals,
           SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as totalRevenue,
           AVG(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE NULL END) as avgDealValue
-        FROM hub_deals d
-        JOIN hub_contact_deal_associations a ON d.hubspot_deal_id = a.deal_hubspot_id
+        FROM hub_contact_deal_associations a
         JOIN hub_contacts c ON a.contact_hubspot_id = c.hubspot_id
+        JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
         WHERE c.hubspot_owner_id != 10017927  -- Exclude Partners account
           AND c.hs_analytics_source = 'PAID_SEARCH'  -- Google Ads only
-          AND c.num_associated_deals > 0  -- Must have deals
+          AND c.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)  -- Contact date filter only
+          AND c.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+          AND c.num_associated_deals > 0  -- Has deals
           AND (
             c.territory IS NOT NULL 
             AND c.territory != '' 
             AND c.territory != 'Unsupported Territory'
             AND c.territory != 'Unknown/Not Set'
-          )  -- Phase 4: Supported territory only
-          AND d.createdate >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
-          AND d.createdate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+          )  -- Supported territory
           AND d.pipeline = 'default'  -- B2C Pipeline
       `, [days - 1]);
       
@@ -133,13 +133,20 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       const conversionRate = summary.totalContacts > 0 ? 
         ((parseInt(summary.contactsWithDeals) / parseInt(summary.totalContacts)) * 100).toFixed(1) : 0;
 
-      const result = {
+const result = {
         success: true,
         summary: {
           // Contact metrics (MQL level)
           totalContacts: parseInt(summary.totalContacts) || 0,
           contactsWithDeals: parseInt(summary.contactsWithDeals) || 0,
           uniqueCampaigns: parseInt(summary.uniqueCampaigns) || 0,
+          
+          // NEW: Additional funnel metrics needed
+          gad_clicks: 0, // TODO: Get from Google Ads API or estimate
+          gad_ctas: 0, // TODO: Get from form submissions or estimate  
+          failed_validation: (parseInt(summary.totalContacts) || 0) - (parseInt(summary.contactsWithDeals) || 0),
+          burn_rate: summary.totalContacts > 0 ? 
+            (((parseInt(summary.totalContacts) - parseInt(summary.contactsWithDeals)) / parseInt(summary.totalContacts)) * 100).toFixed(1) : 0,
           
           // Deal metrics (SQL level) - B2C Pipeline from Phase 4 contacts only
           totalDeals: parseInt(deals.totalDeals) || 0,

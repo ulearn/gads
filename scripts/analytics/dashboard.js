@@ -403,41 +403,73 @@ const GoogleAdsDashboard = () => {
       ])
     ]),
 
-  // Key Metrics Summary - FIXED FIELD NAMES
-    React.createElement('div', {
-      className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8',
-      key: 'metrics-grid'
-    }, [
-      createMetricCard(
-        'Total Deals',
-        formatNumber(summary.totalDeals || 0),
-        summary.contactsWithDeals > 0 ? `${summary.contactsWithDeals} with deals` : null,
-        '📊'
-      ),
-      createMetricCard(
-        'Won Deals',
-        formatNumber(summary.wonDeals || 0),
-        summary.lostDeals > 0 ? `${summary.lostDeals} lost` : null,
-        '🏆',
-        'green'
-      ),
-      createMetricCard(
-        'Total Revenue',
-        formatCurrency(summary.totalRevenue || 0),
-        summary.avgDealValue > 0 ? `Avg: ${formatCurrency(summary.avgDealValue)}` : null,
-        '💰',
-        'green'
-      ),
-      createMetricCard(
-        'Conversion Rate',
-        `${summary.conversionRate || 0}%`,
-        summary.totalContacts > 0 ? `${summary.totalContacts} contacts` : null,
-        '📈',
-        'purple'
-      )
-    ]),
+/**
+ * TOP LEVEL DASHBOARD - 7 Key Metrics Overview
+ * Replace the existing metrics cards section in dashboard.js
+ */
 
-    // Territory and Campaign Analysis
+// Key Metrics Summary - 5-CARD GOOGLE ADS FUNNEL
+React.createElement('div', {
+  className: 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8',
+  key: 'metrics-grid'
+}, [
+  // 1. GAd Clicks (TODO: Get from Google Ads API)
+  createMetricCard(
+    'GAd Clicks',
+    formatNumber(summary.gad_clicks || 0),
+    'From Google Ads',
+    '👆',
+    'blue'
+  ),
+  
+  // 2. GAd CTAs (TODO: Get from pipeline data)
+  createMetricCard(
+    'GAd CTAs',
+    formatNumber(summary.gad_ctas || 0),
+    'Form submissions',
+    '🎯',
+    'indigo'
+  ),
+  
+  // 3. MQLs Created (Google Ads contacts)
+  createMetricCard(
+    'MQLs Created',
+    formatNumber(summary.totalContacts || 0),
+    'B2C Contacts',
+    '👥',
+    'purple'
+  ),
+  
+  // 4. MQLs Failed (territory validation failures)
+  createMetricCard(
+    'MQLs Failed',
+    formatNumber(summary.failed_validation || 0),
+    `${summary.burn_rate || 0}% burn rate`,
+    '❌',
+    'red'
+  ),
+  
+  // 5. SQLs → Deals Created (MERGED: contacts who became deals)
+  createMetricCard(
+    'SQLs → Deals',
+    `${formatNumber(summary.contactsWithDeals || 0)} → ${formatNumber(summary.totalDeals || 0)}`,
+    `${summary.conversionRate || 0}% SQL rate`,
+    '✅',
+    'green'
+  ),
+  
+  // 6. Deals WON (with lost subtitle)
+  createMetricCard(
+    'Deals WON',
+    formatNumber(summary.wonDeals || 0),
+    `Lost: ${summary.lostDeals || 0}`,
+    '🏆',
+    'green'
+  )
+]),
+
+
+// Territory and Campaign Analysis
     React.createElement('div', {
       className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8',
       key: 'analysis-section'
@@ -505,6 +537,8 @@ const GoogleAdsDashboard = () => {
           ])
         ))
       ]),
+
+
 
       // Campaign Performance
       React.createElement('div', {
