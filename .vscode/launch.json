@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug in Brave",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "https://hub.ulearnschool.com/gads/scripts/analytics/burn-rate.html",
+      "webRoot": "${workspaceFolder}",
+      "runtimeExecutable": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+    }
+  ]
+}

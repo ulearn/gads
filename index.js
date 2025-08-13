@@ -369,11 +369,10 @@ router.get('/dashboard', (req, res) => {
   dashboardServer.serveDashboard(req, res);
 });
 
-// Pipeline Analysis Route  
+// Pipeline Analysis Route - FIXED: Now uses proper server pattern
 router.get('/analytics/pipeline', (req, res) => {
-  const fs = require('fs');
-  const dashboardHTML = fs.readFileSync('./scripts/analytics/pipeline-analysis.html', 'utf8');
-  res.send(dashboardHTML);
+  const pipelineServer = require('./scripts/analytics/pipeline-server');
+  pipelineServer.servePipelineDashboard(req, res);
 });
 
 // Pipeline Probabilities API (you already have this)
@@ -567,7 +566,7 @@ router.get('/debug/territory-validation', async (req, res) => {
   }
 });
 
-// Pipeline Data API
+// Pipeline Data API - FIXED: Now matches the module export
 router.get('/analytics/pipeline-data', async (req, res) => {
   try {
     const pipelineServer = require('./scripts/analytics/pipeline-server');
@@ -577,6 +576,12 @@ router.get('/analytics/pipeline-data', async (req, res) => {
     console.error('❌ Pipeline data API failed:', error.message);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC
+router.get('/analytics/burn-rate-timeseries', (req, res) => {
+  const burnRateTimeseries = require('./scripts/analytics/burn-rate-timeseries');
+  burnRateTimeseries.handleBurnRateTimeseriesRequest(req, res, getDbConnection);
 });
 
 // Burn Rate Data API

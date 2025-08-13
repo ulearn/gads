@@ -1,0 +1,75 @@
+{
+  "stageMapping": {
+    "appointmentscheduled": {
+      "label": "INBOX",
+      "displayOrder": 1,
+      "probability": 0.1,
+      "isClosed": false
+    },
+    "113151423": {
+      "label": "SEQUENCED", 
+      "displayOrder": 2,
+      "probability": 0.1,
+      "isClosed": false
+    },
+    "qualifiedtobuy": {
+      "label": "ENGAGING",
+      "displayOrder": 3, 
+      "probability": 0.25,
+      "isClosed": false
+    },
+    "767120827": {
+      "label": "RESPONSIVE",
+      "displayOrder": 4,
+      "probability": 0.5,
+      "isClosed": false
+    },
+    "presentationscheduled": {
+      "label": "ADVISING",
+      "displayOrder": 5,
+      "probability": 0.6,
+      "isClosed": false
+    },
+    "decisionmakerboughtin": {
+      "label": "CONSIDERATION & NEGOTIATION",
+      "displayOrder": 6,
+      "probability": 0.75,
+      "isClosed": false
+    },
+    "114331579": {
+      "label": "MAYBE / FUTURE",
+      "displayOrder": 7,
+      "probability": 0.1,
+      "isClosed": false
+    },
+    "111070952": {
+      "label": "TRIAL",
+      "displayOrder": 8,
+      "probability": 0.8,
+      "isClosed": false
+    },
+    "contractsent": {
+      "label": "CONTRACT",
+      "displayOrder": 9,
+      "probability": 0.9,
+      "isClosed": false
+    },
+    "closedwon": {
+      "label": "WON",
+      "displayOrder": 10,
+      "probability": 1.0,
+      "isClosed": true
+    },
+    "closedlost": {
+      "label": "LOST",
+      "displayOrder": 11,
+      "probability": 0.0,
+      "isClosed": true
+    }
+  },
+  "metadata": {
+    "lastUpdated": "2025-01-12T00:00:00.000Z",
+    "source": "HubSpot API + Manual Verification",
+    "pipelineId": "default"
+  }
+}

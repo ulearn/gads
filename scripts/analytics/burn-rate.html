@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 Burn Rate Analysis - Enhanced | Google Ads Waste Detection</title>
+    <title>🔥 Burn Rate Analysis - Timeseries | Google Ads Waste Detection</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {
@@ -48,7 +48,7 @@
             line-height: 1.6;
         }
 
-        .enhanced-badge {
+        .timeseries-badge {
             background: linear-gradient(45deg, #e74c3c, #c0392b);
             color: white;
             padding: 5px 15px;
@@ -97,25 +97,11 @@
             letter-spacing: 1px;
         }
 
-        .burn-rate {
-            color: #e74c3c;
-        }
-
-        .waste-contacts {
-            color: #e67e22;
-        }
-
-        .total-contacts {
-            color: #3498db;
-        }
-
-        .validation-rate {
-            color: #9b59b6;
-        }
-
-        .territories-count {
-            color: #27ae60;
-        }
+        .burn-rate { color: #e74c3c; }
+        .waste-contacts { color: #e67e22; }
+        .total-contacts { color: #3498db; }
+        .supported-contacts { color: #27ae60; }
+        .trend-indicator { color: #9b59b6; }
 
         .main-content {
             background: rgba(255, 255, 255, 0.95);
@@ -146,6 +132,7 @@
             display: flex;
             gap: 15px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .filter-select {
@@ -176,57 +163,33 @@
             transform: scale(1.05);
         }
 
-        .campaign-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        .chart-container {
             background: white;
-            border-radius: 10px;
-            overflow: hidden;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            height: 500px;
         }
 
-        .campaign-table th {
-            background: linear-gradient(45deg, #34495e, #2c3e50);
+        .back-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
             color: white;
-            padding: 15px;
-            text-align: left;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
+            transition: transform 0.2s ease;
+            margin-bottom: 20px;
         }
 
-        .campaign-table td {
-            padding: 15px;
-            border-bottom: 1px solid #ecf0f1;
-            vertical-align: top;
-        }
-
-        .campaign-table tr:hover {
-            background-color: #f8f9fa;
-        }
-
-        .unsupported-contacts {
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        .back-btn:hover {
+            transform: scale(1.05);
+            text-decoration: none;
             color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            text-align: center;
-            min-width: 60px;
-            display: inline-block;
-        }
-
-        .spend-amount {
-            font-weight: bold;
-            color: #e74c3c;
-            font-size: 1.1rem;
-        }
-
-        .targeting-info {
-            font-size: 0.9rem;
-            color: #7f8c8d;
         }
 
         .loading {
@@ -251,94 +214,94 @@
             margin: 20px 0;
         }
 
-        .territories-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-
-        .territory-tag {
-            background: #e74c3c;
+        .burn-rate-summary {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .chart-container {
-            background: white;
-            border-radius: 15px;
             padding: 25px;
-            margin: 25px 0;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            height: 500px;
-            margin: 25px auto;
-        }
-
-        .back-btn {
-            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
-            color: white;
-            text-decoration: none;
-            padding: 12px 25px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            transition: transform 0.2s ease;
-            margin-bottom: 20px;
-        }
-
-        .back-btn:hover {
-            transform: scale(1.05);
-            text-decoration: none;
-            color: white;
-        }
-
-        .debug-info {
-            background: #f39c12;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .mql-validation-summary {
-            background: #3498db;
-            color: white;
-            padding: 20px;
             border-radius: 15px;
-            margin: 20px 0;
+            margin: 25px 0;
         }
 
-        .validation-flow {
+        .summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin-top: 15px;
         }
 
-        .flow-step {
+        .summary-item {
             background: rgba(255, 255, 255, 0.2);
             padding: 15px;
             border-radius: 10px;
             text-align: center;
         }
 
-        .flow-value {
-            font-size: 1.5rem;
+        .summary-value {
+            font-size: 1.8rem;
             font-weight: bold;
             margin-bottom: 5px;
         }
 
-        .flow-label {
+        .summary-label {
             font-size: 0.8rem;
             opacity: 0.9;
+        }
+
+        .timeseries-explanation {
+            background: #3498db;
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .nationality-breakdown {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .nationality-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .nationality-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nationality-name {
+            font-weight: 600;
+        }
+
+        .nationality-count {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -350,101 +313,93 @@
 
         <div class="header">
             <h1>
-                🔥 Burn Rate Analysis <span class="enhanced-badge">ENHANCED</span>
+                🔥 Burn Rate Analysis <span class="timeseries-badge">TIMESERIES</span>
             </h1>
             <p>
-                <strong>Enhanced with MQL→SQL validation tracking.</strong> 
-                This analysis shows Google Ads campaigns attracting traffic from unsupported territories, 
-                plus the complete conversion pipeline from Marketing Qualified Leads to Sales Qualified Leads.
+                <strong>Time-series burn rate analysis with flexible date ranges.</strong> 
+                This shows how burn rate changes over time using direct HubSpot territory validation.
+                Daily data for short ranges, weekly aggregation for longer periods.
             </p>
         </div>
 
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
                 <div class="stat-value burn-rate" id="burnRateValue">--</div>
-                <div class="stat-label">Burn Rate %</div>
+                <div class="stat-label">Overall Burn Rate %</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value waste-contacts" id="wasteContactsValue">--</div>
-                <div class="stat-label">Wasted MQLs</div>
+                <div class="stat-value waste-contacts" id="unsupportedContactsValue">--</div>
+                <div class="stat-label">Unsupported Contacts</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value total-contacts" id="totalMQLsValue">--</div>
-                <div class="stat-label">Total MQLs</div>
+                <div class="stat-value total-contacts" id="totalContactsValue">--</div>
+                <div class="stat-label">Total Contacts</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value validation-rate" id="validationRateValue">--</div>
-                <div class="stat-label">MQL→SQL Rate</div>
+                <div class="stat-value supported-contacts" id="supportedContactsValue">--</div>
+                <div class="stat-label">Supported Contacts</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value territories-count" id="sqlDealsValue">--</div>
-                <div class="stat-label">SQL Deals Created</div>
-            </div>
-        </div>
-
-        <!-- MQL Validation Summary -->
-        <div class="mql-validation-summary" id="mqlValidationSummary" style="display: none;">
-            <h3>🎯 MQL → SQL Validation Pipeline</h3>
-            <div class="validation-flow" id="validationFlow">
-                <!-- Will be populated by JavaScript -->
+                <div class="stat-value trend-indicator" id="trendValue">--</div>
+                <div class="stat-label">Trend Direction</div>
             </div>
         </div>
 
         <div class="chart-container">
-            <canvas id="burnRateChart" width="400" height="200"></canvas>
+            <canvas id="burnRateChart"></canvas>
         </div>
 
         <div class="main-content">
             <div class="section-header">
                 <h2 class="section-title">
-                    📊 Enhanced Campaign Burn Rate Analysis
+                    📈 Burn Rate Timeseries Analysis
                 </h2>
                 <div class="filters">
-                    <select class="filter-select" id="analysisMode">
-                        <option value="pipeline">Pipeline Analysis</option>
-                        <option value="revenue">Revenue Analysis</option>
-                    </select>
                     <select class="filter-select" id="timeRange">
                         <option value="7">Last 7 days</option>
                         <option value="30" selected>Last 30 days</option>
+                        <option value="60">Last 60 days</option>
                         <option value="90">Last 90 days</option>
                     </select>
-                    <button class="refresh-btn" onclick="loadEnhancedBurnRateData()">
-                        🔄 Refresh Enhanced Data
+                    <button class="refresh-btn" onclick="loadBurnRateTimeseries()">
+                        🔄 Refresh Data
                     </button>
                 </div>
             </div>
 
             <div id="loadingSpinner" class="loading">
-                <div>🔄 Loading enhanced burn rate analysis...</div>
+                <div>🔄 Loading burn rate timeseries...</div>
             </div>
 
             <div id="errorContainer"></div>
             <div id="successContainer"></div>
-            <div id="debugInfo"></div>
 
-            <table class="campaign-table" id="campaignTable" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>Campaign Name</th>
-                        <th>Total MQLs</th>
-                        <th>SQLs Created</th>
-                        <th>Won Deals</th>
-                        <th>Revenue</th>
-                        <th>MQL→SQL Rate</th>
-                        <th>Unsupported MQLs</th>
-                        <th>Estimated Waste</th>
-                    </tr>
-                </thead>
-                <tbody id="campaignTableBody">
-                </tbody>
-            </table>
 
-            <div id="unsupportedTerritories" style="margin-top: 30px;">
-                <h3 class="section-title">🚫 Unsupported Territories Detected</h3>
-                <div id="territoriesListContainer">
+
+            <div class="burn-rate-summary" id="burnRateSummary" style="display: none;">
+                <h3>🎯 Timeseries Summary</h3>
+                <div class="summary-grid" id="summaryGrid">
                     <!-- Will be populated by JavaScript -->
                 </div>
+            </div>
+
+            <div class="nationality-breakdown" id="nationalityBreakdown" style="display: none;">
+                <h3>🌍 Nationality Breakdown of Burned Contacts</h3>
+                <div id="nationalityList" style="margin-top: 15px;">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+                        <div class="timeseries-explanation">
+                <h3>📊 Timeseries Analysis Features</h3>
+                <p style="margin-top: 10px; opacity: 0.9;">
+                    • <strong>Smart Granularity:</strong> Daily data for 7-30 days, Weekly for 60-90 days
+                    <br>• <strong>Trend Analysis:</strong> Automatically calculates if burn rate is increasing or decreasing
+                    <br>• <strong>Dual Metrics:</strong> Shows both burn rate percentage and total contact volume
+                    <br>• <strong>Direct Territory Query:</strong> WHERE territory = 'Unsupported Territory'
+                </p>
+                <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+                    Future: Custom date ranges and campaign-specific burn rate tracking
+                </p>
             </div>
         </div>
     </div>
@@ -452,342 +407,314 @@
     <script>
         let burnRateChart;
 
-        async function loadEnhancedBurnRateData() {
+        async function loadBurnRateTimeseries() {
             const timeRange = document.getElementById('timeRange').value;
-            const analysisMode = document.getElementById('analysisMode').value;
             const loadingSpinner = document.getElementById('loadingSpinner');
             const errorContainer = document.getElementById('errorContainer');
             const successContainer = document.getElementById('successContainer');
-            const debugInfo = document.getElementById('debugInfo');
-            const campaignTable = document.getElementById('campaignTable');
             
             // Show loading
             loadingSpinner.style.display = 'block';
-            campaignTable.style.display = 'none';
             errorContainer.innerHTML = '';
             successContainer.innerHTML = '';
-            debugInfo.innerHTML = '';
 
             try {
-                console.log(`Loading enhanced data: ${timeRange} days, ${analysisMode} mode...`);
+                console.log('🔥 Loading burn rate timeseries: ' + timeRange + ' days...');
 
-                // Load MQL validation data first (this is the core enhancement)
-                const mqlResponse = await fetch(`/gads/analytics/mql-validation?days=${timeRange}&mode=${analysisMode}`);
+                const response = await fetch('/gads/analytics/burn-rate-timeseries?days=' + timeRange);
                 
-                if (!mqlResponse.ok) {
-                    throw new Error(`MQL Validation API error: ${mqlResponse.status} ${mqlResponse.statusText}`);
+                if (!response.ok) {
+                    throw new Error('API error: ' + response.status + ' ' + response.statusText);
                 }
                 
-                const mqlData = await mqlResponse.json();
+                const data = await response.json();
+                console.log('✅ Burn rate timeseries loaded:', data);
 
-                if (!mqlData.success) {
-                    throw new Error(mqlData.error || 'Failed to load MQL validation data');
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load timeseries data');
                 }
 
-                console.log('✅ MQL Validation data loaded:', mqlData);
+                updateBurnRateStats(data);
+                updateBurnRateChart(data);
+                displayNationalityBreakdown(data);
 
-                // Load territory analysis data
-                const territoryResponse = await fetch(`/gads/analytics/territories?days=${timeRange}&mode=${analysisMode}`);
-                
-                if (!territoryResponse.ok) {
-                    throw new Error(`Territory API error: ${territoryResponse.status} ${territoryResponse.statusText}`);
-                }
-                
-                const territoryData = await territoryResponse.json();
-
-                if (!territoryData.success) {
-                    throw new Error(territoryData.error || 'Failed to load territory data');
-                }
-
-                console.log('✅ Territory data loaded:', territoryData);
-
-                // Update enhanced stats
-                updateEnhancedStats(mqlData, territoryData);
-                
-                // Show MQL validation summary
-                displayMQLValidationSummary(mqlData);
-                
-                // Update chart
-                updateEnhancedBurnRateChart(mqlData, territoryData);
-                
-                // Load enhanced campaign analysis 
-                await loadEnhancedCampaignAnalysis(mqlData, territoryData, timeRange, analysisMode);
-                
-                // Show unsupported territories
-                displayUnsupportedTerritories(territoryData);
-
-                // Show success message
-                successContainer.innerHTML = `
-                    <div class="success">
-                        ✅ Enhanced burn rate analysis loaded successfully!<br>
-                        <small>Using schema-corrected queries with MQL→SQL validation tracking</small>
-                    </div>
-                `;
+                successContainer.innerHTML = 
+                    '<div class="success">' +
+                    '✅ Burn rate timeseries loaded successfully!<br>' +
+                    '<small>Using ' + (data.metadata && data.metadata.granularity ? data.metadata.granularity : 'auto') + ' granularity with ' + (data.data ? data.data.length : 0) + ' data points</small>' +
+                    '</div>';
 
                 loadingSpinner.style.display = 'none';
-                campaignTable.style.display = 'table';
 
             } catch (error) {
-                console.error('❌ Error loading enhanced burn rate data:', error);
+                console.error('❌ Error loading timeseries:', error);
                 loadingSpinner.style.display = 'none';
                 
-                debugInfo.innerHTML = `
-                    <div class="debug-info">
-                        🔍 <strong>Enhanced Debug Information:</strong><br>
-                        Error: ${error.message}<br>
-                        Mode: ${analysisMode} analysis<br>
-                        Time: ${new Date().toISOString()}<br>
-                        <br>
-                        <strong>Enhanced endpoints tested:</strong><br>
-                        • <a href="/gads/analytics/mql-validation?days=${timeRange}&mode=${analysisMode}" target="_blank" style="color: #fff;">/gads/analytics/mql-validation?days=${timeRange}&mode=${analysisMode}</a><br>
-                        • <a href="/gads/analytics/territories?days=${timeRange}&mode=${analysisMode}" target="_blank" style="color: #fff;">/gads/analytics/territories?days=${timeRange}&mode=${analysisMode}</a><br>
-                        • <a href="/gads/analytics/campaigns?days=${timeRange}&mode=${analysisMode}" target="_blank" style="color: #fff;">/gads/analytics/campaigns?days=${timeRange}&mode=${analysisMode}</a><br>
-                    </div>
-                `;
+                errorContainer.innerHTML = 
+                    '<div class="error">' +
+                    '❌ Error: ' + error.message + '<br><br>' +
+                    '<strong>Endpoint:</strong> /gads/analytics/burn-rate-timeseries?days=' + timeRange + '<br>' +
+                    '<strong>Expected:</strong> Time-series data with flexible date ranges' +
+                    '</div>';
                 
-                errorContainer.innerHTML = `
-                    <div class="error">
-                        ❌ Error loading enhanced burn rate data: ${error.message}
-                        <br><br>
-                        This might be due to database schema issues or missing data.
-                        Check the debug information below for endpoint testing.
-                    </div>
-                `;
+                loadMockTimeseriesData();
             }
         }
 
-        function updateEnhancedStats(mqlData, territoryData) {
-            // Enhanced stats from MQL validation data
-            const totalMQLs = mqlData.mql_stage?.total_mqls || 0;
-            const unsupportedMQLs = mqlData.mql_stage?.unsupported_mqls || 0;
-            const sqlDeals = mqlData.sql_validation?.total_deals_created || 0;
-            const validationRate = mqlData.sql_validation?.validation_rate_percentage || 0;
-            const burnRate = mqlData.mql_stage?.burn_rate_percentage || 0;
-
-            document.getElementById('burnRateValue').textContent = burnRate.toFixed(1);
-            document.getElementById('wasteContactsValue').textContent = unsupportedMQLs;
-            document.getElementById('totalMQLsValue').textContent = totalMQLs;
-            document.getElementById('validationRateValue').textContent = validationRate.toFixed(1) + '%';
-            document.getElementById('sqlDealsValue').textContent = sqlDeals;
-        }
-
-        function displayMQLValidationSummary(mqlData) {
-            const summaryContainer = document.getElementById('mqlValidationSummary');
-            const flowContainer = document.getElementById('validationFlow');
+        function updateBurnRateStats(data) {
+            const summary = data.summary || {};
+            const trend = summary.trend || {};
             
-            if (mqlData.success) {
-                const mqlStage = mqlData.mql_stage;
-                const sqlValidation = mqlData.sql_validation;
-                
-                flowContainer.innerHTML = `
-                    <div class="flow-step">
-                        <div class="flow-value">${mqlStage.total_mqls}</div>
-                        <div class="flow-label">Total MQLs</div>
-                    </div>
-                    <div class="flow-step">
-                        <div class="flow-value">${mqlStage.supported_mqls}</div>
-                        <div class="flow-label">Supported Territory</div>
-                    </div>
-                    <div class="flow-step">
-                        <div class="flow-value">${sqlValidation.total_deals_created}</div>
-                        <div class="flow-label">SQLs Created</div>
-                    </div>
-                    <div class="flow-step">
-                        <div class="flow-value">${sqlValidation.won_deals}</div>
-                        <div class="flow-label">Won Deals</div>
-                    </div>
-                    <div class="flow-step">
-                        <div class="flow-value">${mqlStage.unsupported_mqls}</div>
-                        <div class="flow-label">Unsupported (Waste)</div>
-                    </div>
-                `;
-                
-                summaryContainer.style.display = 'block';
+            const totalContacts = summary.totalContacts || 0;
+            const supportedContacts = summary.totalSupported || 0;
+            const unsupportedContacts = summary.totalUnsupported || 0;
+            const burnRate = summary.overallBurnRate || 0;
+            
+            // Trend emoji
+            let trendEmoji = '📊';
+            if (trend.direction === 'increasing') {
+                trendEmoji = '📈';
+            } else if (trend.direction === 'decreasing') {
+                trendEmoji = '📉';
             }
+
+            // Update display
+            document.getElementById('burnRateValue').textContent = burnRate.toFixed(1);
+            document.getElementById('unsupportedContactsValue').textContent = unsupportedContacts.toLocaleString();
+            document.getElementById('totalContactsValue').textContent = totalContacts.toLocaleString();
+            document.getElementById('supportedContactsValue').textContent = supportedContacts.toLocaleString();
+            document.getElementById('trendValue').textContent = trendEmoji + ' ' + (trend.direction || 'stable');
+
+            // Show summary
+            const summaryContainer = document.getElementById('burnRateSummary');
+            const summaryGrid = document.getElementById('summaryGrid');
+            
+            summaryGrid.innerHTML = 
+                '<div class="summary-item">' +
+                '<div class="summary-value">' + totalContacts.toLocaleString() + '</div>' +
+                '<div class="summary-label">Total (' + (summary.period ? summary.period.days : 0) + ' days)</div>' +
+                '</div>' +
+                '<div class="summary-item">' +
+                '<div class="summary-value">' + supportedContacts.toLocaleString() + '</div>' +
+                '<div class="summary-label">Supported Territory</div>' +
+                '</div>' +
+                '<div class="summary-item">' +
+                '<div class="summary-value">' + unsupportedContacts.toLocaleString() + '</div>' +
+                '<div class="summary-label">Unsupported (Waste)</div>' +
+                '</div>' +
+                '<div class="summary-item">' +
+                '<div class="summary-value">' + burnRate.toFixed(1) + '%</div>' +
+                '<div class="summary-label">Overall Burn Rate</div>' +
+                '</div>' +
+                '<div class="summary-item">' +
+                '<div class="summary-value">' + trendEmoji + ' ' + (trend.change || '0') + '%</div>' +
+                '<div class="summary-label">Trend Change</div>' +
+                '</div>';
+            
+            summaryContainer.style.display = 'block';
         }
 
-        function updateEnhancedBurnRateChart(mqlData, territoryData) {
+        function updateBurnRateChart(data) {
             const ctx = document.getElementById('burnRateChart').getContext('2d');
             
             if (burnRateChart) {
                 burnRateChart.destroy();
             }
 
-            const totalMQLs = mqlData.mql_stage?.total_mqls || 0;
-            const unsupportedMQLs = mqlData.mql_stage?.unsupported_mqls || 0;
-            const supportedMQLs = totalMQLs - unsupportedMQLs;
+            const timeseriesData = data.data || [];
+            const metadata = data.metadata || {};
+            
+            const labels = timeseriesData.map(function(d) {
+                const date = new Date(d.date);
+                if (metadata.granularity === 'weekly') {
+                    return 'Week of ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } else {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            });
+            
+            const burnRateData = timeseriesData.map(function(d) { return d.burnRatePercentage; });
+            const totalContactsData = timeseriesData.map(function(d) { return d.totalContacts; });
             
             burnRateChart = new Chart(ctx, {
-                type: 'doughnut',
+                type: 'line',
                 data: {
-                    labels: ['Supported Territories', 'Unsupported (Waste)'],
-                    datasets: [{
-                        data: [supportedMQLs, unsupportedMQLs],
-                        backgroundColor: ['#2ecc71', '#e74c3c'],
-                        borderWidth: 3,
-                        borderColor: '#fff'
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Burn Rate %',
+                            data: burnRateData,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y',
+                            borderWidth: 3
+                        },
+                        {
+                            label: 'Total Contacts',
+                            data: totalContactsData,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                            borderWidth: 2
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     plugins: {
                         title: {
                             display: true,
-                            text: `MQL Distribution: ${totalMQLs} Total MQLs (Enhanced)`,
+                            text: 'Burn Rate Over Time (' + (metadata.granularity || 'daily') + ' data points)',
                             font: { size: 16, weight: 'bold' }
                         },
                         legend: {
-                            position: 'bottom',
-                            labels: { padding: 20, font: { size: 14 } }
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const dataPoint = timeseriesData[context.dataIndex];
+                                    if (context.dataset.label === 'Burn Rate %') {
+                                        return [
+                                            'Supported: ' + dataPoint.supportedContacts,
+                                            'Unsupported: ' + dataPoint.unsupportedContacts
+                                        ];
+                                    }
+                                    return null;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: metadata.granularity === 'weekly' ? 'Week' : 'Date'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Burn Rate %'
+                            },
+                            min: 0,
+                            max: 100
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Total Contacts'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
                         }
                     }
                 }
             });
         }
 
-        async function loadEnhancedCampaignAnalysis(mqlData, territoryData, timeRange, analysisMode) {
-            try {
-                console.log(`Loading enhanced campaign data: ${timeRange} days, ${analysisMode} mode...`);
-                
-                // Use the enhanced campaign API
-                const campaignResponse = await fetch(`/gads/analytics/campaigns?days=${timeRange}&mode=${analysisMode}`);
-                
-                if (!campaignResponse.ok) {
-                    throw new Error(`Campaign API error: ${campaignResponse.status} ${campaignResponse.statusText}`);
-                }
-                
-                const campaignData = await campaignResponse.json();
-                console.log('✅ Enhanced campaign data loaded:', campaignData);
-
-                if (!campaignData.success) {
-                    throw new Error(campaignData.error || 'Failed to load campaign data');
-                }
-
-                const campaigns = campaignData.campaigns || [];
-                const tableBody = document.getElementById('campaignTableBody');
-                tableBody.innerHTML = '';
-
-                if (campaigns.length === 0) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
-                            No campaign data available for this period<br>
-                            <small>Mode: ${analysisMode} | Range: ${timeRange} days</small>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                    return;
-                }
-
-                // Calculate burn rate from MQL data
-                const burnRateDecimal = (mqlData.mql_stage?.burn_rate_percentage || 0) / 100;
-
-                campaigns.forEach(campaign => {
-                    // Enhanced calculations using MQL validation data
-                    const totalMQLs = campaign.contacts || 0;
-                    const sqlDeals = campaign.deals || 0;
-                    const wonDeals = campaign.won_deals || 0;
-                    const revenue = campaign.revenue || 0;
-                    const mqlToSqlRate = campaign.mql_to_sql_rate || campaign.conversion_rate || 0;
-                    
-                    // Calculate unsupported MQLs based on actual burn rate
-                    const unsupportedMQLs = Math.round(totalMQLs * burnRateDecimal);
-                    const estimatedWastePerMQL = 30; // Estimated cost per MQL
-                    const estimatedWaste = (unsupportedMQLs * estimatedWastePerMQL).toFixed(0);
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>
-                            <div style="font-weight: bold;">${campaign.name || 'Unknown Campaign'}</div>
-                            <div class="targeting-info">Enhanced: ${analysisMode} analysis</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: bold; color: #3498db;">${totalMQLs}</div>
-                            <div class="targeting-info">Marketing Qualified</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: bold; color: #9b59b6;">${sqlDeals}</div>
-                            <div class="targeting-info">Sales Qualified</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: bold; color: #27ae60;">${wonDeals}</div>
-                            <div class="targeting-info">Closed Won</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: bold; color: #27ae60;">€${revenue.toFixed(2)}</div>
-                            <div class="targeting-info">Total Revenue</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: bold;">${mqlToSqlRate}%</div>
-                            <div class="targeting-info">Validation Rate</div>
-                        </td>
-                        <td>
-                            <div class="unsupported-contacts">${unsupportedMQLs}</div>
-                            <div class="targeting-info">${(burnRateDecimal * 100).toFixed(1)}% burn rate</div>
-                        </td>
-                        <td>
-                            <div class="spend-amount">€${estimatedWaste}</div>
-                            <div class="targeting-info">Est: ${unsupportedMQLs} × €${estimatedWastePerMQL}</div>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-
-            } catch (error) {
-                console.error('❌ Error loading enhanced campaign data:', error);
-                
-                const tableBody = document.getElementById('campaignTableBody');
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td colspan="8" style="text-align: center; padding: 30px; color: #e74c3c;">
-                        ❌ Error loading enhanced campaign data: ${error.message}
-                        <br><br>
-                        <small>Enhanced endpoint: /gads/analytics/campaigns?days=${timeRange}&mode=${analysisMode}</small>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            }
-        }
-
-        function displayUnsupportedTerritories(data) {
-            const container = document.getElementById('territoriesListContainer');
-            const unsupportedTerritory = data.territories?.find(t => t.isUnsupported);
+        function displayNationalityBreakdown(data) {
+            const nationalityData = data.nationalityBreakdown || {};
+            const nationalities = nationalityData.nationalities || [];
             
-            if (unsupportedTerritory && unsupportedTerritory.rawTerritories && unsupportedTerritory.rawTerritories.length > 0) {
-                const territoriesHtml = unsupportedTerritory.rawTerritories.map(territory => 
-                    `<span class="territory-tag">${territory}</span>`
-                ).join('');
-                
-                container.innerHTML = `
-                    <div class="territories-list">
-                        ${territoriesHtml}
-                    </div>
-                    <p style="margin-top: 15px; color: #7f8c8d;">
-                        These ${unsupportedTerritory.rawTerritories.length} countries generated 
-                        <strong>${unsupportedTerritory.contacts} MQLs</strong> with 
-                        <strong>${unsupportedTerritory.deals} deals</strong> - indicating ${unsupportedTerritory.deals === 0 ? 'complete waste' : 'poor performance'} of ad spend.
-                        <br><small><strong>Enhanced:</strong> Now tracking the complete MQL→SQL validation pipeline.</small>
-                    </p>
-                `;
-            } else {
-                container.innerHTML = `
-                    <p style="color: #7f8c8d;">
-                        No unsupported territory data found in the current dataset.
-                        <br>
-                        <small>Enhanced: This might indicate that the country classification system needs to be updated.</small>
-                    </p>
-                `;
+            if (nationalities.length === 0) {
+                return; // Don't show if no data
             }
+            
+            const nationalityContainer = document.getElementById('nationalityBreakdown');
+            const nationalityList = document.getElementById('nationalityList');
+            
+            // Create nationality items
+            let nationalityHTML = '';
+            for (let i = 0; i < nationalities.length; i++) {
+                const nat = nationalities[i];
+                nationalityHTML += 
+                    '<div class="nationality-item">' +
+                    '<span class="nationality-name">' + nat.nationality + '</span>' +
+                    '<span class="nationality-count">' + nat.burnedContacts + ' contacts (€' + nat.estimatedWaste + ')</span>' +
+                    '</div>';
+            }
+            
+            nationalityList.innerHTML = 
+                '<div style="grid-column: 1 / -1; margin-bottom: 10px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">' +
+                '<strong>Total Burned Contacts by Nationality:</strong> ' + nationalityData.totalBurnedContacts + ' contacts ' +
+                '(€' + nationalityData.totalEstimatedWaste + ' estimated waste)' +
+                '</div>' +
+                '<div class="nationality-list">' +
+                nationalityHTML +
+                '</div>';
+            
+            nationalityContainer.style.display = 'block';
         }
 
-        // Load enhanced data on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🔥 Enhanced Burn Rate Analysis page loaded');
-            loadEnhancedBurnRateData();
+        function loadMockTimeseriesData() {
+            const mockData = {
+                success: true,
+                data: [
+                    { date: '2025-08-01', totalContacts: 8, supportedContacts: 5, unsupportedContacts: 3, burnRatePercentage: 37.5 },
+                    { date: '2025-08-02', totalContacts: 12, supportedContacts: 7, unsupportedContacts: 5, burnRatePercentage: 41.7 },
+                    { date: '2025-08-03', totalContacts: 6, supportedContacts: 4, unsupportedContacts: 2, burnRatePercentage: 33.3 },
+                    { date: '2025-08-04', totalContacts: 15, supportedContacts: 9, unsupportedContacts: 6, burnRatePercentage: 40.0 },
+                    { date: '2025-08-05', totalContacts: 10, supportedContacts: 7, unsupportedContacts: 3, burnRatePercentage: 30.0 },
+                    { date: '2025-08-06', totalContacts: 18, supportedContacts: 11, unsupportedContacts: 7, burnRatePercentage: 38.9 },
+                    { date: '2025-08-07', totalContacts: 14, supportedContacts: 8, unsupportedContacts: 6, burnRatePercentage: 42.9 }
+                ],
+                summary: {
+                    totalContacts: 83,
+                    totalSupported: 51,
+                    totalUnsupported: 32,
+                    overallBurnRate: 38.6,
+                    trend: { direction: 'increasing', change: '2.3' },
+                    period: { days: 7 }
+                },
+                nationalityBreakdown: {
+                    totalBurnedContacts: 32,
+                    totalEstimatedWaste: 800,
+                    nationalities: [
+                        { nationality: 'Algeria', burnedContacts: 7, estimatedWaste: 175, percentage: '21.9' },
+                        { nationality: 'Pakistan', burnedContacts: 6, estimatedWaste: 150, percentage: '18.8' },
+                        { nationality: 'Morocco', burnedContacts: 3, estimatedWaste: 75, percentage: '9.4' },
+                        { nationality: 'Nigeria', burnedContacts: 1, estimatedWaste: 25, percentage: '3.1' },
+                        { nationality: 'Unknown', burnedContacts: 15, estimatedWaste: 375, percentage: '46.9' }
+                    ]
+                },
+                metadata: {
+                    granularity: 'daily',
+                    dataSource: 'Mock Data for Development'
+                }
+            };
+            
+            updateBurnRateStats(mockData);
+            updateBurnRateChart(mockData);
+            displayNationalityBreakdown(mockData);
+            
+            document.getElementById('successContainer').innerHTML = 
+                '<div class="success">' +
+                '✅ Loaded mock timeseries data for development<br>' +
+                '<small>Using sample time-series data while API is being tested</small>' +
+                '</div>';
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔥 Burn Rate Timeseries Analysis page loaded');
+            loadBurnRateTimeseries();
         });
-        
-        // Auto-refresh every 5 minutes
-        setInterval(loadEnhancedBurnRateData, 5 * 60 * 1000);
     </script>
 </body>
 </html>
