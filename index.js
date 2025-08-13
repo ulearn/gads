@@ -578,22 +578,92 @@ router.get('/analytics/pipeline-data', async (req, res) => {
   }
 });
 
-// Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC
+//=============================================================================//
+//   ENHANCED BURN RATE ROUTES - PROPER DELEGATION TO BUSINESS LOGIC
+//=============================================================================//
+
+// Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC (KEEP EXISTING)
 router.get('/analytics/burn-rate-timeseries', (req, res) => {
   const burnRateTimeseries = require('./scripts/analytics/burn-rate-timeseries');
   burnRateTimeseries.handleBurnRateTimeseriesRequest(req, res, getDbConnection);
 });
 
-// Burn Rate Data API
+// Enhanced Burn Rate API - WITH CAMPAIGN FILTERING (delegates to burn-rate-enhanced.js)
+router.get('/analytics/burn-rate-enhanced', async (req, res) => {
+  try {
+    console.log(`🔥 Enhanced burn rate request:`, req.query);
+    
+    // Import the enhanced burn rate module
+    const burnRateEnhanced = require('./scripts/analytics/burn-rate-enhanced');
+    
+    // Delegate to the enhanced burn rate handler
+    await burnRateEnhanced.handleEnhancedBurnRateRequest(req, res, getDbConnection);
+    
+  } catch (error) {
+    console.error('❌ Enhanced burn rate route failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Direct HTML Route for Burn Rate Dashboard
+router.get('/analytics/burn-rate', (req, res) => {
+  try {
+    const htmlFilePath = path.join(__dirname, 'scripts/analytics/burn-rate.html');
+    
+    if (!fs.existsSync(htmlFilePath)) {
+      console.error('❌ burn-rate.html not found');
+      return res.status(404).send(`
+        <h1>Burn Rate Analysis Dashboard</h1>
+        <p>❌ burn-rate.html file not found</p>
+        <p>Expected location: ${htmlFilePath}</p>
+        <p><a href="/gads/">← Back to Main Dashboard</a></p>
+      `);
+    }
+    
+    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+    res.send(htmlContent);
+    
+  } catch (error) {
+    console.error('❌ Error serving burn rate dashboard:', error.message);
+    res.status(500).send(`
+      <h1>Burn Rate Analysis Dashboard - Error</h1>
+      <p>❌ Error: ${error.message}</p>
+      <p><a href="/gads/">← Back to Main Dashboard</a></p>
+    `);
+  }
+});
+
+// Burn Rate Data API - FIXED (delegates to burn-rate-enhanced.js instead of failing hubspot-data.js)
 router.get('/analytics/burn-rate-data', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
-    const hubspotData = require('./scripts/analytics/hubspot-data');
-    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, days);
-    res.json(result);
+    const burnRateEnhanced = require('./scripts/analytics/burn-rate-enhanced');
+    await burnRateEnhanced.handleBurnRateDataRequest(req, res, getDbConnection);
   } catch (error) {
-    console.error('❌ Burn rate data failed:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Burn rate data route failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Pipeline Data API - FOR CAMPAIGN DROPDOWN (delegates to burn-rate-enhanced.js)
+router.get('/analytics/pipeline-data', async (req, res) => {
+  try {
+    const burnRateEnhanced = require('./scripts/analytics/burn-rate-enhanced');
+    await burnRateEnhanced.handlePipelineDataRequest(req, res, getDbConnection);
+  } catch (error) {
+    console.error('❌ Pipeline data route failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
