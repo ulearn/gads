@@ -12,7 +12,7 @@ const FRIENDLY_ORDER = [
   'responsive',
   'advising',
   'negotiation',
-  'contact',
+  'contract',
   'closedwon',
 ];
 
@@ -23,7 +23,7 @@ const DEFAULT_ALIASES = {
   responsive: ['responsive', 'replied', 'decisionmakerboughtin'],
   advising: ['advising'],
   negotiation: ['negotiation', 'contractsent'],
-  contact: ['contact', 'deposit', 'quote accepted', 'qualifiedtobuy'],
+  contract: ['contract', 'deposit', 'quote accepted', 'qualifiedtobuy'],
   closedwon: ['closedwon', 'closed won', 'won'],
 };
 
