@@ -8,6 +8,7 @@ const { google } = require('googleapis');
 const { GoogleAdsApi } = require('google-ads-api');
 const dashboardServer = require('./scripts/analytics/dashboard-server');
 const pipelineProb = require('./scripts/analytics/pipeline-probs');
+const eclHandler = require('./scripts/google/ecl-handler');
 
 // Load environment variables
 require('dotenv').config();
@@ -498,85 +499,7 @@ router.get('/analytics/attribution-test', async (req, res) => {
 });
 
 
-//=============================================================================//
-//   DEBUG & TESTING ROUTES - CLEANED
-//=============================================================================//
 
-// NEW: Debug Territory Validation - Business Logic Moved
-router.get('/debug/territory-validation', async (req, res) => {
-  try {
-    const days = parseInt(req.query.days) || 7;
-    
-    console.log(`🔍 DEBUG: Territory validation for ${days} days...`);
-    
-    const hubspotData = require('./scripts/analytics/hubspot-data');
-    const connection = await getDbConnection();
-    
-    try {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
-      
-      const startDateStr = startDate.toISOString().slice(0, 19).replace('T', ' ');
-      const endDateStr = endDate.toISOString().slice(0, 19).replace('T', ' ');
-      
-      // Get MQL validation breakdown
-      const mqlValidation = await hubspotData.getMQLValidationMetrics(getDbConnection, days, 'pipeline');
-      
-      // Get sample contacts for verification
-      const attributionQuery = hubspotData.buildGoogleAdsAttributionQuery();
-      
-      const [sampleContacts] = await connection.execute(`
-        SELECT 
-          hubspot_id,
-          email,
-          firstname,
-          lastname,
-          COALESCE(nationality, country, territory) as territory,
-          gclid,
-          hs_analytics_source,
-          hs_object_source_label,
-          createdate,
-          num_associated_deals
-        FROM hub_contacts 
-        WHERE ${attributionQuery}
-          AND createdate >= ? AND createdate <= ?
-        ORDER BY createdate DESC
-        LIMIT 10
-      `, [startDateStr, endDateStr]);
-      
-      res.json({
-        success: true,
-        debug_info: {
-          date_range: { start: startDateStr, end: endDateStr, days },
-          mql_validation_metrics: mqlValidation,
-          sample_contacts: sampleContacts,
-          attribution_query: attributionQuery
-        },
-        timestamp: new Date().toISOString()
-      });
-      
-    } finally {
-      await connection.end();
-    }
-    
-  } catch (error) {
-    console.error('❌ Territory validation debug failed:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Pipeline Data API - FIXED: Now matches the module export
-router.get('/analytics/pipeline-data', async (req, res) => {
-  try {
-    const pipelineServer = require('./scripts/analytics/pipeline-server');
-    const result = await pipelineServer.getFastPipelineData(getDbConnection, req.query);
-    res.json(result);
-  } catch (error) {
-    console.error('❌ Pipeline data API failed:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC
 router.get('/analytics/burn-rate-timeseries', (req, res) => {
@@ -594,6 +517,38 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
   } catch (error) {
     console.error('❌ Burn rate data failed:', error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+//=============================================================================//
+//   ENHANCED CONVERSIONS FOR LEADS (ECL) ROUTES - ROUTING ONLY
+//=============================================================================//
+
+// Main ECL Webhook Endpoint - Receives HubSpot workflow data
+router.post('/ecl', async (req, res) => {
+  try {
+    console.log('📨 ECL webhook received from HubSpot...');
+    console.log('Payload:', JSON.stringify(req.body, null, 2));
+    
+    const result = await eclHandler.processConversionAdjustment(req.body, {
+      googleOAuth,
+      getDbConnection
+    });
+    
+    res.json({
+      success: true,
+      message: 'ECL conversion adjustment processed',
+      result,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ECL webhook failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
