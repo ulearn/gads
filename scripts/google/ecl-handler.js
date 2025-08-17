@@ -2,6 +2,7 @@
  * ECL Handler - Explicit LIVE Mode with UPLOAD_CLICKS Detection
  * Forces LIVE account usage and shows exactly which account is being used
  * Includes UPLOAD_CLICKS conversion action detection
+ * UPDATED: Supports both initial conversions and adjustments
  */
 
 const { GoogleAdsApi, enums, ResourceNames } = require('google-ads-api');
@@ -102,7 +103,7 @@ async function checkUploadClicksConversions(customer) {
 async function uploadEnhancedConversion(customer, payload) {
   try {
     const {
-      conversion_action_id = '938018560',
+      conversion_action_id,  // REMOVED DEFAULT - now required from payload
       order_id,
       contact_email, 
       contact_phone,
@@ -115,6 +116,7 @@ async function uploadEnhancedConversion(customer, payload) {
     console.log(`  Stage: ${stage || 'N/A'}`);
     console.log(`  Value: ${currency_code}${conversion_value}`);
     console.log(`  Order ID: ${order_id}`);
+    console.log(`  Conversion Action ID: ${conversion_action_id}`);
     console.log(`  Customer ID: ${customer.credentials.customer_id}`);
 
     const conversionActionResourceName = ResourceNames.conversionAction(
@@ -151,7 +153,8 @@ async function uploadEnhancedConversion(customer, payload) {
       customer_id: customer.credentials.customer_id,
       conversions: [clickConversion],
       partial_failure: true,
-      validate_only: false
+      validate_only: false,
+      debug_enabled: false  // ADDED: Suppress CLICK_NOT_FOUND warnings for non-Google Ads traffic
     };
 
     const response = await customer.conversionUploads.uploadClickConversions(request);
@@ -190,6 +193,90 @@ async function uploadEnhancedConversion(customer, payload) {
   }
 }
 
+// NEW: Upload conversion adjustment (for stage changes)
+async function uploadConversionAdjustment(customer, payload) {
+  try {
+    const {
+      conversion_action_id,
+      order_id,
+      contact_email, 
+      contact_phone,
+      adjustment_value,
+      currency_code = 'EUR',
+      adjustment_type = 'RESTATEMENT',
+      stage
+    } = payload;
+
+    console.log('Uploading Conversion ADJUSTMENT...');
+    console.log(`  Adjustment Type: ${adjustment_type}`);
+    console.log(`  Stage: ${stage || 'N/A'}`);
+    console.log(`  Adjustment Value: ${currency_code}${adjustment_value}`);
+    console.log(`  Order ID: ${order_id}`);
+    console.log(`  Conversion Action ID: ${conversion_action_id}`);
+
+    const conversionActionResourceName = ResourceNames.conversionAction(
+      customer.credentials.customer_id, 
+      conversion_action_id
+    );
+
+    const hashedUserData = hashUserData(contact_email, contact_phone);
+
+    const conversionAdjustment = {
+      conversion_action: conversionActionResourceName,
+      adjustment_date_time: new Date().toISOString().slice(0, 19).replace('T', ' ') + '+00:00',
+      adjustment_type: enums.ConversionAdjustmentType[adjustment_type] || enums.ConversionAdjustmentType.RESTATEMENT,
+      restatement_value: {
+        adjusted_value: parseFloat(adjustment_value),
+        currency_code: currency_code
+      },
+      order_id: order_id
+      // REMOVED: user_identifiers - not supported in conversion adjustments
+    };
+
+    const request = {
+      customer_id: customer.credentials.customer_id,
+      conversion_adjustments: [conversionAdjustment],
+      partial_failure: true,
+      validate_only: false,
+      debug_enabled: false  // Suppress warnings for non-Google Ads traffic
+    };
+
+    // CORRECTED: Use the proper service path for conversion adjustments
+    const response = await customer.conversionAdjustmentUploads.uploadConversionAdjustments(request);
+
+    const hasPartialFailure = !!(response.partial_failure_error && response.partial_failure_error.message);
+    
+    if (hasPartialFailure) {
+      throw new Error(`Conversion adjustment failed: ${response.partial_failure_error.message}`);
+    }
+
+    console.log(`✅ Conversion adjustment (${adjustment_type}) uploaded successfully`);
+
+    return {
+      success: true,
+      conversion_type: 'adjustment',
+      adjustment_type: adjustment_type,
+      conversion_details: {
+        stage: stage || 'N/A', 
+        adjustment_value: parseFloat(adjustment_value),
+        currency: currency_code, 
+        order_id: order_id,
+        conversion_action: conversionActionResourceName,
+        target_account: customer.credentials.customer_id
+      },
+      google_ads_response: {
+        results_count: response.results?.length || 0,
+        partial_failure: false,
+        error_message: null,
+      },
+    };
+
+  } catch (error) {
+    console.error(`Conversion adjustment failed: ${error.message}`);
+    throw error;
+  }
+}
+
 async function processConversionAdjustment(payload, dependencies) {
   const startTime = Date.now();
   let result = { success: false };
@@ -201,14 +288,7 @@ async function processConversionAdjustment(payload, dependencies) {
     console.log(`  Stage: ${payload.stage}`);
     console.log(`  Order ID: ${payload.order_id || 'N/A'}`);
 
-    // Validate payload
-    if (!payload.order_id && !payload.gclid) {
-      throw new Error('Missing identifiers: Provide order_id or gclid');
-    }
-
-    if (!payload.adjustment_value && !payload.conversion_value) {
-      throw new Error('Missing value: Provide adjustment_value or conversion_value');
-    }
+    // No validation needed - HubSpot ensures required fields are present
 
     // Initialize Google Ads client with explicit LIVE mode
     const { customer, customerId } = await initializeGoogleAdsClient();
@@ -218,23 +298,39 @@ async function processConversionAdjustment(payload, dependencies) {
       throw new Error(`Account mismatch! Expected 1051706978, got ${customerId}`);
     }
 
-    // Upload using explicit LIVE account
-    const conversionResult = await uploadEnhancedConversion(customer, {
-      conversion_action_id: payload.conversion_action_id || '938018560',
-      order_id: payload.order_id,
-      contact_email: payload.contact_email,
-      contact_phone: payload.contact_phone,
-      conversion_value: payload.conversion_value || payload.adjustment_value,
-      currency_code: payload.currency_code || 'EUR',
-      stage: payload.stage
-    });
+    // SIMPLE STRATEGY: Check for adjustment_type to determine action
+    let conversionResult;
+    if (payload.adjustment_type === 'RESTATEMENT') {
+      // Send adjustment using the correct API
+      conversionResult = await uploadConversionAdjustment(customer, {
+        conversion_action_id: payload.conversion_action_id,
+        order_id: payload.order_id,
+        contact_email: payload.contact_email,
+        contact_phone: payload.contact_phone,
+        adjustment_value: payload.adjustment_value,
+        currency_code: payload.currency_code || 'EUR',
+        adjustment_type: payload.adjustment_type,
+        stage: payload.stage
+      });
+    } else {
+      // Send initial conversion (whether €120, €0, or any value)
+      conversionResult = await uploadEnhancedConversion(customer, {
+        conversion_action_id: payload.conversion_action_id,
+        order_id: payload.order_id,
+        contact_email: payload.contact_email,
+        contact_phone: payload.contact_phone,
+        conversion_value: payload.conversion_value,
+        currency_code: payload.currency_code || 'EUR',
+        stage: payload.stage
+      });
+    }
 
     result = {
       success: true,
       processing_time_ms: Date.now() - startTime,
       google_ads_account: customerId,
       conversion_action: conversionResult.conversion_details.conversion_action,
-      step: 'enhanced_conversion_upload_explicit_live',
+      step: payload.adjustment_type === 'RESTATEMENT' ? 'conversion_adjustment' : 'enhanced_conversion_upload',
       ...conversionResult
     };
 
@@ -286,7 +382,7 @@ async function testConversionActionSetup() {
     
     // Test with a working email first (known to work)
     const testPayload = {
-      conversion_action_id: '938018560',
+      conversion_action_id: '7264211475',  // UPDATED: Use correct conversion action
       order_id: 'EXPLICIT-LIVE-TEST-' + Date.now(),
       contact_email: 'test@ulearntest.com',
       contact_phone: '+353871234567',
@@ -373,6 +469,7 @@ async function logECLActivity(getDbConnection, payload, result) {
 module.exports = {
   processConversionAdjustment,
   uploadEnhancedConversion,
+  uploadConversionAdjustment,  // NEW: Export the adjustment function
   testConversionActionSetup,
   checkUploadClicksConversions,
   initializeGoogleAdsClient,
