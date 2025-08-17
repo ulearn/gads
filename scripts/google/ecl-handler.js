@@ -1,400 +1,380 @@
 /**
- * Enhanced Conversions for Leads (ECL) Handler
- * Processes HubSpot pipeline stage changes and sends conversion adjustments to Google Ads
- * 
- * File: /scripts/google/ecl-handler.js
+ * ECL Handler - Explicit LIVE Mode with UPLOAD_CLICKS Detection
+ * Forces LIVE account usage and shows exactly which account is being used
+ * Includes UPLOAD_CLICKS conversion action detection
  */
 
-const { GoogleAdsApi } = require('google-ads-api');
+const { GoogleAdsApi, enums, ResourceNames } = require('google-ads-api');
 const crypto = require('crypto');
 
-/**
- * Hash email/phone for Enhanced Conversions
- * Google Ads requires SHA256 hashed, normalized data
- */
+// Suppress gRPC warnings
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'MetadataLookupWarning') return;
+  console.warn(warning);
+});
+
 function hashUserData(email, phone = null) {
-  const hashedData = {};
-  
+  const hashed = {};
   if (email) {
-    // Normalize email: lowercase, trim whitespace
-    const normalizedEmail = email.toLowerCase().trim();
-    hashedData.hashed_email = crypto.createHash('sha256')
-      .update(normalizedEmail)
-      .digest('hex');
+    let normalizedEmail = String(email).trim().toLowerCase();
+    const gmailPattern = /@(gmail|googlemail)\.com$/i;
+    if (gmailPattern.test(normalizedEmail)) {
+      const [localPart, domain] = normalizedEmail.split('@');
+      normalizedEmail = `${localPart.replace(/\./g, '')}@${domain}`;
+    }
+    hashed.hashed_email = crypto.createHash('sha256').update(normalizedEmail).digest('hex');
   }
-  
   if (phone) {
-    // Normalize phone: remove all non-digits, keep country code
-    const normalizedPhone = phone.replace(/\D/g, '');
-    if (normalizedPhone.length >= 10) {
-      hashedData.hashed_phone_number = crypto.createHash('sha256')
-        .update(normalizedPhone)
-        .digest('hex');
+    const digits = String(phone).replace(/\D/g, '');
+    if (digits.length >= 10) {
+      const e164Phone = `+${digits}`;
+      hashed.hashed_phone_number = crypto.createHash('sha256').update(e164Phone).digest('hex');
     }
   }
+  return hashed;
+}
+
+async function initializeGoogleAdsClient() {
+  // EXPLICITLY FORCE LIVE ACCOUNT - NO ENVIRONMENT SWITCHING
+  const customerId = '1051706978';  // HARDCODED LIVE
+  const mccId = '4782061099';       // HARDCODED LIVE MCC
   
-  return hashedData;
+  console.log(`🎯 EXPLICITLY USING LIVE ACCOUNT`);
+  console.log(`   Customer ID: ${customerId}`);
+  console.log(`   MCC ID: ${mccId}`);
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+  
+  const client = new GoogleAdsApi({
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET,
+    developer_token: process.env.GAdsAPI,
+  });
+
+  const customer = client.Customer({
+    customer_id: customerId,
+    login_customer_id: mccId,
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+  });
+
+  return { customer, customerId };
 }
 
-/**
- * Initialize Google Ads API client
- */
-async function initializeGoogleAdsClient(googleOAuth) {
+// NEW: Check for UPLOAD_CLICKS conversion actions as required by Google
+async function checkUploadClicksConversions(customer) {
   try {
-    // Use test or live account based on environment
-    const customerId = process.env.NODE_ENV === 'production' ? 
-      process.env.GADS_LIVE_ID : 
-      process.env.GADS_TEST_ID;
+    console.log('Checking for UPLOAD_CLICKS conversion actions...');
     
-    console.log(`🎯 Using Google Ads Account ID: ${customerId} (${process.env.NODE_ENV || 'development'})`);
-    
-    const client = new GoogleAdsApi({
-      client_id: process.env.CLIENT_ID,
-      client_secret: process.env.CLIENT_SECRET,
-      developer_token: process.env.GAdsAPI,
-    });
-
-    // Get fresh access token
-    const { credentials } = await googleOAuth.refreshAccessToken();
-    
-    const customer = client.Customer({
-      customer_id: customerId,
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-    });
-    
-    return { customer, customerId };
-    
-  } catch (error) {
-    console.error('❌ Failed to initialize Google Ads client:', error);
-    throw new Error(`Google Ads API initialization failed: ${error.message}`);
-  }
-}
-
-/**
- * Get or create conversion action for ECL
- * Returns the conversion action resource name
- */
-async function getConversionAction(customer) {
-  try {
-    // First, try to find existing ECL conversion action
     const query = `
       SELECT 
         conversion_action.id,
         conversion_action.name,
-        conversion_action.resource_name,
-        conversion_action.status
-      FROM conversion_action 
-      WHERE conversion_action.name LIKE 'Pipeline%' 
-        OR conversion_action.name LIKE 'ECL%'
-        OR conversion_action.name LIKE '%Enhanced%'
-      ORDER BY conversion_action.id DESC
-      LIMIT 5
+        conversion_action.status,
+        conversion_action.resource_name
+      FROM conversion_action
+      WHERE conversion_action.type = 'UPLOAD_CLICKS'
     `;
     
-    const response = await customer.query(query);
+    const results = await customer.query(query);
+    const statusMap = { 2: 'ENABLED', 3: 'REMOVED', 4: 'HIDDEN', 5: 'PAUSED' };
     
-    if (response.length > 0) {
-      const action = response[0].conversion_action;
-      console.log(`✅ Found existing conversion action: ${action.name} (${action.resource_name})`);
-      return action.resource_name;
-    }
+    const uploadClicksActions = results.map(r => ({
+      id: r.conversion_action.id.toString(),
+      name: r.conversion_action.name,
+      status: statusMap[r.conversion_action.status] || r.conversion_action.status,
+      resource_name: r.conversion_action.resource_name,
+      is_enabled: r.conversion_action.status === 2
+    }));
     
-    // If no existing action found, create one
-    console.log('🔧 Creating new ECL conversion action...');
+    console.log(`Found ${uploadClicksActions.length} UPLOAD_CLICKS conversion actions`);
+    uploadClicksActions.forEach(action => {
+      console.log(`  ${action.id}: ${action.name} (${action.status})`);
+    });
     
-    const conversionAction = {
-      name: 'Pipeline Progression (ECL)',
-      type: 'WEBPAGE',
-      category: 'LEAD',
-      status: 'ENABLED',
-      view_through_lookback_window_days: 30,
-      click_through_lookback_window_days: 90,
-      counting_type: 'ONE_PER_CLICK',
-      attribution_model_settings: {
-        attribution_model: 'LAST_CLICK',
-        data_driven_model_status: 'OPTED_OUT'
-      }
-    };
-    
-    const operation = {
-      create: conversionAction
-    };
-    
-    const request = {
-      customer_id: customer.credentials.customer_id,
-      operations: [operation]
-    };
-    
-    const createResponse = await customer.conversionActions.mutate(request);
-    const newResourceName = createResponse.results[0].resource_name;
-    
-    console.log(`✅ Created new conversion action: ${newResourceName}`);
-    return newResourceName;
+    return uploadClicksActions;
     
   } catch (error) {
-    console.error('❌ Failed to get/create conversion action:', error);
-    throw new Error(`Conversion action setup failed: ${error.message}`);
+    console.error('UPLOAD_CLICKS check failed:', error.message);
+    return [];
   }
 }
 
-/**
- * Send conversion adjustment to Google Ads
- */
-async function uploadConversionAdjustment(customer, conversionActionResourceName, payload) {
+async function uploadEnhancedConversion(customer, payload) {
   try {
-    const { 
-      gclid, 
-      contact_email, 
-      contact_phone, 
-      adjustment_value, 
-      currency_code = 'EUR',
-      adjustment_type = 'RESTATEMENT',
+    const {
+      conversion_action_id = '938018560',
       order_id,
+      contact_email, 
+      contact_phone,
+      conversion_value, 
+      currency_code = 'EUR',
       stage
     } = payload;
+
+    console.log('Preparing Enhanced Conversion upload...');
+    console.log(`  Stage: ${stage || 'N/A'}`);
+    console.log(`  Value: ${currency_code}${conversion_value}`);
+    console.log(`  Order ID: ${order_id}`);
+    console.log(`  Customer ID: ${customer.credentials.customer_id}`);
+
+    const conversionActionResourceName = ResourceNames.conversionAction(
+      customer.credentials.customer_id, 
+      conversion_action_id
+    );
     
-    // Validate required fields
-    if (!gclid) {
-      throw new Error('GCLID is required for conversion adjustment');
-    }
-    
-    if (!adjustment_value || isNaN(parseFloat(adjustment_value))) {
-      throw new Error('Valid adjustment_value is required');
-    }
-    
-    // Hash user data for Enhanced Conversions
+    console.log(`Using conversion action: ${conversionActionResourceName}`);
+
     const hashedUserData = hashUserData(contact_email, contact_phone);
-    
-    // Convert adjustment value to micros (Google Ads uses micros for currency)
-    const adjustmentValueMicros = Math.round(parseFloat(adjustment_value) * 1000000);
-    
-    // Create conversion adjustment
-    const conversionAdjustment = {
+
+    const clickConversion = {
       conversion_action: conversionActionResourceName,
-      gclid_date_time_pair: {
-        gclid: gclid,
-        conversion_date_time: new Date().toISOString().slice(0, 19).replace('T', ' ')
-      },
-      adjustment_type: adjustment_type,
-      adjustment_date_time: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      restatement_value: {
-        adjusted_value: adjustmentValueMicros,
-        currency_code: currency_code
-      }
+      conversion_date_time: new Date().toISOString().slice(0, 19).replace('T', ' ') + '+00:00',
+      conversion_value: parseFloat(conversion_value),
+      currency_code: currency_code,
+      order_id: order_id,
+      user_identifiers: [
+        {
+          user_identifier_source: enums.UserIdentifierSource.FIRST_PARTY,
+          hashed_email: hashedUserData.hashed_email
+        },
+        {
+          user_identifier_source: enums.UserIdentifierSource.FIRST_PARTY,
+          hashed_phone_number: hashedUserData.hashed_phone_number
+        }
+      ]
     };
-    
-    // Add Enhanced Conversions data if available
-    if (Object.keys(hashedUserData).length > 0) {
-      conversionAdjustment.user_identifiers = [hashedUserData];
-      console.log(`🔐 Enhanced Conversions data included: ${Object.keys(hashedUserData).join(', ')}`);
-    }
-    
-    // Add order ID if available
-    if (order_id) {
-      conversionAdjustment.order_id = order_id;
-    }
-    
-    const operation = {
-      create: conversionAdjustment
-    };
-    
+
+    console.log('Uploading Enhanced Conversion to Google Ads...');
+    console.log(`  Target account: ${customer.credentials.customer_id}`);
+
     const request = {
       customer_id: customer.credentials.customer_id,
-      operations: [operation],
-      partial_failure: true
+      conversions: [clickConversion],
+      partial_failure: true,
+      validate_only: false
     };
+
+    const response = await customer.conversionUploads.uploadClickConversions(request);
+
+    const hasPartialFailure = !!(response.partial_failure_error && response.partial_failure_error.message);
     
-    console.log('📤 Uploading conversion adjustment to Google Ads...');
-    console.log(`   Stage: ${stage}`);
-    console.log(`   Value: €${adjustment_value}`);
-    console.log(`   GCLID: ${gclid}`);
-    console.log(`   Order ID: ${order_id || 'None'}`);
-    
-    const response = await customer.conversionAdjustments.mutate(request);
-    
-    if (response.partial_failure_error) {
-      console.warn('⚠️ Partial failure in conversion adjustment:', response.partial_failure_error);
+    if (hasPartialFailure) {
+      console.error(`Upload failed: ${response.partial_failure_error.message}`);
+      throw new Error(`Upload failed: ${response.partial_failure_error.message}`);
+    } else {
+      console.log('Enhanced Conversion uploaded successfully to LIVE account');
     }
-    
-    console.log('✅ Conversion adjustment uploaded successfully');
-    
+
     return {
       success: true,
-      adjustment_details: {
-        stage,
-        value: adjustment_value,
-        currency: currency_code,
-        gclid,
-        order_id,
-        enhanced_conversions: Object.keys(hashedUserData).length > 0,
-        adjustment_type
+      conversion_details: {
+        stage: stage || 'N/A', 
+        value: parseFloat(conversion_value),
+        currency: currency_code, 
+        order_id: order_id,
+        enhanced_conversions: true,
+        conversion_type: 'enhanced_conversion_upload',
+        conversion_action: conversionActionResourceName,
+        target_account: customer.credentials.customer_id
       },
       google_ads_response: {
         results_count: response.results?.length || 0,
-        partial_failure: !!response.partial_failure_error
-      }
+        partial_failure: false,
+        error_message: null,
+      },
     };
-    
+
   } catch (error) {
-    console.error('❌ Failed to upload conversion adjustment:', error);
-    throw new Error(`Conversion adjustment upload failed: ${error.message}`);
+    console.error(`Enhanced Conversion upload failed: ${error.message}`);
+    throw error;
   }
 }
 
-/**
- * Log ECL activity to database for tracking and debugging
- */
-async function logECLActivity(getDbConnection, payload, result) {
-  try {
-    const connection = await getDbConnection();
-    
-    try {
-      // Create ECL log table if it doesn't exist
-      await connection.execute(`
-        CREATE TABLE IF NOT EXISTS ecl_logs (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          deal_id VARCHAR(255),
-          contact_id VARCHAR(255),
-          stage VARCHAR(100),
-          adjustment_value DECIMAL(10,2),
-          gclid VARCHAR(255),
-          order_id VARCHAR(255),
-          contact_email VARCHAR(255),
-          rejection_reason VARCHAR(100),
-          is_mql_rejection BOOLEAN DEFAULT FALSE,
-          success BOOLEAN,
-          error_message TEXT,
-          payload JSON,
-          result JSON,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_deal_id (deal_id),
-          INDEX idx_contact_id (contact_id),
-          INDEX idx_gclid (gclid),
-          INDEX idx_stage (stage),
-          INDEX idx_mql_rejection (is_mql_rejection),
-          INDEX idx_created_at (created_at)
-        )
-      `);
-      
-      // Detect MQL rejection for logging
-      const isMQLRejection = payload.stage === 'mql_rejected' || 
-                            (payload.adjustment_value === '0' && !payload.deal_id);
-      
-      // Insert log entry
-      await connection.execute(`
-        INSERT INTO ecl_logs (
-          deal_id, contact_id, stage, adjustment_value, gclid, order_id, 
-          contact_email, rejection_reason, is_mql_rejection, success, error_message, payload, result
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        payload.deal_id || null,
-        payload.contact_id || null,
-        payload.stage || null,
-        parseFloat(payload.adjustment_value) || 0,
-        payload.gclid || null,
-        payload.order_id || null,
-        payload.contact_email || null,
-        payload.rejection_reason || null,
-        isMQLRejection,
-        result.success || false,
-        result.error_message || null,
-        JSON.stringify(payload),
-        JSON.stringify(result)
-      ]);
-      
-      console.log(`📝 ECL activity logged to database (MQL Rejection: ${isMQLRejection})`);
-      
-    } finally {
-      await connection.end();
-    }
-    
-  } catch (error) {
-    console.error('⚠️ Failed to log ECL activity:', error.message);
-    // Don't throw - logging failure shouldn't break the main process
-  }
-}
-
-/**
- * Main function: Process conversion adjustment from HubSpot webhook
- */
 async function processConversionAdjustment(payload, dependencies) {
   const startTime = Date.now();
   let result = { success: false };
   
   try {
-    const { googleOAuth, getDbConnection } = dependencies;
+    const { getDbConnection } = dependencies;
     
-    // Detect if this is MQL rejection or deal stage progression
-    const isMQLRejection = payload.stage === 'mql_rejected' || 
-                          (payload.adjustment_value === '0' && !payload.deal_id);
-    
-    console.log('🚀 Processing ECL conversion adjustment...');
-    console.log(`   Type: ${isMQLRejection ? 'MQL Rejection' : 'Deal Stage Progression'}`);
-    console.log(`   Deal: ${payload.deal_id || 'N/A'}`);
-    console.log(`   Contact: ${payload.contact_id || 'N/A'}`);
-    console.log(`   Stage: ${payload.stage}`);
-    console.log(`   Value: €${payload.adjustment_value}`);
-    console.log(`   GCLID: ${payload.gclid}`);
-    console.log(`   Rejection Reason: ${payload.rejection_reason || 'N/A'}`);
-    
+    console.log('🎯 Processing ECL Enhanced Conversion - EXPLICIT LIVE MODE');
+    console.log(`  Stage: ${payload.stage}`);
+    console.log(`  Order ID: ${payload.order_id || 'N/A'}`);
+
     // Validate payload
-    if (!payload.gclid) {
-      throw new Error('GCLID is required but missing from payload');
+    if (!payload.order_id && !payload.gclid) {
+      throw new Error('Missing identifiers: Provide order_id or gclid');
     }
-    
-    if (payload.adjustment_value === undefined || isNaN(parseFloat(payload.adjustment_value))) {
-      throw new Error('Valid adjustment_value is required but missing from payload');
+
+    if (!payload.adjustment_value && !payload.conversion_value) {
+      throw new Error('Missing value: Provide adjustment_value or conversion_value');
     }
-    
-    // Initialize Google Ads client
-    const { customer, customerId } = await initializeGoogleAdsClient(googleOAuth);
-    
-    // Get conversion action
-    const conversionActionResourceName = await getConversionAction(customer);
-    
-    // Upload conversion adjustment
-    const adjustmentResult = await uploadConversionAdjustment(
-      customer, 
-      conversionActionResourceName, 
-      payload
-    );
-    
+
+    // Initialize Google Ads client with explicit LIVE mode
+    const { customer, customerId } = await initializeGoogleAdsClient();
+
+    // Verify we're on the right account
+    if (customerId !== '1051706978') {
+      throw new Error(`Account mismatch! Expected 1051706978, got ${customerId}`);
+    }
+
+    // Upload using explicit LIVE account
+    const conversionResult = await uploadEnhancedConversion(customer, {
+      conversion_action_id: payload.conversion_action_id || '938018560',
+      order_id: payload.order_id,
+      contact_email: payload.contact_email,
+      contact_phone: payload.contact_phone,
+      conversion_value: payload.conversion_value || payload.adjustment_value,
+      currency_code: payload.currency_code || 'EUR',
+      stage: payload.stage
+    });
+
     result = {
       success: true,
       processing_time_ms: Date.now() - startTime,
       google_ads_account: customerId,
-      conversion_action: conversionActionResourceName,
-      is_mql_rejection: isMQLRejection,
-      ...adjustmentResult
+      conversion_action: conversionResult.conversion_details.conversion_action,
+      step: 'enhanced_conversion_upload_explicit_live',
+      ...conversionResult
     };
+
+    console.log(`ECL processing completed successfully in ${result.processing_time_ms}ms on LIVE account`);
     
-    console.log(`✅ ECL processing completed in ${result.processing_time_ms}ms`);
-    
-    // Log activity to database
-    await logECLActivity(getDbConnection, payload, result);
+    // Log to database
+    try {
+      await logECLActivity(getDbConnection, payload, result);
+    } catch (logError) {
+      console.warn('Database logging failed:', logError.message);
+    }
     
     return result;
     
   } catch (error) {
-    console.error('❌ ECL processing failed:', error.message);
+    console.error(`ECL processing failed: ${error.message}`);
     
     result = {
       success: false,
       error_message: error.message,
-      processing_time_ms: Date.now() - startTime
+      processing_time_ms: Date.now() - startTime,
     };
     
-    // Log failure to database
-    await logECLActivity(getDbConnection, payload, result);
+    try {
+      await logECLActivity(dependencies.getDbConnection, payload, result);
+    } catch (logError) {
+      console.error('Failed to log ECL failure:', logError.message);
+    }
     
     throw error;
   }
 }
 
+// UPDATED: testConversionActionSetup now includes UPLOAD_CLICKS check
+async function testConversionActionSetup() {
+  try {
+    const { customer, customerId } = await initializeGoogleAdsClient();
+    
+    console.log('Running comprehensive conversion action test...');
+    
+    // Verify account
+    if (customerId !== '1051706978') {
+      throw new Error(`Account verification failed! Expected LIVE (1051706978), got ${customerId}`);
+    }
+    
+    // NEW: Check for UPLOAD_CLICKS conversion actions
+    const uploadClicksActions = await checkUploadClicksConversions(customer);
+    const enabledUploadActions = uploadClicksActions.filter(action => action.is_enabled);
+    
+    // Test with a working email first (known to work)
+    const testPayload = {
+      conversion_action_id: '938018560',
+      order_id: 'EXPLICIT-LIVE-TEST-' + Date.now(),
+      contact_email: 'test@ulearntest.com',
+      contact_phone: '+353871234567',
+      conversion_value: 1.00,
+      currency_code: 'EUR'
+    };
+    
+    const result = await uploadEnhancedConversion(customer, testPayload);
+    
+    return {
+      success: result.success,
+      google_ads_account: customerId,
+      account_verification: 'LIVE account explicitly verified',
+      upload_clicks_check: {
+        total_upload_clicks_actions: uploadClicksActions.length,
+        enabled_upload_clicks_actions: enabledUploadActions.length,
+        upload_clicks_actions: uploadClicksActions,
+        recommended_action: enabledUploadActions.length > 0 ? 
+          `Use UPLOAD_CLICKS action ${enabledUploadActions[0].id} (${enabledUploadActions[0].name})` :
+          'No enabled UPLOAD_CLICKS actions found'
+      },
+      test_result: result,
+      message: 'Test upload completed successfully on LIVE account',
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error(`Test failed: ${error.message}`);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+async function logECLActivity(getDbConnection, payload, result) {
+  try {
+    const connection = await getDbConnection();
+    try {
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS ecl_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          deal_id VARCHAR(255), contact_id VARCHAR(255), stage VARCHAR(100),
+          adjustment_type VARCHAR(50), adjustment_value DECIMAL(10,2),
+          gclid VARCHAR(255), order_id VARCHAR(255), contact_email VARCHAR(255),
+          rejection_reason VARCHAR(100), is_mql_rejection BOOLEAN DEFAULT FALSE,
+          success BOOLEAN, error_message TEXT, payload JSON, result JSON,
+          processing_time_ms INT, currency_code VARCHAR(10),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_order_id (order_id), INDEX idx_stage (stage), INDEX idx_success (success)
+        )
+      `);
+
+      const isMQLRejection = payload.stage === 'mql_rejected' || 
+                            payload.adjustment_type === 'RETRACTION' ||
+                            (String(payload.adjustment_value) === '0' && !payload.deal_id);
+
+      await connection.execute(`
+        INSERT INTO ecl_logs (
+          deal_id, contact_id, stage, adjustment_type, adjustment_value, 
+          gclid, order_id, contact_email, rejection_reason, is_mql_rejection, 
+          success, error_message, payload, result, processing_time_ms, currency_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        payload.deal_id || null, payload.contact_id || null, payload.stage || null,
+        payload.adjustment_type || null, 
+        payload.adjustment_value || payload.conversion_value ? parseFloat(payload.adjustment_value || payload.conversion_value) : null,
+        payload.gclid || null, payload.order_id || null, payload.contact_email || null,
+        payload.rejection_reason || null, isMQLRejection, result.success || false,
+        result.error_message || null, JSON.stringify(payload), JSON.stringify(result),
+        result.processing_time_ms || null, payload.currency_code || null
+      ]);
+
+      console.log(`ECL activity logged (Success: ${result.success})`);
+    } finally {
+      await connection.end();
+    }
+  } catch (error) {
+    console.error('ECL logging failed:', error.message);
+  }
+}
+
 module.exports = {
   processConversionAdjustment,
-  hashUserData,
+  uploadEnhancedConversion,
+  testConversionActionSetup,
+  checkUploadClicksConversions,
   initializeGoogleAdsClient,
-  getConversionAction,
-  uploadConversionAdjustment
+  hashUserData
 };

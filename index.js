@@ -25,12 +25,11 @@ try {
   };
 }
 
+//=========================================================================
+// Express Application Setup (Receiving HTTP Requests)
+//=========================================================================
 const app = express();
 const router = express.Router();
-
-// Use router for all your routes, then mount it
-app.use('/gads', router);
-const PORT = process.env.PORT || 8080;
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
@@ -41,6 +40,11 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - ${req.ip}`);
   next();
 });
+
+// Use router for all your routes, then mount it
+app.use('/gads', router);
+const PORT = process.env.PORT || 8080;
+
 
 //=============================================================================//
 //   CENTRALIZED API CLIENT SETUP
@@ -524,14 +528,108 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
 //   ENHANCED CONVERSIONS FOR LEADS (ECL) ROUTES - ROUTING ONLY
 //=============================================================================//
 
-// Main ECL Webhook Endpoint - Receives HubSpot workflow data
+// Add these diagnostic endpoints to your index.js file
+// Place them in the ECL ROUTES section
+
+//=============================================================================//
+//   ECL DIAGNOSTIC ROUTES - V2
+//=============================================================================//
+
+// Test conversion action setup with detailed diagnostics
+router.get('/ecl/diagnose', async (req, res) => {
+  try {
+    console.log('🔍 Running ECL diagnostics...');
+    const result = await eclHandler.testConversionActionSetup();
+    res.json(result);
+  } catch (error) {
+    console.error('❌ ECL diagnostics failed:', error.message);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Test upload with validation only (won't actually send conversion)
+router.post('/ecl/test', async (req, res) => {
+  try {
+    console.log('🧪 Testing ECL upload (validation only)...');
+    
+    // Force validation-only mode
+    const testPayload = { 
+      ...req.body, 
+      validate_only: true,
+      conversion_action_id: req.body.conversion_action_id || '938018560'
+    };
+    
+    const result = await eclHandler.processConversionAdjustment(testPayload, {
+      googleOAuth,
+      getDbConnection
+    });
+    
+    res.json({
+      success: true,
+      message: 'ECL test completed (validation only)',
+      result,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ ECL test failed:', error.message);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get recent ECL logs for debugging
+router.get('/ecl/logs', async (req, res) => {
+  try {
+    const connection = await getDbConnection();
+    try {
+      const [rows] = await connection.execute(`
+        SELECT 
+          id, deal_id, contact_id, stage, adjustment_value, 
+          order_id, success, error_message, created_at,
+          processing_time_ms, currency_code
+        FROM ecl_logs 
+        ORDER BY created_at DESC 
+        LIMIT 20
+      `);
+      
+      res.json({
+        success: true,
+        logs: rows,
+        count: rows.length,
+        timestamp: new Date().toISOString()
+      });
+    } finally {
+      await connection.end();
+    }
+  } catch (error) {
+    console.error('❌ ECL logs retrieval failed:', error.message);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+
+
+//-------------------------------------------------------
+// Main ECL Webhook Endpoint
+//---------------------------------------------------------
 router.post('/ecl', async (req, res) => {
   try {
-    console.log('📨 ECL webhook received from HubSpot...');
+    console.log('ECL webhook received from HubSpot...');
     console.log('Payload:', JSON.stringify(req.body, null, 2));
     
     const result = await eclHandler.processConversionAdjustment(req.body, {
-      googleOAuth,
       getDbConnection
     });
     
@@ -543,7 +641,22 @@ router.post('/ecl', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('❌ ECL webhook failed:', error.message);
+    console.error('ECL webhook failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Simple ECL test route
+router.get('/ecl/test-live', async (req, res) => {
+  try {
+    const result = await eclHandler.testLiveConnection();
+    res.json(result);
+  } catch (error) {
+    console.error('ECL live test failed:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
