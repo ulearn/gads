@@ -528,8 +528,47 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
 //   ENHANCED CONVERSIONS FOR LEADS (ECL) ROUTES - ROUTING ONLY
 //=============================================================================//
 
-// Add these diagnostic endpoints to your index.js file
-// Place them in the ECL ROUTES section
+// HISTORIAL SECTION - WON'T BE USING ONCE SYSTEM IS UP & RUNNING 
+// PROBABABLY BEST TO KEEP THEM JUST IN CASE THEY ARE REQUIRED IN FUTURE
+
+//============================================================================//
+// HISTORICAL#1 - Excluded: LOST & MAYBE/FUTURE (NOTE: WON is included)
+
+// Test baseline deals filter vs UI
+router.get('/ecl/baseline-deals', (req, res) => {
+  const eclHistory = require('./scripts/google/ecl-history');
+  eclHistory.handleBaselineDealsRequest(req, res, hubspotClient);
+});
+
+// Get deals ready for ECL upload
+router.get('/ecl/baseline-ready', (req, res) => {
+  const eclHistory = require('./scripts/google/ecl-history');  
+  eclHistory.handleECLReadyRequest(req, res, hubspotClient);
+});
+
+// Process validated deals through ECL handler
+router.post('/ecl/baseline-process', (req, res) => {
+  const eclHistory = require('./scripts/google/ecl-history');
+  eclHistory.handleECLProcessRequest(req, res, hubspotClient, getDbConnection);
+});
+
+// EMERGENCY ADJUSTOMENT OF HISTORICAL dateTime (use Deal create_date)
+router.post('/ecl/baseline-fix-dates', (req, res) => {
+  const eclHistory = require('./scripts/google/ecl-history');
+  eclHistory.handleDateFixRequest(req, res, hubspotClient);
+});
+
+//===========================================================
+// HISTORICAL#2 - ECL Rejected Contacts Routes  
+router.get('/ecl/rejected-ready', (req, res) => {
+  const eclRejected = require('./scripts/google/ecl-rejected');
+  eclRejected.handleRejectedReadyRequest(req, res, hubspotClient);
+});
+
+router.post('/ecl/rejected-process', (req, res) => {
+  const eclRejected = require('./scripts/google/ecl-rejected');
+  eclRejected.handleRejectedProcessRequest(req, res, hubspotClient);
+});
 
 //=============================================================================//
 //   ECL DIAGNOSTIC ROUTES - V2
