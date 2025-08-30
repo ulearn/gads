@@ -572,17 +572,15 @@ router.post('/ecl/rejected-process', (req, res) => {
 //============================================================
 // HISTORICAL #3 - ECL Lost Deals
 // Check readiness
-router.get('/ecl/lost-ready', async (req, res) => {
-  const hubspotClient = await initializeHubSpotClient();
+router.get('/ecl/lost-ready', (req, res) => {
   const eclLost = require('./scripts/google/ecl-lost');
-  await eclLost.handleLostReadyRequest(req, res, hubspotClient);
+  eclLost.handleLostReadyRequest(req, res, hubspotClient);
 });
 
 // Process upload
-router.post('/ecl/lost-process', async (req, res) => {
-  const hubspotClient = await initializeHubSpotClient();
+router.post('/ecl/lost-process', (req, res) => {
   const eclLost = require('./scripts/google/ecl-lost');
-  await eclLost.handleLostProcessRequest(req, res, hubspotClient);
+  eclLost.handleLostProcessRequest(req, res, hubspotClient);
 });
 
 //=============================================================================//

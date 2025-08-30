@@ -13,7 +13,7 @@ async function getLostDeals(hubspotClient) {
     console.log('Fetching LOST deals with GCLID contacts and stage history...');
     
     // Date range: Same as other historical sweeps
-    const startDate = new Date('2025-08-17T00:00:00.000Z');
+    const startDate = new Date('2025-08-01T00:00:00.000Z');
     const endDate = new Date('2025-08-27T23:59:59.999Z');
     
     console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
@@ -107,12 +107,13 @@ async function getLostDeals(hubspotClient) {
       const amount = parseFloat(props.amount || 0);
       
       // Analyze stage history - CORRECT structure from HubSpot API
-      let lastActiveStage = 'qualifiedtobuy'; // Default fallback
+      let lastActiveStage = null; // ✅ Don't assume anything
       let hasHistory = false;
+      let stageHistory = []; // ✅ FIXED: Initialize in correct scope
       
       // HubSpot returns propertiesWithHistory.dealstage as an array in reverse chronological order
       if (deal.propertiesWithHistory && deal.propertiesWithHistory.dealstage) {
-        const stageHistory = deal.propertiesWithHistory.dealstage;
+        stageHistory = deal.propertiesWithHistory.dealstage; // ✅ FIXED: Assign to outer scope variable
         
         if (stageHistory.length > 1) {
           hasHistory = true;
@@ -142,7 +143,7 @@ async function getLostDeals(hubspotClient) {
       } else {
         dealsWithoutHistory++;
         if (i < 5) {
-          console.log(`   Deal ${dealId}: No stage history available - using default stage "${lastActiveStage}"`);
+          console.log(`Deal ${dealId}: No stage history available - cannot determine last active stage`);
         }
       }
       
@@ -306,7 +307,7 @@ async function getLostDeals(hubspotClient) {
         createDate: props.createdate,
         closeDate: props.closedate,
         ownerId: props.hubspot_owner_id,
-        stageHistory: stageHistory,
+        stageHistory: stageHistory, // ✅ FIXED: Now properly defined in scope
         contact: contactData ? {
           hubspotId: contactData.hubspot_id,
           leadId: contactData.lead_id,
