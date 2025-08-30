@@ -11,8 +11,8 @@ async function getBaselinePipelineDeals(hubspotClient, getDbConnection, customSt
     console.log('🎯 Fetching baseline pipeline deals for ECL initial upload...');
     
     // Use custom dates if provided, otherwise default to Aug 17-27
-    const startDate = customStartDate || new Date('2025-08-08T00:00:00.000Z');
-    const endDate = customEndDate || new Date('2025-08-09T23:59:59.999Z');
+    const startDate = customStartDate || new Date('2024-01-01T00:00:00.000Z');
+    const endDate = customEndDate || new Date('2024-12-31T23:59:59.999Z');
     
     console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
@@ -507,8 +507,8 @@ async function handleECLProcessRequest(req, res, hubspotClient, getDbConnection)
           currency_code: conversion.currency_code,
           conversion_value: conversion.conversion_value,
           deal_id: conversion.deal_id,
-          // REMOVED: custom_conversion_date_time - use deal create date if needed
-          custom_conversion_date_time: new Date(conversion.deal_create_date).toISOString().slice(0, 19).replace('T', ' ') + '+00:00'
+          // NEW UNIFIED FIELD:
+          create_date: conversion.deal_create_date
         };
         
         await eclHandler.processConversionAdjustment(conversionPayload, { getDbConnection });

@@ -569,6 +569,21 @@ router.post('/ecl/rejected-process', (req, res) => {
   const eclRejected = require('./scripts/google/ecl-rejected');
   eclRejected.handleRejectedProcessRequest(req, res, hubspotClient);
 });
+//============================================================
+// HISTORICAL #3 - ECL Lost Deals
+// Check readiness
+router.get('/ecl/lost-ready', async (req, res) => {
+  const hubspotClient = await initializeHubSpotClient();
+  const eclLost = require('./scripts/google/ecl-lost');
+  await eclLost.handleLostReadyRequest(req, res, hubspotClient);
+});
+
+// Process upload
+router.post('/ecl/lost-process', async (req, res) => {
+  const hubspotClient = await initializeHubSpotClient();
+  const eclLost = require('./scripts/google/ecl-lost');
+  await eclLost.handleLostProcessRequest(req, res, hubspotClient);
+});
 
 //=============================================================================//
 //   ECL DIAGNOSTIC ROUTES - V2
