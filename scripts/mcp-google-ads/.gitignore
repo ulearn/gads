@@ -1,0 +1,18 @@
+# local env & secrets
+.env
+credentials.json
+credentials.json.backup
+# local runtimes
+.venv/
+node_modules/
+
+# editor/runner artifacts
+.cursor/
+__pycache__/
+.python-version
+
+# big binaries you likely don't need in git
+*.png
+*.jpg
+*.jpeg
+*.svg
