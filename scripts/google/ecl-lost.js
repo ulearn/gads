@@ -1,24 +1,45 @@
 /**
- * ECL LOST Deals Handler
- * Business Logic for processing LOST deals with stage history analysis
+ * ECL LOST Deals Handler - BATCH API for Stage History
  * 
- * File: /home/hub/public_html/gads/scripts/google/ecl-lost.js
- * Purpose: Send ECL conversions for LOST deals using last active stage probability
- * 
- * CRITICAL: LOST deals require stage history to find last active stage before closedlost
+ * SOLUTION: 
+ * 1. Search API to get deal IDs (limited date range)
+ * 2. Batch API to get stage history for up to 50 deals at once (HubSpot limit for propertiesWithHistory)
  */
+
+const fs = require('fs');
+const path = require('path');
+
+// Load stage mapping from stage-map.json
+function loadStageMapping() {
+  try {
+    const stageMappingPath = path.join(__dirname, '../analytics/stage-map.json');
+    const stageData = JSON.parse(fs.readFileSync(stageMappingPath, 'utf8'));
+    
+    console.log('✅ Stage mapping loaded successfully');
+    console.log(`   Pipeline: ${stageData.metadata?.pipelineId || 'default'}`);
+    console.log(`   Stages mapped: ${Object.keys(stageData.stageMapping).length}`);
+    
+    return stageData.stageMapping;
+  } catch (error) {
+    console.error('❌ Failed to load stage mapping:', error.message);
+    throw error;
+  }
+}
 
 async function getLostDeals(hubspotClient) {
   try {
-    console.log('Fetching LOST deals with GCLID contacts and stage history...');
+    console.log('Fetching LOST deals with BATCH API for stage history...');
     
-    // Date range: Same as other historical sweeps
-    const startDate = new Date('2025-08-01T00:00:00.000Z');
-    const endDate = new Date('2025-08-27T23:59:59.999Z');
+    // Load stage mapping FIRST
+    const stageMapping = loadStageMapping();
     
-    console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    // LIMITED DATE RANGE - 1 week for testing
+    const startDate = new Date('2025-06-01T00:00:00.000Z');
+    const endDate = new Date('2025-08-16T23:59:59.999Z');
     
-    // HubSpot API search - EXACT same pattern as ecl-history.js
+    console.log(`📅 Limited date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    // STEP 1: Search for LOST deals to get IDs only
     const searchRequest = {
       filterGroups: [
         {
@@ -51,8 +72,6 @@ async function getLostDeals(hubspotClient) {
         'closedate',
         'hubspot_owner_id'
       ],
-      // CRITICAL: Request stage history
-      propertiesWithHistory: ['dealstage'],
       sorts: [
         {
           propertyName: 'createdate',
@@ -62,16 +81,17 @@ async function getLostDeals(hubspotClient) {
       limit: 100
     };
 
-    console.log('Executing HubSpot deals search with stage history...');
+    console.log('🔍 STEP 1: Searching for LOST deals (IDs only)...');
     
-    let allDeals = [];
+    let allDealIds = [];
+    let allBasicDeals = [];
     let after = undefined;
     let pageCount = 0;
     
-    // Fetch all LOST deals with pagination
+    // Get all deal IDs
     do {
       pageCount++;
-      console.log(`   Fetching page ${pageCount}...`);
+      console.log(`   Fetching search page ${pageCount}...`);
       
       if (after) {
         searchRequest.after = after;
@@ -80,7 +100,12 @@ async function getLostDeals(hubspotClient) {
       const response = await hubspotClient.crm.deals.searchApi.doSearch(searchRequest);
       
       if (response.results && response.results.length > 0) {
-        allDeals = allDeals.concat(response.results);
+        // Collect deal IDs and basic data
+        response.results.forEach(deal => {
+          allDealIds.push(deal.id);
+          allBasicDeals.push(deal);
+        });
+        
         console.log(`   Page ${pageCount}: Found ${response.results.length} LOST deals`);
       }
       
@@ -88,87 +113,169 @@ async function getLostDeals(hubspotClient) {
       
     } while (after);
     
-    console.log(`\nTotal LOST deals found: ${allDeals.length}`);
+    console.log(`\\n📋 STEP 1 COMPLETE: Found ${allDealIds.length} LOST deals`);
     
-    // Process each deal - EXACT same contact fetching pattern as ecl-history.js
-    console.log('\nAnalyzing stage history and fetching contact data for LOST deals...');
+    if (allDealIds.length === 0) {
+      throw new Error('No LOST deals found in date range');
+    }
+    
+    // STEP 2: Fetch deals with stage history using BATCH API
+    console.log(`\\n🔄 STEP 2: Fetching stage history using BATCH API...`);
+    
+    let allDealsWithHistory = [];
+    const batchSize = 50; // HubSpot batch limit for propertiesWithHistory
+    const batches = [];
+    
+    // Split deal IDs into batches of 100
+    for (let i = 0; i < allDealIds.length; i += batchSize) {
+      batches.push(allDealIds.slice(i, i + batchSize));
+    }
+    
+    console.log(`   Processing ${batches.length} batch(es) of up to ${batchSize} deals each...`);
+    
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`   ⚡ Batch ${batchIndex + 1}/${batches.length}: ${batch.length} deals`);
+      
+      try {
+        // HubSpot Batch Read API with propertiesWithHistory
+        const batchRequest = {
+          inputs: batch.map(id => ({ id: id })),
+          properties: [
+            'dealname',
+            'dealstage', 
+            'amount',
+            'pipeline',
+            'createdate',
+            'closedate',
+            'hubspot_owner_id'
+          ],
+          propertiesWithHistory: ['dealstage'] // This should work in batch API!
+        };
+        
+        const batchResponse = await hubspotClient.crm.deals.batchApi.read(batchRequest);
+        
+        if (batchResponse.results && batchResponse.results.length > 0) {
+          allDealsWithHistory = allDealsWithHistory.concat(batchResponse.results);
+          console.log(`     ✅ Batch ${batchIndex + 1}: Got ${batchResponse.results.length} deals with history`);
+        } else {
+          console.log(`     ⚠️ Batch ${batchIndex + 1}: No results returned`);
+        }
+        
+        // Rate limiting between batches
+        if (batchIndex < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+      } catch (error) {
+        console.error(`     ❌ Batch ${batchIndex + 1} failed: ${error.message}`);
+        // Continue with other batches
+      }
+    }
+    
+    console.log(`\\n📊 STEP 2 COMPLETE: Retrieved ${allDealsWithHistory.length} deals with stage history`);
+    
+    // STEP 3: Process stage history and analyze
+    console.log(`\\n🧮 STEP 3: Analyzing stage history with stage mapping...`);
     
     let processedDeals = [];
     let dealsWithHistory = 0;
-    let dealsWithoutHistory = 0;
+    let dealsWithValidHistory = 0;
     let dealsWithGCLID = 0;
     let stageDistribution = {};
     
-    for (let i = 0; i < allDeals.length; i++) {
-      const deal = allDeals[i];
+    for (let i = 0; i < allDealsWithHistory.length; i++) {
+      const deal = allDealsWithHistory[i];
       const props = deal.properties;
       const dealId = deal.id;
-      const stage = props.dealstage;
       const amount = parseFloat(props.amount || 0);
       
-      // Analyze stage history - CORRECT structure from HubSpot API
-      let lastActiveStage = null; // ✅ Don't assume anything
-      let hasHistory = false;
-      let stageHistory = []; // ✅ FIXED: Initialize in correct scope
+      // Analyze stage history with stage mapping
+      let lastActiveStage = null;
+      let lastActiveStageName = null;
+      let lastActiveProbability = null;
+      let lastActiveStageTimestamp = null;
+      let hasValidHistory = false;
+      let stageHistory = [];
       
-      // HubSpot returns propertiesWithHistory.dealstage as an array in reverse chronological order
+      // Process HubSpot stage history (from batch API)
       if (deal.propertiesWithHistory && deal.propertiesWithHistory.dealstage) {
-        stageHistory = deal.propertiesWithHistory.dealstage; // ✅ FIXED: Assign to outer scope variable
+        stageHistory = deal.propertiesWithHistory.dealstage;
+        dealsWithHistory++;
         
         if (stageHistory.length > 1) {
-          hasHistory = true;
-          dealsWithHistory++;
-          
-          // History is in reverse chronological order - most recent first
-          // Find the penultimate stage (second item in array, index 1)
-          if (stageHistory[0].value === 'closedlost' && stageHistory[1]) {
-            lastActiveStage = stageHistory[1].value;
+          // Find the last active stage before closedlost
+          for (let j = 0; j < stageHistory.length; j++) {
+            const historyEntry = stageHistory[j];
+            const stageId = historyEntry.value;
             
-            if (i < 5) {
-              console.log(`   Deal ${dealId}: Last active stage was "${lastActiveStage}" before closedlost`);
-              console.log(`   Stage progression: ${stageHistory.map(s => s.value).reverse().join(' → ')}`);
+            // Skip closedlost - we want the stage BEFORE it was lost
+            if (stageId === 'closedlost') {
+              continue;
             }
-          } else {
-            // Fallback - find closedlost and get previous stage
-            const lostIndex = stageHistory.findIndex(stage => stage.value === 'closedlost');
-            if (lostIndex !== -1 && stageHistory[lostIndex + 1]) {
-              lastActiveStage = stageHistory[lostIndex + 1].value;
+            
+            // Check if this stage ID exists in our mapping
+            if (stageMapping[stageId]) {
+              lastActiveStage = stageId;
+              lastActiveStageName = stageMapping[stageId].label;
+              lastActiveProbability = stageMapping[stageId].probability;
+              lastActiveStageTimestamp = historyEntry.timestamp; // Capture the timestamp when deal moved TO this stage
+              hasValidHistory = true;
               
               if (i < 5) {
-                console.log(`   Deal ${dealId}: Found closedlost at index ${lostIndex}, previous stage "${lastActiveStage}"`);
+                console.log(`   Deal ${dealId}: Last active stage "${lastActiveStageName}" (${stageId}) - ${(lastActiveProbability * 100)}% probability`);
+                console.log(`     Stage reached on: ${new Date(lastActiveStageTimestamp).toISOString()}`);
+                
+                // Show progression for first few deals
+                const progression = stageHistory
+                  .map(h => {
+                    const mapped = stageMapping[h.value];
+                    const timestamp = new Date(h.timestamp).toISOString().slice(0, 10);
+                    return mapped ? `${mapped.label}(${timestamp})` : `${h.value}(${timestamp})`;
+                  })
+                  .reverse()
+                  .join(' → ');
+                console.log(`     Progression: ${progression}`);
               }
+              break;
+            }
+          }
+          
+          if (hasValidHistory) {
+            dealsWithValidHistory++;
+          } else {
+            if (i < 3) {
+              console.log(`   Deal ${dealId}: No valid stages found in mapping`);
             }
           }
         }
       } else {
-        dealsWithoutHistory++;
-        if (i < 5) {
-          console.log(`Deal ${dealId}: No stage history available - cannot determine last active stage`);
+        if (i < 3) {
+          console.log(`   Deal ${dealId}: No stage history in batch response`);
         }
       }
       
-      // Count stages
-      stageDistribution[lastActiveStage] = (stageDistribution[lastActiveStage] || 0) + 1;
+      // Count stage distribution
+      if (lastActiveStageName) {
+        stageDistribution[lastActiveStageName] = (stageDistribution[lastActiveStageName] || 0) + 1;
+      } else {
+        stageDistribution['NO_VALID_HISTORY'] = (stageDistribution['NO_VALID_HISTORY'] || 0) + 1;
+      }
       
-      // Initialize contact data
+      // Get associated contact data (existing logic)
       let contactData = null;
       let gclid = null;
-      let hasGCLID = false;
       
       try {
-        // EXACT same contact fetching pattern as ecl-history.js
+        // Contact fetching logic (same as before)
         let associationsResponse = null;
         
-        // Approach 1: Try deals associationsApi (v3)
         try {
           associationsResponse = await hubspotClient.crm.deals.associationsApi.getAll(
             dealId,
             'contact'
           );
         } catch (error1) {
-          console.log(`   Deal ${dealId}: v3 API failed, trying v4...`);
-          
-          // Approach 2: Try v4 associations API
           try {
             associationsResponse = await hubspotClient.crm.associations.v4.basicApi.getPage(
               'deal',
@@ -176,9 +283,6 @@ async function getLostDeals(hubspotClient) {
               'contact'
             );
           } catch (error2) {
-            console.log(`   Deal ${dealId}: v4 API failed, trying direct API...`);
-            
-            // Approach 3: Direct API call as fallback
             try {
               const apiResponse = await hubspotClient.apiRequest({
                 method: 'GET',
@@ -189,110 +293,78 @@ async function getLostDeals(hubspotClient) {
                 associationsResponse = { results: apiResponse.body.results };
               }
             } catch (error3) {
-              throw new Error(`All association methods failed: ${error1.message}, ${error2.message}, ${error3.message}`);
+              throw new Error('All association methods failed');
             }
           }
         }
         
         if (associationsResponse && associationsResponse.results && associationsResponse.results.length > 0) {
-          // Get contact ID from result (different structures for different APIs)
           let contactId;
           const firstResult = associationsResponse.results[0];
           
           if (firstResult.id) {
-            contactId = firstResult.id; // v3 API structure
+            contactId = firstResult.id;
           } else if (firstResult.toObjectId) {
-            contactId = firstResult.toObjectId; // v4 API structure  
+            contactId = firstResult.toObjectId;
           } else if (firstResult.to && firstResult.to.id) {
-            contactId = firstResult.to.id; // Direct API structure
+            contactId = firstResult.to.id;
           }
           
           if (contactId) {
-            // Fetch contact data - EXACT same pattern as ecl-history.js
             const contactResponse = await hubspotClient.crm.contacts.basicApi.getById(
               contactId,
               [
-                // GCLID fields
                 'hs_google_click_id', 
                 'gclid',
-                
-                // Source validation
                 'hs_analytics_source',
-                
-                // Contact identification
                 'hs_object_id',
                 'lead_id',
                 'email',
                 'phone',
                 'firstname', 
                 'lastname',
-                
-                // Additional useful fields
-                'createdate',
-                'country',
-                'lifecyclestage',
                 'territory'
               ]
             );
             
             const contactProps = contactResponse.properties;
-            
-            // FIRST: Check if contact is from PAID_SEARCH
             const analyticsSource = contactProps.hs_analytics_source;
-            if (analyticsSource !== 'PAID_SEARCH') {
-              if (i < 5) {
-                console.log(`   Deal ${dealId}: Contact source is '${analyticsSource}', not PAID_SEARCH - skipping`);
-              }
-              continue; // Skip this deal - not from Google Ads
-            } else {
-              if (i < 3) {
-                console.log(`   Deal ${dealId}: Contact source confirmed as PAID_SEARCH`);
-              }
-            }
             
-            // SECOND: Get GCLID from contact (try both field names)
-            const contactGCLID = contactProps.hs_google_click_id || contactProps.gclid;
-            
-            if (contactGCLID && contactGCLID.length > 10) {
-              gclid = contactGCLID;
-              hasGCLID = true;
-              dealsWithGCLID++;
+            if (analyticsSource === 'PAID_SEARCH') {
+              const contactGCLID = contactProps.hs_google_click_id || contactProps.gclid;
               
-              contactData = {
-                hubspot_id: contactProps.hs_object_id || contactId,
-                lead_id: contactProps.lead_id,
-                email: contactProps.email,
-                phone: contactProps.phone,
-                firstname: contactProps.firstname,
-                lastname: contactProps.lastname,
-                territory: contactProps.territory
-              };
-              
-              if (i < 3) {
-                console.log(`   Deal ${dealId}: Found GCLID and contact data via associations API`);
+              if (contactGCLID && contactGCLID.length > 10) {
+                gclid = contactGCLID;
+                dealsWithGCLID++;
+                
+                contactData = {
+                  hubspot_id: contactProps.hs_object_id || contactId,
+                  lead_id: contactProps.lead_id,
+                  email: contactProps.email,
+                  phone: contactProps.phone,
+                  firstname: contactProps.firstname,
+                  lastname: contactProps.lastname,
+                  territory: contactProps.territory
+                };
+                
+                if (i < 3) {
+                  console.log(`   Deal ${dealId}: ✅ Found GCLID and PAID_SEARCH contact`);
+                }
               }
             } else {
               if (i < 3) {
-                console.log(`   Deal ${dealId}: Contact found but no GCLID`);
+                console.log(`   Deal ${dealId}: Contact source '${analyticsSource}', not PAID_SEARCH`);
               }
             }
-          } else {
-            if (i < 3) {
-              console.log(`   Deal ${dealId}: Association found but no valid contact ID structure`);
-            }
-          }
-        } else {
-          if (i < 3) {
-            console.log(`   Deal ${dealId}: No contact associations found`);
           }
         }
         
         // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
         if (i < 3) {
-          console.log(`   Deal ${dealId}: API error - ${error.message}`);
+          console.log(`   Deal ${dealId}: Contact fetch error - ${error.message}`);
         }
       }
       
@@ -303,11 +375,14 @@ async function getLostDeals(hubspotClient) {
         amount: amount,
         currentStage: 'closedlost',
         lastActiveStage: lastActiveStage,
-        hasStageHistory: hasHistory,
+        lastActiveStageName: lastActiveStageName,
+        lastActiveProbability: lastActiveProbability,
+        lastActiveStageTimestamp: lastActiveStageTimestamp, // Timestamp when deal reached penultimate stage
+        hasValidHistory: hasValidHistory,
         createDate: props.createdate,
         closeDate: props.closedate,
         ownerId: props.hubspot_owner_id,
-        stageHistory: stageHistory, // ✅ FIXED: Now properly defined in scope
+        stageHistory: stageHistory,
         contact: contactData ? {
           hubspotId: contactData.hubspot_id,
           leadId: contactData.lead_id,
@@ -324,14 +399,15 @@ async function getLostDeals(hubspotClient) {
       processedDeals.push(processedDeal);
     }
     
-    // Summary report
-    console.log('\nLOST DEALS ANALYSIS:');
-    console.log(`   Total LOST Deals: ${allDeals.length}`);
+    // Final summary
+    console.log('\\n📋 LOST DEALS ANALYSIS (BATCH API + STAGE MAPPING):');
+    console.log(`   Total LOST Deals Found: ${allDealIds.length}`);
+    console.log(`   Deals Retrieved with History: ${allDealsWithHistory.length}`);
     console.log(`   Deals with Stage History: ${dealsWithHistory}`);
-    console.log(`   Deals without History: ${dealsWithoutHistory}`);
+    console.log(`   Deals with Valid Mapped History: ${dealsWithValidHistory}`);
     console.log(`   Deals with GCLID (PAID_SEARCH): ${dealsWithGCLID}`);
     
-    console.log('\nLAST ACTIVE STAGE DISTRIBUTION:');
+    console.log('\\nLAST ACTIVE STAGE DISTRIBUTION:');
     Object.entries(stageDistribution)
       .sort(([,a], [,b]) => b - a)
       .forEach(([stage, count]) => {
@@ -340,79 +416,95 @@ async function getLostDeals(hubspotClient) {
     
     return {
       success: true,
-      totalDeals: allDeals.length,
+      totalDealsFound: allDealIds.length,
+      totalDealsWithHistory: allDealsWithHistory.length,
       dealsWithHistory: dealsWithHistory,
-      dealsWithoutHistory: dealsWithoutHistory,
+      dealsWithValidHistory: dealsWithValidHistory,
       dealsWithGCLID: dealsWithGCLID,
       stageDistribution: stageDistribution,
       processedDeals: processedDeals,
+      batchInfo: {
+        batchesProcessed: batches.length,
+        batchSize: batchSize
+      },
       dateRange: {
         start: startDate.toISOString(),
         end: endDate.toISOString()
-      },
-      filters: {
-        dealstage: 'closedlost',
-        pipeline: 'default',
-        requiresGCLID: true,
-        requiresPaidSearch: true
       },
       timestamp: new Date().toISOString()
     };
     
   } catch (error) {
-    console.error('Failed to fetch LOST deals:', error.message);
+    console.error('❌ Failed to fetch LOST deals with batch API:', error.message);
     throw error;
   }
 }
 
 /**
- * Export LOST deals for ECL upload using last active stage probabilities
- * CORRECTED: Uses deal amount OR €1000 default, filters for GCLID only
+ * Export LOST deals for ECL upload using ACTUAL stage mapping probabilities
+ * UPDATED: Only processes deals with valid stage history from batch API
  */
 async function exportLostDealsForECL(processedDeals) {
   const eclConversions = [];
   
-  // Stage completion probabilities - ACTUAL DATA
-  const stageProbabilities = {
-    'qualifiedtobuy': 0.06,    // INBOX - 6%
-    'sequenced': 0.09,         // SEQUENCED - 9%
-    'engaging': 0.10,          // ENGAGING - 10%
-    'responsive': 0.27,        // RESPONSIVE - 27%
-    'advising': 0.50,          // ADVISING - 50%
-    'consideration': 0.80,     // NEGOTIATION - 80%
-    'trial': 0.90,             // TRIAL - 90%
-    'contractsent': 0.85,      // CONTRACT - 85%
-    'closedwon': 1.00,         // WON - 100%
-    'closedlost': 0.00         // LOST - 0%
-  };
-  
   let dealsWithGCLID = 0;
+  let dealsWithValidHistory = 0;
+  let dealsSkippedNoHistory = 0;
+  let dealsWithLeadId = 0;
+  let dealsUsingDealIdFallback = 0;
   let totalValue = 0;
-  const defaultAmount = 1000; // €1000 average spend
+  const defaultAmount = 1000;
+  
+  console.log('\\n🔍 ECL EXPORT ANALYSIS (BATCH API + STAGE MAPPING):');
   
   for (const deal of processedDeals) {
     // Only process deals with GCLID from PAID_SEARCH contacts
     if (!deal.contact || !deal.contact.gclid || deal.contact.source !== 'PAID_SEARCH') {
-      console.log(`   Deal ${deal.dealId}: Skipping - no GCLID or not PAID_SEARCH`);
       continue;
     }
     
     dealsWithGCLID++;
     
+    // Only process deals with valid stage history
+    if (!deal.hasValidHistory || !deal.lastActiveProbability) {
+      dealsSkippedNoHistory++;
+      console.log(`   Deal ${deal.dealId}: ❌ SKIPPED - No valid stage history`);
+      continue;
+    }
+    
+    dealsWithValidHistory++;
+    
     // Use deal amount OR €1000 default
     const dealAmount = deal.amount || defaultAmount;
     
-    // Calculate ECL value using last active stage probability
-    const stageProbability = stageProbabilities[deal.lastActiveStage] || 0.10;
+    // Calculate ECL value using ACTUAL stage probability
+    const stageProbability = deal.lastActiveProbability;
     const eclValue = Math.round(dealAmount * stageProbability * 100) / 100;
     totalValue += eclValue;
     
-    console.log(`Deal ${deal.dealId}: Amount €${dealAmount} ${deal.amount ? '(set)' : '(default)'}, Last stage "${deal.lastActiveStage}" (${(stageProbability * 100)}%), ECL value €${eclValue}`);
+    console.log(`   Deal ${deal.dealId}: ✅ Amount €${dealAmount}, Stage "${deal.lastActiveStageName}" (${(stageProbability * 100)}%), ECL €${eclValue}`);
+    
+    // Determine order_id: lead_id (preferred) or fallback to Deal ID
+    let orderId;
+    let orderIdSource;
+    
+    if (deal.contact.leadId && deal.contact.leadId.trim() !== '') {
+      orderId = deal.contact.leadId;
+      orderIdSource = 'lead_id';
+      dealsWithLeadId++;
+    } else {
+      orderId = deal.dealId;
+      orderIdSource = 'deal_id_fallback';
+      dealsUsingDealIdFallback++;
+      console.log(`   Deal ${deal.dealId}: ⚠️ No lead_id, using Deal ID as order_id`);
+    }
     
     const eclPayload = {
       conversion_action_id: "7264211475",
       stage: deal.lastActiveStage,
-      order_id: deal.contact.hubspotId || deal.dealId, // Use contact ID as order ID
+      stage_name: deal.lastActiveStageName,
+      order_id: orderId,
+      order_id_source: orderIdSource, // Track which ID we used
       gclid: deal.contact.gclid,
       contact_email: deal.contact.email,
       contact_phone: deal.contact.phone,
@@ -420,40 +512,38 @@ async function exportLostDealsForECL(processedDeals) {
       deal_id: deal.dealId,
       currency_code: "EUR",
       conversion_value: eclValue,
-      create_date: deal.createDate, // Deal creation date
+      create_date: deal.lastActiveStageTimestamp, // Use timestamp when deal reached penultimate stage
       deal_stage: deal.lastActiveStage,
+      deal_stage_name: deal.lastActiveStageName,
       deal_amount: dealAmount,
+      stage_probability: stageProbability,
       used_default_amount: !deal.amount,
-      lost_from_stage: deal.lastActiveStage,
-      final_stage: 'closedlost'
+      lost_from_stage: deal.lastActiveStageName,
+      final_stage: 'closedlost',
+      original_create_date: deal.createDate, // Keep original deal creation for reference
+      stage_reached_date: deal.lastActiveStageTimestamp // Clear field name for ECL handler
     };
     
     eclConversions.push(eclPayload);
   }
   
-  console.log(`\nREADY FOR ECL UPLOAD: ${eclConversions.length} LOST deal conversions (with GCLID)`);
-  console.log(`Total ECL Value: €${totalValue.toFixed(2)}`);
-  
-  const validation = {
-    totalDeals: processedDeals.length,
-    withGCLID: dealsWithGCLID,
-    withoutGCLID: processedDeals.length - dealsWithGCLID,
-    readyForUpload: eclConversions.length,
-    totalECLValue: totalValue,
-    averageECLValue: eclConversions.length > 0 ? (totalValue / eclConversions.length) : 0,
-    usingDefaultAmount: eclConversions.filter(c => c.used_default_amount).length
-  };
-  
-  console.log(`ECL LOST Validation:`);
-  console.log(`   Total Deals: ${validation.totalDeals}`);
-  console.log(`   With GCLID: ${validation.withGCLID}`);
-  console.log(`   Ready for Upload: ${validation.readyForUpload}`);
-  console.log(`   Using Default Amount (€1000): ${validation.usingDefaultAmount}/${validation.readyForUpload}`);
-  console.log(`   Average ECL Value: €${validation.averageECLValue.toFixed(2)}`);
+  console.log(`\\n🎯 ECL BATCH RESULTS:`);
+  console.log(`   Total ECL Conversions: ${eclConversions.length}`);
+  console.log(`   Total ECL Value: €${totalValue.toFixed(2)}`);
+  console.log(`   Average ECL Value: €${eclConversions.length > 0 ? (totalValue / eclConversions.length).toFixed(2) : '0.00'}`);
   
   return {
     conversions: eclConversions,
-    validation: validation
+    validation: {
+      totalDeals: processedDeals.length,
+      withGCLID: dealsWithGCLID,
+      withValidHistory: dealsWithValidHistory,
+      skippedNoHistory: dealsSkippedNoHistory,
+      readyForUpload: eclConversions.length,
+      totalECLValue: totalValue,
+      averageECLValue: eclConversions.length > 0 ? (totalValue / eclConversions.length) : 0,
+      usingDefaultAmount: eclConversions.filter(c => c.used_default_amount).length
+    }
   };
 }
 
@@ -462,45 +552,45 @@ async function exportLostDealsForECL(processedDeals) {
  */
 async function handleLostReadyRequest(req, res, hubspotClient) {
   try {
-    console.log('Preparing LOST deals for ECL upload...');
+    console.log('🚀 Preparing LOST deals for ECL upload with BATCH API + stage mapping...');
     
     const result = await getLostDeals(hubspotClient);
     const eclResult = await exportLostDealsForECL(result.processedDeals);
     
     res.json({
       success: true,
-      message: 'LOST deals ready for ECL upload with last active stage analysis',
+      message: 'LOST deals ready for ECL upload using BATCH API with actual stage mapping',
       summary: {
-        totalLostDeals: result.totalDeals,
-        dealsWithStageHistory: result.dealsWithHistory,
-        dealsWithoutHistory: result.dealsWithoutHistory,
+        totalLostDealsFound: result.totalDealsFound,
+        dealsRetrievedWithBatchAPI: result.totalDealsWithHistory,
+        dealsWithValidHistory: result.dealsWithValidHistory,
         readyForECL: eclResult.conversions.length,
-        totalECLValue: eclResult.validation.totalECLValue
+        totalECLValue: eclResult.validation.totalECLValue,
+        averageECLValue: eclResult.validation.averageECLValue
+      },
+      batchInfo: {
+        batchesProcessed: result.batchInfo.batchesProcessed,
+        batchSize: result.batchInfo.batchSize,
+        dateRangeLimited: 'Limited to 1 week for testing'
       },
       stageAnalysis: {
-        lastActiveStageDistribution: result.stageDistribution,
-        stageProbabilitiesUsed: {
-          'qualifiedtobuy': '10%',
-          'sequenced': '15%',
-          'engaging': '25%',
-          'responsive': '50%',
-          'advising': '60%',
-          'consideration': '75%',
-          'contractsent': '90%'
-        }
+        stageDistribution: result.stageDistribution,
+        validHistoryRate: result.dealsWithValidHistory > 0 ? 
+          `${((result.dealsWithValidHistory / result.totalDealsFound) * 100).toFixed(1)}%` : '0%'
       },
-      eclConversions: eclResult.conversions.slice(0, 5), // Sample only
+      eclConversions: eclResult.conversions.slice(0, 5), // Sample
       eclValidation: eclResult.validation,
       validation: {
         dateRange: result.dateRange,
-        filters: result.filters,
-        stageHistoryRequired: 'Uses propertiesWithHistory for dealstage analysis'
+        stageMappingUsed: 'scripts/analytics/stage-map.json',
+        batchAPIUsed: 'HubSpot Batch Read API for stage history',
+        noGuessing: 'Only processes deals with actual stage history data'
       },
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('LOST deals preparation failed:', error.message);
+    console.error('❌ LOST deals batch preparation failed:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -510,14 +600,29 @@ async function handleLostReadyRequest(req, res, hubspotClient) {
 }
 
 /**
- * Handle request to process LOST deals through ECL (ROUTING HANDLER)
+ * Handle request to process LOST deals through ECL (ROUTING HANDLER)  
  */
 async function handleLostProcessRequest(req, res, hubspotClient) {
   try {
-    console.log('Processing LOST deals for ECL upload...');
+    console.log('🚀 Processing LOST deals for ECL upload with BATCH API...');
     
     const result = await getLostDeals(hubspotClient);
     const eclResult = await exportLostDealsForECL(result.processedDeals);
+    
+    if (eclResult.conversions.length === 0) {
+      return res.json({
+        success: false,
+        message: 'No LOST deals with valid stage history found for ECL upload',
+        summary: {
+          totalLostDeals: result.totalDealsFound,
+          dealsWithGCLID: eclResult.validation.withGCLID,
+          dealsSkippedNoHistory: eclResult.validation.skippedNoHistory,
+          readyForUpload: 0
+        },
+        recommendation: 'Check date range, stage mapping, or HubSpot data quality',
+        timestamp: new Date().toISOString()
+      });
+    }
     
     // Process through ECL handler
     const eclHandler = require('./ecl-handler');
@@ -526,25 +631,23 @@ async function handleLostProcessRequest(req, res, hubspotClient) {
     let errorCount = 0;
     const errors = [];
     
-    console.log(`Starting ECL upload of ${eclResult.conversions.length} LOST deal conversions...`);
+    console.log(`🎯 Starting ECL upload of ${eclResult.conversions.length} LOST deals with batch-retrieved stage data...`);
     
     for (const conversion of eclResult.conversions) {
       try {
-        console.log(`Processing ECL: LOST DEAL CONVERSION`);
-        console.log(`   Deal Stage: ${conversion.deal_stage} (last active)`);
+        console.log(`Processing ECL: LOST DEAL (BATCH API)`);
+        console.log(`   Deal Stage: ${conversion.stage_name} (${conversion.stage}) - ${(conversion.stage_probability * 100)}%`);
         console.log(`   Order ID: ${conversion.order_id}`);
-        console.log(`   Value: EUR${conversion.conversion_value}`);
-        console.log(`   create_date: ${conversion.create_date}`);
+        console.log(`   Value: EUR${conversion.conversion_value} (batch API + stage mapping)`);
         
-        // Process LOST deal conversion with create_date
         await eclHandler.processConversionAdjustment(conversion, {
-          conversionType: 'lost_deal',
-          useLastActiveStage: true
+          conversionType: 'lost_deal_batch_api',
+          useActualStageData: true
         });
         
         processedCount++;
         
-        if (processedCount % 10 === 0) {
+        if (processedCount % 5 === 0) {
           console.log(`   Processed ${processedCount}/${eclResult.conversions.length} LOST deals`);
         }
         
@@ -556,9 +659,8 @@ async function handleLostProcessRequest(req, res, hubspotClient) {
         errorCount++;
         errors.push({
           dealId: conversion.deal_id,
-          orderId: conversion.order_id,
-          lastActiveStage: conversion.deal_stage,
-          createDate: conversion.create_date,
+          stageName: conversion.stage_name,
+          eclValue: conversion.conversion_value,
           error: error.message
         });
       }
@@ -566,29 +668,30 @@ async function handleLostProcessRequest(req, res, hubspotClient) {
     
     res.json({
       success: true,
-      message: 'ECL LOST deals processing completed',
+      message: 'ECL LOST deals processing completed using BATCH API with stage mapping',
       summary: {
-        totalLostDeals: result.totalDeals,
-        totalConversions: eclResult.conversions.length,
+        totalLostDeals: result.totalDealsFound,
         processedSuccessfully: processedCount,
         errors: errorCount,
-        successRate: eclResult.conversions.length > 0 ? 
-          ((processedCount / eclResult.conversions.length) * 100).toFixed(1) + '%' : '0%',
+        successRate: `${((processedCount / eclResult.conversions.length) * 100).toFixed(1)}%`,
         totalECLValue: eclResult.validation.totalECLValue
       },
-      details: {
-        conversionType: 'lost_deal_with_last_active_stage',
-        averageECLValue: eclResult.validation.averageECLValue,
-        conversionAction: '7264211475',
-        purpose: 'Upload conversions for LOST deals using last active stage probabilities',
-        stageHistoryAnalysis: 'Used propertiesWithHistory to find last stage before closedlost'
+      batchInfo: {
+        batchesProcessed: result.batchInfo.batchesProcessed,
+        dealsPerBatch: result.batchInfo.batchSize
       },
-      errors: errors.slice(0, 5),
+      details: {
+        conversionType: 'lost_deal_batch_api_with_stage_mapping',
+        stageMappingUsed: 'scripts/analytics/stage-map.json',
+        batchAPI: 'HubSpot Batch Read API for efficient stage history retrieval',
+        conversionAction: '7264211475'
+      },
+      errors: errors.slice(0, 3),
       timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('LOST deals ECL processing failed:', error.message);
+    console.error('❌ LOST deals batch ECL processing failed:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,

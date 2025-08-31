@@ -150,7 +150,7 @@ async function getRejectedContacts(hubspotClient) {
         gclid: gclid,
         hasGCLID: hasGCLID,
         orderId: props.lead_id || props.hs_object_id || contactId,
-        conversionAction: '7264211475',
+        conversionAction: '7284140601',
         conversionValue: 0.00,
         rejectionReason: 'unsupported_territory'
       };
@@ -216,7 +216,7 @@ async function exportRejectedForECL(processedContacts) {
       console.log(`Contact ${contact.contactId}: Using create_date ${contact.createDate} (Contact creation)`);
       
       const eclPayload = {
-        conversion_action_id: "7264211475",
+        conversion_action_id: "7284140601",
         stage: "mql_rejected",
         order_id: contact.orderId,
         gclid: contact.gclid,
@@ -382,7 +382,7 @@ async function handleRejectedProcessRequest(req, res, hubspotClient) {
       details: {
         conversionType: 'zero_value_rejection_with_create_date',
         zeroValueConversions: eclResult.conversions.length,
-        conversionAction: '7264211475',
+        conversionAction: '7284140601',
         purpose: 'Counteract initial conversion values for rejected leads using contact creation dates',
         dateHandling: 'create_date field for contact creation date'
       },
