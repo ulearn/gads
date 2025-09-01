@@ -730,72 +730,84 @@ router.get('/ecl/test-live', async (req, res) => {
 //   MCP (Model Context Protocol) SERVER INTEGRATION - VERSION 2.1
 //=============================================================================//
 
-// Load MCP SSE handler safely
-let mcpSSEHandler = null;
-try {
-  mcpSSEHandler = require('./scripts/mcp-sse-example/mcp-sse-handler');
-  console.log('✅ MCP SSE Handler loaded');
-} catch (error) {
-  console.warn('⚠️ MCP SSE Handler not found');
-}
-
-// MCP SSE Routes
-if (mcpSSEHandler) {
-  // Server info endpoint
-  router.get('/mcp-sse', (req, res) => {
-    mcpSSEHandler.handleServerInfo(req, res);
-  });
-  
-  // SSE endpoint
-  router.get('/mcp-sse/sse', async (req, res) => {
-    await mcpSSEHandler.handleSSEConnection(req, res);
-  });
-  
-  // Messages endpoint  
-  router.post('/mcp-sse/messages', async (req, res) => {
-    await mcpSSEHandler.handlePostMessage(req, res);
-  });
-  
-  // Main MCP endpoint (Custom Connector)
-  router.all('/mcp-sse/mcp', async (req, res) => {
-    await mcpSSEHandler.handleMCPRequest(req, res);
-  });
-  
-  // Health check
-  router.get('/mcp-sse/health', (req, res) => {
-    mcpSSEHandler.handleHealthCheck(req, res);
-  });
-  
-  console.log('🚀 MCP SSE endpoints registered at /gads/mcp-sse/*');
-}
-
 //=============================== 
-// Our First Remote MCP Server Effort - couldn't connect via Customer Connector :/
+// Our First Remote MCP Server Effort - DISABLED
 //=============================== 
-console.log('Setting up MCP server v2.0 for Claude AI integration...');
-
-let mcpApp = null;
-try {
-  // Import the MCP compliant server v2.0
-  const { createMCPServer } = require('./scripts/mcp/mcp-server');
-  
-  // Create MCP application instance  
-  mcpApp = createMCPServer();
-  modules.mcpServer = true;
-  
-  // Mount MCP endpoints under /gads/mcp
-  router.use('/mcp', mcpApp);
-  
-  console.log('✅ MCP Server v2.0 successfully loaded');
-  console.log('🎯 Remote MCP Server URL: https://hub.ulearnschool.com/gads/mcp');
-  console.log('🤖 Protocol: MCP Specification Compliant');
-  console.log('🔧 Available Google Ads Tools: 3');
-  
-} catch (error) {
-  console.error('❌ MCP Server v2.0 initialization failed:', error.message);
-  console.error('📋 Error details:', error.stack);
-  modules.mcpServer = null;
+if (!process.env.MCP_SERVER_DISABLED) {
+  console.log('Setting up MCP server v2.0 for Claude AI integration...');
+  // ... keep existing code
+} else {
+  console.log('🚫 Old MCP server disabled - using remote MCP server only');
+  modules.mcpServer = false;
 }
+
+// Remote MCP Server Integration - 3rd/4th Attempt 21:00
+const { createWorkingRemoteMCP } = require('./scripts/mcp-remote/remote-server');
+
+// Mount MCP endpoints under /gads/mcp-remote
+try {
+  const mcpRemoteApp = createWorkingRemoteMCP();
+  router.use('/mcp-remote', mcpRemoteApp);
+  console.log('✅ Remote MCP Server mounted at /gads/mcp-remote');
+} catch (error) {
+  console.error('❌ Remote MCP Server failed to load:', error.message);
+}
+
+
+// SSE MCP Server Integration (Working Pattern)
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Start SSE MCP server as subprocess - DELETEING
+/*
+const sseServerPath = path.join(__dirname, 'scripts/mcp-sse/server.js');
+const sseProcess = spawn('node', [sseServerPath], {
+  cwd: path.join(__dirname, 'scripts/mcp-sse'),
+  stdio: 'inherit'
+});
+
+sseProcess.on('error', (error) => {
+  console.error('❌ SSE MCP Server failed:', error.message);
+});
+
+console.log('🚀 SSE MCP Server started as subprocess');
+*/
+
+// ADD PROXY CODE HERE:
+// Proxy SSE endpoints through main server
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+// SSE proxy
+router.get('/mcp-sse/sse', createProxyMiddleware({
+  target: 'http://localhost:3001',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/gads/mcp-sse': ''
+  },
+  ws: true,
+  headers: {
+    'Connection': 'keep-alive',
+    'Cache-Control': 'no-cache'
+  }
+}));
+
+// Messages proxy
+router.post('/mcp-sse/messages', createProxyMiddleware({
+  target: 'http://localhost:3001',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/gads/mcp-sse': ''
+  }
+}));
+
+router.get('/mcp-sse/health', createProxyMiddleware({
+  target: 'http://localhost:3001',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/gads/mcp-sse': ''
+  }
+}));
+
 
 //=============================================================================//
 //   STATIC FILE ROUTES

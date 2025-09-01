@@ -1,0 +1,12 @@
+{
+  "name": "ulearn-mcp-sse-working",
+  "version": "1.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.4",
+    "express": "^4.21.2",
+    "google-ads-api": "^20.0.1",
+    "mysql2": "^3.14.3",
+    "dotenv": "^16.6.1",
+    "zod": "^3.22.4"
+  }
+}
