@@ -3,7 +3,7 @@
  * Path: /home/hub/public_html/gads/scripts/mcp/fixed-mcp-server.js
  * 
  * FIXES:
- * ✅ Exact MCP protocol version compliance (2024-11-05)
+ * ✅ Exact MCP protocol version compliance (2025-06-18)
  * ✅ Correct JSON-RPC response format
  * ✅ Tool name validation (alphanumeric + underscores/hyphens only)
  * ✅ Proper capabilities declaration
@@ -25,12 +25,12 @@ class MCPServer {
     };
 
     // FIXED: Exact MCP capabilities format
-    this.capabilities = {
-      tools: {},
-      resources: {},
-      prompts: {},
-      logging: {}
-    };
+this.capabilities = {
+  tools: {
+    listChanged: false
+  }
+};
+
 
     // FIXED: Tool names must match ^[a-zA-Z0-9_-]{1,64}$ pattern
     this.tools = [
@@ -163,15 +163,15 @@ class MCPServer {
   }
 
   // FIXED: Exact MCP protocol initialize response
-  async initialize(params = {}) {
-    console.log('🔧 MCP Initialize called with params:', params);
-    
-    return {
-      protocolVersion: "2024-11-05",
-      capabilities: this.capabilities,
-      serverInfo: this.serverInfo
-    };
-  }
+async initialize(params = {}) {
+  console.log('🔧 MCP Initialize called with params:', params);
+  
+  return {
+    protocolVersion: "2025-06-18",
+    capabilities: this.capabilities,
+    serverInfo: this.serverInfo
+  };
+}
 
   // FIXED: Exact MCP protocol tools/list response  
   async listTools() {
@@ -310,7 +310,7 @@ Your ULearn Google Ads account is connected and ready for comprehensive AI-power
         return `${index + 1}. **${c.name}** (${channelType})
    - Cost: €${cost.toFixed(2)}
    - Clicks: ${parseInt(m.clicks) || 0}
-   - Impressions: ${parseInt(m.impressions) || 0:toLocaleString()}
+   - Impressions: ${(parseInt(m.impressions) || 0).toLocaleString()}
    - CTR: ${parseFloat(m.ctr || 0).toFixed(2)}%
    - Conversions: ${parseFloat(m.conversions || 0).toFixed(1)}`;
       }).join('\n\n');
@@ -729,6 +729,17 @@ function createMCPServer() {
     next();
   });
 
+    // Accept token via query parameter for Claude Desktop integration
+  app.use((req, res, next) => {
+    if (req.query.token && !req.headers.authorization) {
+      req.headers.authorization = `Bearer ${req.query.token}`;
+    }
+    if (req.query.secret && !req.headers.authorization) {
+      req.headers.authorization = `Bearer ${req.query.secret}`;
+    }
+    next();
+  });
+
   // FIXED: MCP Discovery Endpoint (GET /)
   app.get('/', async (req, res) => {
     try {
@@ -754,8 +765,10 @@ function createMCPServer() {
           result = await mcp.initialize(params);
           break;
         case 'tools/list':
-          result = await mcp.listTools();
-          break;
+  console.log('🔧 TOOLS/LIST REQUESTED BY CLAUDE!');
+  result = await mcp.listTools();
+  console.log('🔧 TOOLS/LIST RESPONSE:', JSON.stringify(result, null, 2));
+  break;
         case 'tools/call':
           result = await mcp.callTool(params.name, params.arguments);
           break;
@@ -799,7 +812,7 @@ function createMCPServer() {
     res.json({
       status: 'healthy',
       server: 'Fixed MCP Server v3.0',
-      protocol: 'MCP 2024-11-05',
+      protocol: 'MCP 2025-06-18',
       tools_count: mcp.tools.length,
       tools: mcp.tools.map(t => t.name),
       bearer_token_configured: !!process.env.MCP_BEARER_TOKEN,
