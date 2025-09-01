@@ -727,23 +727,31 @@ router.get('/ecl/test-live', async (req, res) => {
 });
 
 //=============================================================================//
-//   MCP (Model Context Protocol) SERVER INTEGRATION - FIXED
+//   MCP (Model Context Protocol) SERVER INTEGRATION - VERSION 2.1
 //=============================================================================//
 
-console.log('Setting up MCP server for Claude Desktop...');
+console.log('Setting up MCP server v2.0 for Claude AI integration...');
 
 let mcpApp = null;
 try {
+  // Import the MCP compliant server v2.0
+  const { createMCPServer } = require('./scripts/mcp/mcp-server');
+  
+  // Create MCP application instance  
   mcpApp = createMCPServer();
   modules.mcpServer = true;
   
   // Mount MCP endpoints under /gads/mcp
   router.use('/mcp', mcpApp);
   
-  console.log('MCP server ready at: https://hub.ulearnschool.com/gads/mcp/');
-  console.log('Claude Desktop MCP URL: https://hub.ulearnschool.com/gads/mcp');
+  console.log('✅ MCP Server v2.0 successfully loaded');
+  console.log('🎯 Remote MCP Server URL: https://hub.ulearnschool.com/gads/mcp');
+  console.log('🤖 Protocol: MCP Specification Compliant');
+  console.log('🔧 Available Google Ads Tools: 3');
+  
 } catch (error) {
-  console.warn('MCP Server not available:', error.message);
+  console.error('❌ MCP Server v2.0 initialization failed:', error.message);
+  console.error('📋 Error details:', error.stack);
   modules.mcpServer = null;
 }
 
