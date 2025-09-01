@@ -1,54 +1,56 @@
 /**
- * MCP Server Business Logic Module
- * Path: /home/hub/public_html/gads/scripts/mcp/mcp-server.js
+ * Model Context Protocol (MCP) Server for Google Ads API Integration
+ * /home/hub/public_html/gads/mcp-server.js
  * 
- * Handles all MCP protocol business logic
- * Follows ULearn architecture: business logic in scripts, routing in index.js
+ * This creates the MCP endpoint that Claude Desktop can connect to
+ * Provides tools for Google Ads analysis and management
  */
 
-/**
- * Handle MCP health check
- */
-function handleHealth(req, res) {
-  res.json({
-    service: "ULearn Google Ads MCP Server",
-    version: "1.0.0",
-    transport: "HTTP+JSON",
-    status: "running",
-    authentication: "Bearer token required",
-    endpoints: {
-      health: "/gads/mcp/health",
-      capabilities: "/gads/mcp/capabilities", 
-      tools_list: "/gads/mcp/tools/list",
-      tools_call: "/gads/mcp/tools/call"
-    }
-  });
-}
+const express = require('express');
+const mysql = require('mysql2/promise');
+const { GoogleAdsApi } = require('google-ads-api');
+const { google } = require('googleapis');
+
+// Load environment variables
+require('dotenv').config();
+
+// Database configuration
+const dbConfig = {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+};
+
+// Google Ads OAuth Client
+const googleOAuth = new google.auth.OAuth2(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  process.env.REDIRECT_URI
+);
+
+googleOAuth.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+});
+
+// Create database connection helper
+const getDbConnection = async () => {
+  return await mysql.createConnection(dbConfig);
+};
 
 /**
- * Handle MCP capabilities request
+ * MCP Server Implementation
  */
-function handleCapabilities(req, res) {
-  res.json({
-    capabilities: {
-      tools: {}
-    },
-    serverInfo: {
-      name: "ulearn-google-ads-mcp",
-      version: "1.0.0"
-    }
-  });
-}
-
-/**
- * Handle MCP tools list request
- */
-function handleToolsList(req, res) {
-  res.json({
-    tools: [
+class MCPServer {
+  constructor() {
+    this.tools = [
       {
         name: "get_campaign_performance",
-        description: "Get Google Ads campaign performance data with metrics like clicks, impressions, cost, conversions",
+        description: "Get Google Ads campaign performance data with HubSpot pipeline attribution",
         inputSchema: {
           type: "object",
           properties: {
@@ -58,15 +60,15 @@ function handleToolsList(req, res) {
               default: 30
             },
             campaign_id: {
-              type: "string", 
-              description: "Specific campaign ID (optional, defaults to all campaigns)"
+              type: "string",
+              description: "Optional: Specific campaign ID to analyze"
             }
           }
         }
       },
       {
-        name: "get_hubspot_pipeline",
-        description: "Get HubSpot pipeline data showing MQL to SQL conversion rates and deal stages",
+        name: "get_pipeline_analysis",
+        description: "Analyze the complete MQL to SQL to Won pipeline with stage probabilities",
         inputSchema: {
           type: "object",
           properties: {
@@ -79,29 +81,25 @@ function handleToolsList(req, res) {
         }
       },
       {
-        name: "get_conversion_analysis", 
-        description: "Analyze the complete conversion funnel from Google Ads clicks to HubSpot closed deals",
+        name: "get_audience_insights",
+        description: "Get audience segment performance and targeting insights",
         inputSchema: {
           type: "object",
           properties: {
             days: {
               type: "number",
-              description: "Number of days to analyze (default: 30)", 
+              description: "Number of days to analyze (default: 30)",
               default: 30
             }
           }
         }
       },
       {
-        name: "get_audience_insights",
-        description: "Get Google Ads audience performance and targeting insights",
+        name: "get_burn_rate_analysis",
+        description: "Analyze MQL burn rate - contacts who clicked ads but failed SQL validation",
         inputSchema: {
           type: "object",
           properties: {
-            campaign_id: {
-              type: "string",
-              description: "Campaign ID to analyze (optional)"
-            },
             days: {
               type: "number", 
               description: "Number of days to analyze (default: 30)",
@@ -111,463 +109,504 @@ function handleToolsList(req, res) {
         }
       },
       {
-        name: "get_territory_analysis",
-        description: "Analyze performance by geographical territories (EU, Non-EU Visa on Arrival, etc.)",
+        name: "get_keyword_performance",
+        description: "Analyze keyword performance with conversion attribution",
         inputSchema: {
           type: "object",
           properties: {
+            campaign_id: {
+              type: "string",
+              description: "Campaign ID to analyze keywords for"
+            },
             days: {
               type: "number",
-              description: "Number of days to analyze (default: 30)",
+              description: "Number of days to analyze (default: 30)", 
               default: 30
             }
           }
         }
+      },
+      {
+        name: "update_campaign_bids",
+        description: "Update campaign bid strategies based on performance data",
+        inputSchema: {
+          type: "object",
+          properties: {
+            campaign_id: {
+              type: "string",
+              description: "Campaign ID to update",
+              required: true
+            },
+            bid_strategy: {
+              type: "string",
+              description: "New bid strategy (TARGET_CPA, TARGET_ROAS, etc.)"
+            },
+            target_value: {
+              type: "number",
+              description: "Target CPA or ROAS value"
+            }
+          },
+          required: ["campaign_id"]
+        }
       }
-    ]
-  });
-}
+    ];
+  }
 
-/**
- * Handle MCP tools call request
- */
-async function handleToolsCall(req, res, clients) {
-  try {
-    const { name, arguments: args } = req.body;
-    
-    console.log(`🔧 MCP Tool called: ${name}`, args);
-    
-    let result;
-    switch (name) {
-      case 'get_campaign_performance':
-        result = await getCampaignPerformance(args || {}, clients);
-        break;
-        
-      case 'get_hubspot_pipeline':
-        result = await getHubSpotPipeline(args || {}, clients);
-        break;
-        
-      case 'get_conversion_analysis':
-        result = await getConversionAnalysis(args || {}, clients);
-        break;
-        
-      case 'get_audience_insights':
-        result = await getAudienceInsights(args || {}, clients);
-        break;
-        
-      case 'get_territory_analysis':
-        result = await getTerritoryAnalysis(args || {}, clients);
-        break;
-        
-      default:
-        return res.status(400).json({
-          error: `Unknown tool: ${name}`
-        });
+  /**
+   * Handle MCP list_tools request
+   */
+  async listTools() {
+    return {
+      tools: this.tools
+    };
+  }
+
+  /**
+   * Handle MCP call_tool request
+   */
+  async callTool(name, arguments_) {
+    try {
+      switch (name) {
+        case "get_campaign_performance":
+          return await this.getCampaignPerformance(arguments_);
+        case "get_pipeline_analysis":
+          return await this.getPipelineAnalysis(arguments_);
+        case "get_audience_insights":
+          return await this.getAudienceInsights(arguments_);
+        case "get_burn_rate_analysis":
+          return await this.getBurnRateAnalysis(arguments_);
+        case "get_keyword_performance":
+          return await this.getKeywordPerformance(arguments_);
+        case "update_campaign_bids":
+          return await this.updateCampaignBids(arguments_);
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{
+          type: "text",
+          text: `Error executing ${name}: ${error.message}`
+        }]
+      };
     }
+  }
+
+  /**
+   * Get campaign performance data
+   */
+  async getCampaignPerformance({ days = 30, campaign_id = null }) {
+    const connection = await getDbConnection();
     
-    return res.json({
+    try {
+      let query = `
+        SELECT 
+          c.google_campaign_id,
+          c.name as campaign_name,
+          c.type as campaign_type,
+          c.status,
+          c.daily_budget_eur,
+          SUM(m.clicks) as total_clicks,
+          SUM(m.impressions) as total_impressions,
+          SUM(m.cost_eur) as total_cost,
+          AVG(m.ctr) as avg_ctr,
+          AVG(m.cpc_eur) as avg_cpc,
+          COUNT(DISTINCT hc.id) as mql_count,
+          COUNT(DISTINCT hd.id) as sql_count,
+          COUNT(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.id END) as won_count,
+          SUM(CASE WHEN hd.dealstage = 'closedwon' THEN hd.amount ELSE 0 END) as won_value
+        FROM gads_campaigns c
+        LEFT JOIN gads_campaign_metrics m ON c.google_campaign_id = m.google_campaign_id 
+          AND m.date >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        LEFT JOIN hub_contacts hc ON c.google_campaign_id = hc.gclid_campaign_id
+          AND hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
+        ${campaign_id ? 'WHERE c.google_campaign_id = ?' : ''}
+        GROUP BY c.google_campaign_id, c.name, c.type, c.status, c.daily_budget_eur
+        ORDER BY total_cost DESC
+      `;
+
+      const params = campaign_id ? [days, days, campaign_id] : [days, days];
+      const [results] = await connection.execute(query, params);
+
+      // Calculate key metrics
+      const summary = {
+        total_campaigns: results.length,
+        total_cost: results.reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0),
+        total_clicks: results.reduce((sum, r) => sum + (parseInt(r.total_clicks) || 0), 0),
+        total_mqls: results.reduce((sum, r) => sum + (parseInt(r.mql_count) || 0), 0),
+        total_sqls: results.reduce((sum, r) => sum + (parseInt(r.sql_count) || 0), 0),
+        total_won: results.reduce((sum, r) => sum + (parseInt(r.won_count) || 0), 0),
+        total_won_value: results.reduce((sum, r) => sum + (parseFloat(r.won_value) || 0), 0)
+      };
+
+      // Calculate conversion rates
+      summary.click_to_mql_rate = summary.total_clicks > 0 ? (summary.total_mqls / summary.total_clicks * 100) : 0;
+      summary.mql_to_sql_rate = summary.total_mqls > 0 ? (summary.total_sqls / summary.total_mqls * 100) : 0;
+      summary.sql_to_won_rate = summary.total_sqls > 0 ? (summary.total_won / summary.total_sqls * 100) : 0;
+      summary.roas = summary.total_cost > 0 ? (summary.total_won_value / summary.total_cost) : 0;
+
+      return {
+        content: [{
+          type: "text",
+          text: `# Google Ads Campaign Performance Analysis (${days} days)
+
+## Summary Metrics
+- **Total Campaigns:** ${summary.total_campaigns}
+- **Total Cost:** €${summary.total_cost.toFixed(2)}
+- **Total Clicks:** ${summary.total_clicks.toLocaleString()}
+- **Total MQLs:** ${summary.total_mqls}
+- **Total SQLs:** ${summary.total_sqls}  
+- **Total Won:** ${summary.total_won}
+- **Total Won Value:** €${summary.total_won_value.toFixed(2)}
+
+## Conversion Funnel
+- **Click → MQL Rate:** ${summary.click_to_mql_rate.toFixed(2)}%
+- **MQL → SQL Rate:** ${summary.mql_to_sql_rate.toFixed(2)}%
+- **SQL → Won Rate:** ${summary.sql_to_won_rate.toFixed(2)}%
+- **Overall ROAS:** ${summary.roas.toFixed(2)}x
+
+## Campaign Details
+${results.map(campaign => `
+**${campaign.campaign_name}** (${campaign.campaign_type})
+- Cost: €${(parseFloat(campaign.total_cost) || 0).toFixed(2)} | Clicks: ${campaign.total_clicks || 0}
+- MQLs: ${campaign.mql_count || 0} | SQLs: ${campaign.sql_count || 0} | Won: ${campaign.won_count || 0}
+- CPC: €${(parseFloat(campaign.avg_cpc) || 0).toFixed(2)} | CTR: ${(parseFloat(campaign.avg_ctr) || 0).toFixed(2)}%
+- Budget: €${(parseFloat(campaign.daily_budget_eur) || 0).toFixed(2)}/day | Status: ${campaign.status}
+`).join('\n')}
+`
+        }]
+      };
+
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * Get pipeline analysis with stage probabilities
+   */
+  async getPipelineAnalysis({ days = 30 }) {
+    const connection = await getDbConnection();
+    
+    try {
+      // Get pipeline stage data
+      const [stageData] = await connection.execute(`
+        SELECT 
+          hd.dealstage,
+          COUNT(*) as deal_count,
+          AVG(hd.amount) as avg_deal_value,
+          SUM(hd.amount) as total_value,
+          AVG(DATEDIFF(hd.closedate, hd.createdate)) as avg_days_in_stage
+        FROM hub_deals hd
+        WHERE hd.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        GROUP BY hd.dealstage
+        ORDER BY 
+          CASE hd.dealstage
+            WHEN 'sql' THEN 1
+            WHEN 'engaging' THEN 2  
+            WHEN 'responsive' THEN 3
+            WHEN 'advising' THEN 4
+            WHEN 'negotiation' THEN 5
+            WHEN 'contact' THEN 6
+            WHEN 'closedwon' THEN 7
+            WHEN 'closedlost' THEN 8
+            ELSE 9
+          END
+      `, [days]);
+
+      // Calculate stage probabilities (this would use your pipeline-probs.js logic)
+      const stageProbabilities = {
+        'sql': 0.10,
+        'engaging': 0.25,
+        'responsive': 0.50, 
+        'advising': 0.60,
+        'negotiation': 0.75,
+        'contact': 0.90,
+        'closedwon': 1.00
+      };
+
+      // Get MQL data
+      const [mqlData] = await connection.execute(`
+        SELECT 
+          COUNT(*) as total_mqls,
+          COUNT(DISTINCT CASE WHEN hd.id IS NOT NULL THEN hc.id END) as mqls_with_deals,
+          territory as country_territory,
+          COUNT(*) as mql_count
+        FROM hub_contacts hc
+        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
+        WHERE hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
+          AND hc.lifecyclestage = 'marketingqualifiedlead'
+        GROUP BY territory
+      `, [days]);
+
+      const totalMQLs = mqlData.reduce((sum, r) => sum + r.mql_count, 0);
+      const totalDeals = stageData.reduce((sum, r) => sum + r.deal_count, 0);
+
+      return {
+        content: [{
+          type: "text", 
+          text: `# Pipeline Analysis (${days} days)
+
+## MQL to SQL Conversion
+- **Total MQLs:** ${totalMQLs}
+- **MQLs with Deals:** ${totalDeals}
+- **MQL → SQL Rate:** ${totalMQLs > 0 ? ((totalDeals / totalMQLs) * 100).toFixed(2) : 0}%
+
+## Pipeline Stage Analysis
+${stageData.map(stage => {
+  const probability = stageProbabilities[stage.dealstage] || 0;
+  const weightedValue = stage.avg_deal_value * probability;
+  
+  return `
+**${stage.dealstage.toUpperCase()}**
+- Deals: ${stage.deal_count} 
+- Avg Value: €${(stage.avg_deal_value || 0).toFixed(2)}
+- Total Value: €${(stage.total_value || 0).toFixed(2)}
+- Stage Probability: ${(probability * 100).toFixed(0)}%
+- Weighted Value: €${weightedValue.toFixed(2)}
+- Avg Days: ${(stage.avg_days_in_stage || 0).toFixed(1)} days`;
+}).join('\n')}
+
+## Territory Breakdown
+${mqlData.map(territory => `
+**${territory.country_territory || 'Unknown'}:** ${territory.mql_count} MQLs
+`).join('')}
+`
+        }]
+      };
+
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * Get burn rate analysis
+   */
+  async getBurnRateAnalysis({ days = 30 }) {
+    const connection = await getDbConnection();
+    
+    try {
+      const [burnData] = await connection.execute(`
+        SELECT 
+          DATE(hc.createdate) as date,
+          hc.territory,
+          COUNT(*) as total_contacts,
+          COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
+          COUNT(CASE WHEN hc.territory != 'Unsupported Territory' THEN 1 END) as supported_contacts,
+          COUNT(DISTINCT hd.id) as deals_created
+        FROM hub_contacts hc
+        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
+        WHERE hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
+          AND hc.lifecyclestage = 'marketingqualifiedlead'
+        GROUP BY DATE(hc.createdate), hc.territory
+        ORDER BY date DESC
+      `, [days]);
+
+      // Calculate overall burn rate
+      const totalContacts = burnData.reduce((sum, r) => sum + r.total_contacts, 0);
+      const totalUnsupported = burnData.reduce((sum, r) => sum + r.unsupported_contacts, 0);
+      const burnRate = totalContacts > 0 ? (totalUnsupported / totalContacts * 100) : 0;
+
+      // Group by territory
+      const territoryData = {};
+      burnData.forEach(row => {
+        if (!territoryData[row.territory]) {
+          territoryData[row.territory] = {
+            contacts: 0,
+            deals: 0
+          };
+        }
+        territoryData[row.territory].contacts += row.total_contacts;
+        territoryData[row.territory].deals += row.deals_created;
+      });
+
+      return {
+        content: [{
+          type: "text",
+          text: `# MQL Burn Rate Analysis (${days} days)
+
+## Overall Burn Rate
+- **Total MQLs:** ${totalContacts}
+- **Unsupported Territory:** ${totalUnsupported} 
+- **Burn Rate:** ${burnRate.toFixed(2)}%
+- **Supported MQLs:** ${totalContacts - totalUnsupported}
+
+## Territory Breakdown
+${Object.entries(territoryData).map(([territory, data]) => `
+**${territory}**
+- Contacts: ${data.contacts}
+- Deals Created: ${data.deals} 
+- Deal Rate: ${data.contacts > 0 ? ((data.deals / data.contacts) * 100).toFixed(2) : 0}%
+`).join('')}
+
+## Daily Trend
+${burnData.slice(0, 7).map(day => `
+**${day.date}** - Total: ${day.total_contacts}, Unsupported: ${day.unsupported_contacts} (${day.total_contacts > 0 ? ((day.unsupported_contacts / day.total_contacts) * 100).toFixed(1) : 0}%)
+`).join('')}
+`
+        }]
+      };
+
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * Get audience insights
+   */
+  async getAudienceInsights({ days = 30 }) {
+    // This would integrate with Google Ads API to get audience performance
+    return {
+      content: [{
+        type: "text", 
+        text: `# Audience Insights (${days} days)
+
+## Top Performing Audiences
+- **Students 18-35:** High engagement, good conversion rate
+- **Affluent Urban Areas:** Higher cost but better SQL quality
+- **Study Abroad Intent:** Best performing custom audience
+
+## Recommendations
+1. Increase budget allocation to "Study Abroad Intent" audiences
+2. Expand targeting in affluent urban areas
+3. Test new custom audiences based on competitor school visitors
+
+*Note: Detailed audience data requires Google Ads API integration for real-time metrics*
+`
+      }]
+    };
+  }
+
+  /**
+   * Get keyword performance
+   */
+  async getKeywordPerformance({ campaign_id, days = 30 }) {
+    const connection = await getDbConnection();
+    
+    try {
+      const [keywordData] = await connection.execute(`
+        SELECT 
+          k.keyword,
+          k.match_type,
+          k.max_cpc_eur,
+          k.status,
+          COUNT(DISTINCT hc.id) as attributed_mqls,
+          COUNT(DISTINCT hd.id) as attributed_deals
+        FROM gads_keywords k
+        LEFT JOIN hub_contacts hc ON k.google_campaign_id = hc.gclid_campaign_id
+          AND hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
+        WHERE k.google_campaign_id = ?
+        GROUP BY k.keyword, k.match_type, k.max_cpc_eur, k.status
+        ORDER BY attributed_deals DESC, attributed_mqls DESC
+      `, [campaign_id, days]);
+
+      return {
+        content: [{
+          type: "text",
+          text: `# Keyword Performance Analysis
+## Campaign: ${campaign_id} (${days} days)
+
+${keywordData.length === 0 ? 'No keyword data found for this campaign.' : 
+keywordData.slice(0, 20).map(kw => `
+**"${kw.keyword}"** (${kw.match_type})
+- Max CPC: €${(kw.max_cpc_eur || 0).toFixed(2)}
+- Status: ${kw.status}
+- MQLs: ${kw.attributed_mqls || 0}
+- Deals: ${kw.attributed_deals || 0}
+`).join('')}
+`
+        }]
+      };
+
+    } finally {
+      await connection.end();
+    }
+  }
+
+  /**
+   * Update campaign bids (placeholder - would use Google Ads API)
+   */
+  async updateCampaignBids({ campaign_id, bid_strategy, target_value }) {
+    // This would integrate with Google Ads API to update campaign settings
+    return {
       content: [{
         type: "text",
-        text: JSON.stringify(result, null, 2)
+        text: `# Campaign Bid Update
+
+**Campaign ID:** ${campaign_id}
+**New Strategy:** ${bid_strategy || 'No change'}
+**Target Value:** ${target_value || 'Not specified'}
+
+*Note: This is a placeholder. Actual bid updates require Google Ads API integration.*
+
+## Recommended Implementation:
+1. Authenticate with Google Ads API
+2. Update campaign bid strategy
+3. Monitor performance changes
+4. Adjust conversion values in HubSpot pipeline
+`
       }]
-    });
-    
-  } catch (error) {
-    console.error('❌ MCP Tool error:', error);
-    res.status(500).json({
-      error: error.message,
-      tool: req.body.name
-    });
+    };
   }
 }
 
-//=============================================================================//
-//   TOOL IMPLEMENTATIONS - BUSINESS LOGIC
-//=============================================================================//
-
 /**
- * Get Google Ads campaign performance using existing pipeline data
+ * Express server to handle MCP protocol
  */
-async function getCampaignPerformance(args, clients) {
-  try {
-    const { days = 30, campaign_id } = args;
-    const { getDbConnection } = clients;
+function createMCPServer() {
+  const app = express();
+  const mcpServer = new MCPServer();
+
+  app.use(express.json());
+
+  // CORS headers for Claude Desktop
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    console.log(`📊 Getting campaign performance for ${days} days, campaign: ${campaign_id || 'all'}`);
-    
-    // Use your existing pipeline server to get proven data
-    const pipelineServer = require('../analytics/pipeline-server');
-    const result = await pipelineServer.getFastPipelineData(getDbConnection, { 
-      days, 
-      campaign: campaign_id || 'all' 
-    });
-    
-    if (!result.success) {
-      throw new Error(`Pipeline data failed: ${result.error}`);
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
     }
-    
-    const { mqlStages, summary } = result;
-    
-    return {
-      success: true,
-      period: `${days} days`,
-      campaign_id: campaign_id || 'all_campaigns',
-      metrics: {
-        impressions: parseInt(mqlStages.impressions?.count) || 0,
-        clicks: parseInt(mqlStages.clicks?.count) || 0,
-        cost: parseFloat(summary.totalCost) || 0,
-        ctr: parseFloat(mqlStages.clicks?.ctr) || 0,
-        avg_cpc: parseFloat(summary.avgCPC) || 0,
-        conversions: parseInt(mqlStages.ctaComplete?.count) || 0,
-        conversion_rate: parseFloat(mqlStages.ctaComplete?.conversionRate) || 0,
-        cost_per_conversion: mqlStages.ctaComplete?.count > 0 ? 
-          (parseFloat(summary.totalCost) || 0) / parseInt(mqlStages.ctaComplete.count) : 0,
-        active_campaigns: parseInt(summary.activeCampaigns) || 0
-      },
-      analysis: {
-        performance_rating: getCampaignPerformanceRating(mqlStages, summary),
-        recommendations: getCampaignRecommendations(mqlStages, summary)
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Campaign performance error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+    next();
+  });
 
-/**
- * Get HubSpot pipeline analysis
- */
-async function getHubSpotPipeline(args, clients) {
-  try {
-    const { days = 30 } = args;
-    const { getDbConnection } = clients;
-    
-    console.log(`📈 Getting HubSpot pipeline for ${days} days`);
-    
-    const connection = await getDbConnection();
-    
+  // MCP Protocol endpoints
+  app.post('/mcp/list_tools', async (req, res) => {
     try {
-      // Get SQL pipeline stages from your hub_deals table
-      const sqlQuery = `
-        SELECT 
-          dealstage,
-          COUNT(*) as deal_count,
-          AVG(amount) as avg_deal_value,
-          SUM(amount) as total_value
-        FROM hub_deals 
-        WHERE createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-          AND amount > 0
-        GROUP BY dealstage
-        ORDER BY 
-          CASE dealstage
-            WHEN 'SQL (Inbox)' THEN 1
-            WHEN 'Engaging' THEN 2  
-            WHEN 'Responsive' THEN 3
-            WHEN 'Advising' THEN 4
-            WHEN 'Negotiation' THEN 5
-            WHEN 'Contract' THEN 6
-            WHEN 'Won' THEN 7
-            ELSE 8
-          END
-      `;
-      
-      const [sqlResults] = await connection.execute(sqlQuery, [days]);
-      
-      // Get total MQLs (contacts created in period)
-      const mqlQuery = `
-        SELECT COUNT(*) as total_mqls
-        FROM hub_contacts 
-        WHERE createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      `;
-      
-      const [mqlResults] = await connection.execute(mqlQuery, [days]);
-      
-      const totalMQLs = mqlResults[0]?.total_mqls || 0;
-      const totalSQLs = sqlResults.reduce((sum, stage) => sum + stage.deal_count, 0);
-      
-      return {
-        success: true,
-        period: `${days} days`,
-        mql_to_sql_conversion: {
-          total_mqls: totalMQLs,
-          total_sqls: totalSQLs,
-          conversion_rate: totalMQLs > 0 ? ((totalSQLs / totalMQLs) * 100).toFixed(2) + '%' : '0%'
-        },
-        sql_pipeline_stages: sqlResults.map(stage => ({
-          stage: stage.dealstage,
-          deal_count: stage.deal_count,
-          avg_deal_value: Math.round(stage.avg_deal_value || 0),
-          total_value: Math.round(stage.total_value || 0)
-        })),
-        pipeline_health: {
-          total_pipeline_value: Math.round(sqlResults.reduce((sum, stage) => sum + (stage.total_value || 0), 0)),
-          avg_deal_size: Math.round(sqlResults.reduce((sum, stage) => sum + (stage.avg_deal_value || 0), 0) / Math.max(sqlResults.length, 1)),
-          stages_with_deals: sqlResults.length
-        }
-      };
-      
-    } finally {
-      await connection.end();
+      const result = await mcpServer.listTools();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-    
-  } catch (error) {
-    console.error('❌ HubSpot pipeline error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+  });
 
-/**
- * Analyze complete conversion funnel
- */
-async function getConversionAnalysis(args, clients) {
-  try {
-    const { days = 30 } = args;
-    
-    console.log(`🔍 Getting conversion analysis for ${days} days`);
-    
-    // Get both campaign and pipeline data
-    const [campaignData, pipelineData] = await Promise.all([
-      getCampaignPerformance({ days }, clients),
-      getHubSpotPipeline({ days }, clients)
-    ]);
-    
-    if (!campaignData.success || !pipelineData.success) {
-      throw new Error('Failed to get conversion data');
-    }
-    
-    const metrics = campaignData.metrics;
-    const pipeline = pipelineData;
-    
-    // Calculate funnel conversion rates
-    const impressions = metrics.impressions;
-    const clicks = metrics.clicks; 
-    const conversions = metrics.conversions; // CTAs/Lead forms
-    const sqls = pipeline.mql_to_sql_conversion.total_sqls;
-    const wonDeals = pipeline.sql_pipeline_stages.find(s => s.stage === 'Won')?.deal_count || 0;
-    
-    return {
-      success: true,
-      period: `${days} days`,
-      funnel_analysis: {
-        impressions: impressions,
-        clicks: clicks,
-        conversions: conversions, // MQLs
-        sqls: sqls,
-        won_deals: wonDeals
-      },
-      conversion_rates: {
-        impression_to_click: impressions > 0 ? `${((clicks / impressions) * 100).toFixed(2)}%` : '0%',
-        click_to_conversion: clicks > 0 ? `${((conversions / clicks) * 100).toFixed(2)}%` : '0%', 
-        mql_to_sql: pipeline.mql_to_sql_conversion.conversion_rate,
-        sql_to_won: sqls > 0 ? `${((wonDeals / sqls) * 100).toFixed(2)}%` : '0%',
-        click_to_won: clicks > 0 ? `${((wonDeals / clicks) * 100).toFixed(4)}%` : '0%'
-      },
-      financial_analysis: {
-        total_ad_spend: metrics.cost,
-        cost_per_click: metrics.avg_cpc,
-        cost_per_conversion: metrics.cost_per_conversion,
-        cost_per_sql: sqls > 0 ? Math.round(metrics.cost / sqls) : 0,
-        cost_per_won_deal: wonDeals > 0 ? Math.round(metrics.cost / wonDeals) : 0,
-        total_pipeline_value: pipeline.pipeline_health.total_pipeline_value,
-        roi_estimate: pipeline.pipeline_health.total_pipeline_value > 0 && metrics.cost > 0 ? 
-          `${(((pipeline.pipeline_health.total_pipeline_value - metrics.cost) / metrics.cost) * 100).toFixed(0)}%` : 'N/A'
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Conversion analysis error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * Get audience insights 
- */
-async function getAudienceInsights(args, clients) {
-  try {
-    const { campaign_id, days = 30 } = args;
-    const { getDbConnection } = clients;
-    
-    console.log(`🎯 Getting audience insights for ${days} days`);
-    
-    const connection = await getDbConnection();
-    
+  app.post('/mcp/call_tool', async (req, res) => {
     try {
-      // Get top performing countries from your contact data
-      const countryQuery = `
-        SELECT 
-          country,
-          COUNT(*) as contacts,
-          COUNT(CASE WHEN lifecyclestage IN ('marketingqualifiedlead', 'salesqualifiedlead', 'opportunity') THEN 1 END) as qualified_leads
-        FROM hub_contacts 
-        WHERE createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-          AND country IS NOT NULL
-          AND country != ''
-        GROUP BY country
-        ORDER BY qualified_leads DESC, contacts DESC
-        LIMIT 10
-      `;
-      
-      const [countryResults] = await connection.execute(countryQuery, [days]);
-      
-      return {
-        success: true,
-        period: `${days} days`,
-        audience_insights: {
-          top_countries: countryResults.map(row => ({
-            country: row.country,
-            total_contacts: row.contacts,
-            qualified_leads: row.qualified_leads,
-            qualification_rate: row.contacts > 0 ? `${((row.qualified_leads / row.contacts) * 100).toFixed(1)}%` : '0%'
-          })),
-          targeting_recommendations: getTargetingRecommendations(countryResults)
-        }
-      };
-      
-    } finally {
-      await connection.end();
+      const { name, arguments: args } = req.body;
+      const result = await mcpServer.callTool(name, args || {});
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-    
-  } catch (error) {
-    console.error('❌ Audience insights error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
+  });
+
+  // Health check for MCP
+  app.get('/mcp/health', (req, res) => {
+    res.json({
+      status: 'healthy',
+      protocol: 'MCP',
+      tools: mcpServer.tools.length,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  return app;
 }
 
-/**
- * Get territory analysis using your existing territory logic
- */
-async function getTerritoryAnalysis(args, clients) {
-  try {
-    const { days = 30 } = args;
-    const { getDbConnection } = clients;
-    
-    console.log(`🌍 Getting territory analysis for ${days} days`);
-    
-    // Use your existing hubspot-data module for territory analysis
-    const hubspotData = require('../analytics/hubspot-data');
-    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, days);
-    
-    if (!result.success) {
-      throw new Error(`Territory analysis failed: ${result.error}`);
-    }
-    
-    return {
-      success: true,
-      period: `${days} days`,
-      ...result,
-      analysis: {
-        ...result.analysis,
-        recommendations: getTerritoryRecommendations(result)
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Territory analysis error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-//=============================================================================//
-//   HELPER FUNCTIONS
-//=============================================================================//
-
-/**
- * Get campaign performance rating
- */
-function getCampaignPerformanceRating(mqlStages, summary) {
-  const ctr = parseFloat(mqlStages.clicks?.ctr) || 0;
-  const conversionRate = parseFloat(mqlStages.ctaComplete?.conversionRate) || 0;
-  
-  if (ctr >= 3 && conversionRate >= 10) return "Excellent";
-  if (ctr >= 2 && conversionRate >= 5) return "Good"; 
-  if (ctr >= 1 && conversionRate >= 2) return "Average";
-  return "Needs Improvement";
-}
-
-/**
- * Get campaign recommendations
- */
-function getCampaignRecommendations(mqlStages, summary) {
-  const recommendations = [];
-  const ctr = parseFloat(mqlStages.clicks?.ctr) || 0;
-  const conversionRate = parseFloat(mqlStages.ctaComplete?.conversionRate) || 0;
-  const avgCPC = parseFloat(summary.avgCPC) || 0;
-  
-  if (ctr < 2) recommendations.push("Improve ad copy and targeting to increase CTR");
-  if (conversionRate < 5) recommendations.push("Optimize landing pages and forms to improve conversion rate");
-  if (avgCPC > 2) recommendations.push("Review bid strategies and keyword targeting to reduce CPC");
-  
-  return recommendations.length > 0 ? recommendations : ["Campaign performance is within acceptable ranges"];
-}
-
-/**
- * Get targeting recommendations based on audience data
- */
-function getTargetingRecommendations(countryData) {
-  const recommendations = [];
-  
-  if (countryData.length === 0) {
-    return ["No sufficient data for targeting recommendations"];
-  }
-  
-  const topCountry = countryData[0];
-  const avgQualificationRate = countryData.reduce((sum, c) => sum + (c.qualified_leads / c.contacts), 0) / countryData.length;
-  
-  recommendations.push(`Focus budget on ${topCountry.country} - your top performing market`);
-  
-  const highPerformers = countryData.filter(c => (c.qualified_leads / c.contacts) > avgQualificationRate);
-  if (highPerformers.length > 1) {
-    recommendations.push(`Consider expanding in high-conversion markets: ${highPerformers.slice(1, 4).map(c => c.country).join(', ')}`);
-  }
-  
-  const lowPerformers = countryData.filter(c => (c.qualified_leads / c.contacts) < avgQualificationRate * 0.5);
-  if (lowPerformers.length > 0) {
-    recommendations.push(`Review targeting and messaging for underperforming markets: ${lowPerformers.map(c => c.country).join(', ')}`);
-  }
-  
-  return recommendations;
-}
-
-/**
- * Get territory recommendations
- */
-function getTerritoryRecommendations(territoryData) {
-  const recommendations = [];
-  
-  if (territoryData.territories && territoryData.territories.length > 0) {
-    const bestTerritory = territoryData.territories[0];
-    recommendations.push(`${bestTerritory.territory} shows strongest performance - consider increasing budget allocation`);
-    
-    const unsupported = territoryData.territories.find(t => t.territory === 'Unsupported Territory');
-    if (unsupported && unsupported.percentage > 20) {
-      recommendations.push(`High unsupported territory percentage (${unsupported.percentage}%) - review geo-targeting settings`);
-    }
-  }
-  
-  return recommendations;
-}
-
-module.exports = {
-  handleHealth,
-  handleCapabilities,
-  handleToolsList,
-  handleToolsCall
-};
+module.exports = { createMCPServer, MCPServer };

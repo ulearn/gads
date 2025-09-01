@@ -46,7 +46,6 @@ app.use((req, res, next) => {
 app.use('/gads', router);
 const PORT = process.env.PORT || 8080;
 
-
 //=============================================================================//
 //   CENTRALIZED API CLIENT SETUP
 //=============================================================================//
@@ -120,36 +119,29 @@ try {
   console.warn('⚠️ Dashboard Server not found');
 }
 
-// Load MCP Server Module
+//=============================================================================//
+//   MCP (Model Context Protocol) SERVER INTEGRATION
+//=============================================================================//
+
+console.log('🤖 Setting up MCP server for Claude Desktop...');
+
+// Load MCP Server and create instance - CORRECTED PATH
+let mcpApp = null;
 try {
-  modules.mcpServer = require('./scripts/mcp/mcp-server');
-  console.log('✅ MCP Server loaded');
+  const { createMCPServer } = require('./scripts/mcp/mcp-server');
+  mcpApp = createMCPServer();
+  modules.mcpServer = true;
+  
+  // Mount MCP endpoints under /gads/mcp
+  router.use('/mcp', mcpApp);
+  
+  console.log('✅ MCP server ready at: https://hub.ulearnschool.com/gads/mcp/');
+  console.log('🔧 Claude Desktop MCP URL: https://hub.ulearnschool.com/gads/mcp');
 } catch (error) {
-  console.warn('⚠️ MCP Server not found');
+  console.warn('⚠️ MCP Server not available:', error.message);
+  console.log('Error details:', error.stack);
+  modules.mcpServer = null;
 }
-
-//=============================================================================//
-//   MCP AUTHENTICATION SETUP
-//=============================================================================//
-
-// Generate MCP Bearer Token
-const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || 'ulearn-mcp-fallback-token';
-console.log(`🔑 MCP Bearer Token: ${MCP_BEARER_TOKEN}`);
-
-// MCP Authentication middleware
-const mcpAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Bearer token required' });
-  }
-  
-  const token = authHeader.substring(7);
-  if (token !== MCP_BEARER_TOKEN) {
-    return res.status(401).json({ error: 'Invalid bearer token' });
-  }
-  
-  next();
-};
 
 //=============================================================================//
 //   BASIC ROUTES
@@ -163,7 +155,7 @@ router.get('/', (req, res) => {
   const hasMCP = !!modules.mcpServer;
   
   res.send(`
-    <h1>🎯 Google Ads AI Iterator - RECOVERY MODE v6</h1>
+    <h1>🎯 Google Ads AI Iterator - RECOVERY MODE v7</h1>
     <p><strong>System Status:</strong> Running | <strong>Build:</strong> ${new Date().toISOString()}</p>
     
     <h2>🏥 System Health</h2>
@@ -188,6 +180,8 @@ router.get('/', (req, res) => {
     ${hasMCP ? `
       <h3>✅ Claude AI Integration</h3>
       <p><a href="/gads/mcp/health">🤖 MCP Health Check</a></p>
+      <p><strong>Claude Desktop URL:</strong> <code>https://hub.ulearnschool.com/gads/mcp</code></p>
+      <p>Available Tools: Campaign Performance, Pipeline Analysis, Burn Rate, Audience Insights, Keyword Performance, Bid Updates</p>
     ` : `
       <p style="color: #d63384;">❌ MCP Server not available</p>
     `}
@@ -273,55 +267,6 @@ router.get('/test', (req, res) => {
       dashboard_server: !!modules.dashboardServer,
       mcp_server: !!modules.mcpServer
     }
-  });
-});
-
-//=============================================================================//
-//   MCP ROUTES - ROUTING ONLY
-//=============================================================================//
-
-// MCP Health endpoint (no auth needed)
-router.get('/mcp/health', (req, res) => {
-  if (!modules.mcpServer) {
-    return res.status(503).json({
-      error: 'MCP module not available',
-      service: "ULearn Google Ads MCP Server",
-      status: "unavailable"
-    });
-  }
-  
-  modules.mcpServer.handleHealth(req, res);
-});
-
-// MCP Capabilities
-router.get('/mcp/capabilities', mcpAuth, (req, res) => {
-  if (!modules.mcpServer) {
-    return res.status(503).json({ error: 'MCP module not available' });
-  }
-  
-  modules.mcpServer.handleCapabilities(req, res);
-});
-
-// MCP Tools List
-router.get('/mcp/tools/list', mcpAuth, (req, res) => {
-  if (!modules.mcpServer) {
-    return res.status(503).json({ error: 'MCP module not available' });
-  }
-  
-  modules.mcpServer.handleToolsList(req, res);
-});
-
-// MCP Tools Call
-router.post('/mcp/tools/call', mcpAuth, express.json(), async (req, res) => {
-  if (!modules.mcpServer) {
-    return res.status(503).json({ error: 'MCP module not available' });
-  }
-  
-  // Pass the authenticated clients to the MCP module (same pattern as ECL routes)
-  await modules.mcpServer.handleToolsCall(req, res, {
-    getDbConnection,
-    hubspotClient,
-    googleOAuth
   });
 });
 
@@ -440,7 +385,6 @@ router.get('/hubspot/contact/:id', async (req, res) => {
     });
   }
 });
-
 
 //=============================================================================//
 //   MYSQL ROUTES
@@ -593,9 +537,6 @@ router.get('/analytics/attribution-test', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-
-
 
 // Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC
 router.get('/analytics/burn-rate-timeseries', (req, res) => {
@@ -763,8 +704,6 @@ router.get('/ecl/logs', async (req, res) => {
   }
 });
 
-
-
 //-------------------------------------------------------
 // Main ECL Webhook Endpoint
 //---------------------------------------------------------
@@ -928,6 +867,12 @@ router.use((error, req, res, next) => {
 
 // 404 handler
 router.use((req, res) => {
+  const mcpEndpoints = modules.mcpServer ? [
+    '/gads/mcp/health',
+    '/gads/mcp/list_tools', 
+    '/gads/mcp/call_tool'
+  ] : [];
+
   res.status(404).json({
     error: 'Endpoint not found',
     path: req.path,
@@ -938,44 +883,43 @@ router.use((req, res) => {
       '/gads/test',
       '/gads/recovery/status',
       '/gads/logs',
+      ...mcpEndpoints,
       modules.dashboardServer ? '/gads/dashboard' : null,
       modules.pipelineProb ? '/gads/analytics/prob' : null,
-      modules.mcpServer ? '/gads/mcp/health' : null,
-      modules.mcpServer ? '/gads/mcp/tools/list' : null,
       '/gads/scripts/analytics/burn-rate.html',
       '/gads/scripts/analytics/pipeline-analysis.html'
     ].filter(Boolean),
+    mcp_info: modules.mcpServer ? {
+      protocol: 'Model Context Protocol',
+      claude_desktop_url: 'https://hub.ulearnschool.com/gads/mcp',
+      tools_available: 6
+    } : {
+      status: 'not_available',
+      message: 'MCP server not loaded'
+    },
     timestamp: new Date().toISOString()
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🎉 Google Ads AI Iterator started on port ${PORT} - RECOVERY MODE v6`);
+  console.log(`🎉 Google Ads AI Iterator started on port ${PORT} - RECOVERY MODE v7`);
   console.log(`📊 Dashboard: https://hub.ulearnschool.com/gads/`);
   console.log(`🏥 Health: https://hub.ulearnschool.com/gads/health`);
   console.log('');
-  console.log('⚠️  RECOVERY MODE v6 ACTIVE:');
+  console.log('⚠️  RECOVERY MODE v7 ACTIVE:');
   console.log(`   🔧 MySQL Updater: ${modules.mysqlCampaignUpdater ? 'Available' : 'Missing'}`);
   console.log(`   📊 Dashboard: ${modules.dashboardServer ? 'Available' : 'Missing'}`);
   console.log(`   📈 Pipeline: ${modules.pipelineProb ? 'Available' : 'Missing'}`);
   console.log(`   🤖 MCP Server: ${modules.mcpServer ? 'Available' : 'Missing'}`);
+  
+  if (modules.mcpServer) {
+    console.log('');
+    console.log('🤖 Claude Desktop MCP Integration Ready:');
+    console.log('   URL: https://hub.ulearnschool.com/gads/mcp');
+    console.log('   Protocol: HTTP (Model Context Protocol)');
+    console.log('   Available Tools: 6');
+  }
 });
-
-// Log Claude Desktop configuration if MCP is available
-if (modules.mcpServer) {
-  console.log('\n🖥️ Claude Desktop Configuration:');
-  console.log(JSON.stringify({
-    mcpServers: {
-      "ulearn-gads": {
-        "url": "https://hub.ulearnschool.com/gads/mcp",
-        "auth": {
-          "type": "bearer",
-          "token": MCP_BEARER_TOKEN
-        }
-      }
-    }
-  }, null, 2));
-}
 
 module.exports = app;
