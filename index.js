@@ -758,56 +758,6 @@ try {
 const { spawn } = require('child_process');
 const path = require('path');
 
-// Start SSE MCP server as subprocess - DELETEING
-/*
-const sseServerPath = path.join(__dirname, 'scripts/mcp-sse/server.js');
-const sseProcess = spawn('node', [sseServerPath], {
-  cwd: path.join(__dirname, 'scripts/mcp-sse'),
-  stdio: 'inherit'
-});
-
-sseProcess.on('error', (error) => {
-  console.error('❌ SSE MCP Server failed:', error.message);
-});
-
-console.log('🚀 SSE MCP Server started as subprocess');
-*/
-
-// ADD PROXY CODE HERE:
-// Proxy SSE endpoints through main server
-const { createProxyMiddleware } = require('http-proxy-middleware');
-
-// SSE proxy
-router.get('/mcp-sse/sse', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/gads/mcp-sse': ''
-  },
-  ws: true,
-  headers: {
-    'Connection': 'keep-alive',
-    'Cache-Control': 'no-cache'
-  }
-}));
-
-// Messages proxy
-router.post('/mcp-sse/messages', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/gads/mcp-sse': ''
-  }
-}));
-
-router.get('/mcp-sse/health', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/gads/mcp-sse': ''
-  }
-}));
-
 
 //=============================================================================//
 //   STATIC FILE ROUTES
