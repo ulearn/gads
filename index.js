@@ -730,6 +730,48 @@ router.get('/ecl/test-live', async (req, res) => {
 //   MCP (Model Context Protocol) SERVER INTEGRATION - VERSION 2.1
 //=============================================================================//
 
+// Load MCP SSE handler safely
+let mcpSSEHandler = null;
+try {
+  mcpSSEHandler = require('./scripts/mcp-sse-example/mcp-sse-handler');
+  console.log('✅ MCP SSE Handler loaded');
+} catch (error) {
+  console.warn('⚠️ MCP SSE Handler not found');
+}
+
+// MCP SSE Routes
+if (mcpSSEHandler) {
+  // Server info endpoint
+  router.get('/mcp-sse', (req, res) => {
+    mcpSSEHandler.handleServerInfo(req, res);
+  });
+  
+  // SSE endpoint
+  router.get('/mcp-sse/sse', async (req, res) => {
+    await mcpSSEHandler.handleSSEConnection(req, res);
+  });
+  
+  // Messages endpoint  
+  router.post('/mcp-sse/messages', async (req, res) => {
+    await mcpSSEHandler.handlePostMessage(req, res);
+  });
+  
+  // Main MCP endpoint (Custom Connector)
+  router.all('/mcp-sse/mcp', async (req, res) => {
+    await mcpSSEHandler.handleMCPRequest(req, res);
+  });
+  
+  // Health check
+  router.get('/mcp-sse/health', (req, res) => {
+    mcpSSEHandler.handleHealthCheck(req, res);
+  });
+  
+  console.log('🚀 MCP SSE endpoints registered at /gads/mcp-sse/*');
+}
+
+//=============================== 
+// Our First Remote MCP Server Effort - couldn't connect via Customer Connector :/
+//=============================== 
 console.log('Setting up MCP server v2.0 for Claude AI integration...');
 
 let mcpApp = null;
