@@ -9,6 +9,7 @@ const { GoogleAdsApi } = require('google-ads-api');
 const dashboardServer = require('./scripts/analytics/dashboard-server');
 const pipelineProb = require('./scripts/analytics/pipeline-probs');
 const eclHandler = require('./scripts/google/ecl-handler');
+const crypto = require('crypto');
 
 // Load environment variables
 require('dotenv').config();
@@ -91,7 +92,8 @@ const getDbConnection = async () => {
 const modules = {
   mysqlCampaignUpdater: null,
   pipelineProb: null,
-  dashboardServer: null
+  dashboardServer: null,
+  mcpServer: null
 };
 
 // Load MySQL Campaign Updater
@@ -118,6 +120,37 @@ try {
   console.warn('⚠️ Dashboard Server not found');
 }
 
+// Load MCP Server Module
+try {
+  modules.mcpServer = require('./scripts/mcp/mcp-server');
+  console.log('✅ MCP Server loaded');
+} catch (error) {
+  console.warn('⚠️ MCP Server not found');
+}
+
+//=============================================================================//
+//   MCP AUTHENTICATION SETUP
+//=============================================================================//
+
+// Generate MCP Bearer Token
+const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || `ulearn-mcp-${crypto.randomBytes(8).toString('hex')}`;
+console.log(`🔑 MCP Bearer Token: ${MCP_BEARER_TOKEN}`);
+
+// MCP Authentication middleware
+const mcpAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Bearer token required' });
+  }
+  
+  const token = authHeader.substring(7);
+  if (token !== MCP_BEARER_TOKEN) {
+    return res.status(401).json({ error: 'Invalid bearer token' });
+  }
+  
+  next();
+};
+
 //=============================================================================//
 //   BASIC ROUTES
 //=============================================================================//
@@ -127,6 +160,7 @@ router.get('/', (req, res) => {
   const hasUpdater = !!modules.mysqlCampaignUpdater;
   const hasDashboard = !!modules.dashboardServer;
   const hasPipeline = !!modules.pipelineProb;
+  const hasMCP = !!modules.mcpServer;
   
   res.send(`
     <h1>🎯 Google Ads AI Iterator - RECOVERY MODE v6</h1>
@@ -149,6 +183,13 @@ router.get('/', (req, res) => {
       <p><a href="/gads/analytics/prob?days=30">📈 Pipeline Probabilities (API)</a></p>
     ` : `
       <p style="color: #d63384;">❌ Pipeline Analysis not available</p>
+    `}
+
+    ${hasMCP ? `
+      <h3>✅ Claude AI Integration</h3>
+      <p><a href="/gads/mcp/health">🤖 MCP Health Check</a></p>
+    ` : `
+      <p style="color: #d63384;">❌ MCP Server not available</p>
     `}
     
     <h3>📁 Direct File Access</h3>
@@ -173,7 +214,8 @@ router.get('/health', async (req, res) => {
     loaded_modules: {
       mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
       pipeline_probabilities: !!modules.pipelineProb,
-      dashboard_server: !!modules.dashboardServer
+      dashboard_server: !!modules.dashboardServer,
+      mcp_server: !!modules.mcpServer
     }
   };
 
@@ -228,8 +270,58 @@ router.get('/test', (req, res) => {
     loaded_modules: {
       mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
       pipeline_probabilities: !!modules.pipelineProb,
-      dashboard_server: !!modules.dashboardServer
+      dashboard_server: !!modules.dashboardServer,
+      mcp_server: !!modules.mcpServer
     }
+  });
+});
+
+//=============================================================================//
+//   MCP ROUTES - ROUTING ONLY
+//=============================================================================//
+
+// MCP Health endpoint (no auth needed)
+router.get('/mcp/health', (req, res) => {
+  if (!modules.mcpServer) {
+    return res.status(503).json({
+      error: 'MCP module not available',
+      service: "ULearn Google Ads MCP Server",
+      status: "unavailable"
+    });
+  }
+  
+  modules.mcpServer.handleHealth(req, res);
+});
+
+// MCP Capabilities
+router.get('/mcp/capabilities', mcpAuth, (req, res) => {
+  if (!modules.mcpServer) {
+    return res.status(503).json({ error: 'MCP module not available' });
+  }
+  
+  modules.mcpServer.handleCapabilities(req, res);
+});
+
+// MCP Tools List
+router.get('/mcp/tools/list', mcpAuth, (req, res) => {
+  if (!modules.mcpServer) {
+    return res.status(503).json({ error: 'MCP module not available' });
+  }
+  
+  modules.mcpServer.handleToolsList(req, res);
+});
+
+// MCP Tools Call
+router.post('/mcp/tools/call', mcpAuth, express.json(), async (req, res) => {
+  if (!modules.mcpServer) {
+    return res.status(503).json({ error: 'MCP module not available' });
+  }
+  
+  // Pass the authenticated clients to the MCP module (same pattern as ECL routes)
+  await modules.mcpServer.handleToolsCall(req, res, {
+    getDbConnection,
+    hubspotClient,
+    googleOAuth
   });
 });
 
@@ -777,14 +869,16 @@ router.get('/recovery/status', (req, res) => {
     loaded_modules: {
       mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
       pipeline_probabilities: !!modules.pipelineProb,
-      dashboard_server: !!modules.dashboardServer
+      dashboard_server: !!modules.dashboardServer,
+      mcp_server: !!modules.mcpServer
     },
     file_check: {
       'scripts/analytics/pipeline-probs.js': checkFile('scripts/analytics/pipeline-probs.js'),
       'scripts/analytics/dashboard-server.js': checkFile('scripts/analytics/dashboard-server.js'),
       'scripts/analytics/burn-rate.html': checkFile('scripts/analytics/burn-rate.html'),
       'scripts/analytics/pipeline-analysis.html': checkFile('scripts/analytics/pipeline-analysis.html'),
-      'update-mysql-campaigns.js': checkFile('update-mysql-campaigns.js')
+      'update-mysql-campaigns.js': checkFile('update-mysql-campaigns.js'),
+      'scripts/mcp/mcp-server.js': checkFile('scripts/mcp/mcp-server.js')
     }
   });
 });
@@ -846,6 +940,8 @@ router.use((req, res) => {
       '/gads/logs',
       modules.dashboardServer ? '/gads/dashboard' : null,
       modules.pipelineProb ? '/gads/analytics/prob' : null,
+      modules.mcpServer ? '/gads/mcp/health' : null,
+      modules.mcpServer ? '/gads/mcp/tools/list' : null,
       '/gads/scripts/analytics/burn-rate.html',
       '/gads/scripts/analytics/pipeline-analysis.html'
     ].filter(Boolean),
@@ -863,6 +959,23 @@ app.listen(PORT, () => {
   console.log(`   🔧 MySQL Updater: ${modules.mysqlCampaignUpdater ? 'Available' : 'Missing'}`);
   console.log(`   📊 Dashboard: ${modules.dashboardServer ? 'Available' : 'Missing'}`);
   console.log(`   📈 Pipeline: ${modules.pipelineProb ? 'Available' : 'Missing'}`);
+  console.log(`   🤖 MCP Server: ${modules.mcpServer ? 'Available' : 'Missing'}`);
 });
+
+// Log Claude Desktop configuration if MCP is available
+if (modules.mcpServer) {
+  console.log('\n🖥️ Claude Desktop Configuration:');
+  console.log(JSON.stringify({
+    mcpServers: {
+      "ulearn-gads": {
+        "url": "https://hub.ulearnschool.com/gads/mcp",
+        "auth": {
+          "type": "bearer",
+          "token": MCP_BEARER_TOKEN
+        }
+      }
+    }
+  }, null, 2));
+}
 
 module.exports = app;

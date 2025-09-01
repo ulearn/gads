@@ -4,6 +4,7 @@
   "main": "index.js",
   "dependencies": {
     "@hubspot/api-client": "^13.0.0",
+    "@modelcontextprotocol/sdk": "^1.17.4",
     "axios": "^1.11.0",
     "dotenv": "16.6.1",
     "express": "^4.21.2",

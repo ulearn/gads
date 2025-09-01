@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ulearn-gads": {
+      "url": "https://hub.ulearnschool.com:3001/mcp",
+      "auth": {
+        "type": "bearer",
+        "token": "ulearn-mcp-20250901-5f1709520f2f5cf0"
+      }
+    }
+  }
+}
