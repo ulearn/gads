@@ -2,7 +2,6 @@
   "name": "ulearn-google-ads-mcp",
   "version": "1.0.0",
   "description": "ULearn Google Ads MCP Server - Node.js implementation with MySQL and Live API access",
-  "type": "module",
   "scripts": {
     "start": "node mcp-server.js",
     "start:http": "node mcp-http.js",

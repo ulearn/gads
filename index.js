@@ -133,7 +133,7 @@ try {
 //=============================================================================//
 
 // Generate MCP Bearer Token
-const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || `ulearn-mcp-${crypto.randomBytes(8).toString('hex')}`;
+const MCP_BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || 'ulearn-mcp-fallback-token';
 console.log(`🔑 MCP Bearer Token: ${MCP_BEARER_TOKEN}`);
 
 // MCP Authentication middleware
