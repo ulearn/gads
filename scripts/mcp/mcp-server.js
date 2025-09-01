@@ -17,7 +17,7 @@ const mysql = require('mysql2/promise');
 
 require('dotenv').config();
 
-class FixedMCPServer {
+class MCPServer {
   constructor() {
     this.serverInfo = {
       name: "ulearn-google-ads-analyzer",
@@ -702,9 +702,9 @@ ${error.message}
 }
 
 // FIXED: MCP-compliant Express server creation
-function createFixedMCPServer() {
+function createMCPServer() {
   const app = express();
-  const mcp = new FixedMCPServer();
+  const mcp = new MCPServer();
   
   app.use(express.json({ limit: '10mb' }));
 
@@ -816,4 +816,4 @@ function createFixedMCPServer() {
   return app;
 }
 
-module.exports = { createFixedMCPServer, FixedMCPServer };
+module.exports = { createMCPServer, MCPServer };
