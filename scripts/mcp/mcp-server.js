@@ -1,77 +1,48 @@
 /**
- * Model Context Protocol (MCP) Server for Google Ads API Integration
- * /home/hub/public_html/gads/mcp-server.js
+ * Complete MCP Server with Root Endpoint - Version 12
+ * /home/hub/public_html/gads/scripts/mcp/mcp-server.js
  * 
- * This creates the MCP endpoint that Claude Desktop can connect to
- * Provides tools for Google Ads analysis and management
+ * FIXED: Added root endpoint for Claude Desktop connection
+ * FOCUS: Live Google Ads API integration
  */
 
 const express = require('express');
-const mysql = require('mysql2/promise');
-const { GoogleAdsApi } = require('google-ads-api');
-const { google } = require('googleapis');
+const { GoogleAdsApi, enums } = require('google-ads-api');
 
 // Load environment variables
 require('dotenv').config();
 
-// Database configuration
-const dbConfig = {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
-
-// Google Ads OAuth Client
-const googleOAuth = new google.auth.OAuth2(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  process.env.REDIRECT_URI
-);
-
-googleOAuth.setCredentials({
-  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-});
-
-// Create database connection helper
-const getDbConnection = async () => {
-  return await mysql.createConnection(dbConfig);
-};
-
 /**
- * MCP Server Implementation
+ * MCP Server Implementation - Live Google Ads API
  */
 class MCPServer {
   constructor() {
     this.tools = [
       {
-        name: "get_campaign_performance",
-        description: "Get Google Ads campaign performance data with HubSpot pipeline attribution",
+        name: "get_live_campaigns",
+        description: "Get live Google Ads campaign data directly from Google Ads API",
         inputSchema: {
           type: "object",
           properties: {
-            days: {
-              type: "number",
-              description: "Number of days to look back (default: 30)",
-              default: 30
-            },
-            campaign_id: {
+            account_id: {
               type: "string",
-              description: "Optional: Specific campaign ID to analyze"
+              description: "Google Ads account ID (default: test account)",
+              default: "5411183629"
             }
           }
         }
       },
       {
-        name: "get_pipeline_analysis",
-        description: "Analyze the complete MQL to SQL to Won pipeline with stage probabilities",
+        name: "get_campaign_metrics",
+        description: "Get campaign performance metrics from Google Ads API",
         inputSchema: {
           type: "object",
           properties: {
+            account_id: {
+              type: "string", 
+              description: "Google Ads account ID",
+              default: "5411183629"
+            },
             days: {
               type: "number",
               description: "Number of days to analyze (default: 30)",
@@ -81,104 +52,80 @@ class MCPServer {
         }
       },
       {
-        name: "get_audience_insights",
-        description: "Get audience segment performance and targeting insights",
+        name: "get_keyword_data",
+        description: "Get keyword performance data from Google Ads API",
         inputSchema: {
           type: "object",
           properties: {
-            days: {
-              type: "number",
-              description: "Number of days to analyze (default: 30)",
-              default: 30
-            }
-          }
-        }
-      },
-      {
-        name: "get_burn_rate_analysis",
-        description: "Analyze MQL burn rate - contacts who clicked ads but failed SQL validation",
-        inputSchema: {
-          type: "object",
-          properties: {
-            days: {
-              type: "number", 
-              description: "Number of days to analyze (default: 30)",
-              default: 30
-            }
-          }
-        }
-      },
-      {
-        name: "get_keyword_performance",
-        description: "Analyze keyword performance with conversion attribution",
-        inputSchema: {
-          type: "object",
-          properties: {
+            account_id: {
+              type: "string",
+              description: "Google Ads account ID", 
+              default: "5411183629"
+            },
             campaign_id: {
               type: "string",
-              description: "Campaign ID to analyze keywords for"
-            },
-            days: {
-              type: "number",
-              description: "Number of days to analyze (default: 30)", 
-              default: 30
+              description: "Specific campaign ID to analyze"
             }
           }
         }
       },
       {
-        name: "update_campaign_bids",
-        description: "Update campaign bid strategies based on performance data",
+        name: "get_audience_data",
+        description: "Get audience targeting and performance from Google Ads API",
         inputSchema: {
           type: "object",
           properties: {
-            campaign_id: {
+            account_id: {
               type: "string",
-              description: "Campaign ID to update",
-              required: true
-            },
-            bid_strategy: {
-              type: "string",
-              description: "New bid strategy (TARGET_CPA, TARGET_ROAS, etc.)"
-            },
-            target_value: {
-              type: "number",
-              description: "Target CPA or ROAS value"
+              description: "Google Ads account ID",
+              default: "5411183629"
             }
-          },
-          required: ["campaign_id"]
+          }
+        }
+      },
+      {
+        name: "test_connection",
+        description: "Test Google Ads API connection and account access",
+        inputSchema: {
+          type: "object",
+          properties: {
+            account_id: {
+              type: "string",
+              description: "Google Ads account ID to test",
+              default: "5411183629"
+            }
+          }
         }
       }
     ];
+
+    // Initialize Google Ads API client
+    this.googleAdsClient = new GoogleAdsApi({
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      developer_token: process.env.GAdsAPI
+    });
   }
 
-  /**
-   * Handle MCP list_tools request
-   */
   async listTools() {
     return {
       tools: this.tools
     };
   }
 
-  /**
-   * Handle MCP call_tool request
-   */
   async callTool(name, arguments_) {
     try {
       switch (name) {
-        case "get_campaign_performance":
-          return await this.getCampaignPerformance(arguments_);
-        case "get_pipeline_analysis":
-          return await this.getPipelineAnalysis(arguments_);
-        case "get_audience_insights":
-          return await this.getAudienceInsights(arguments_);
-        case "get_burn_rate_analysis":
-          return await this.getBurnRateAnalysis(arguments_);
-        case "get_keyword_performance":
-          return await this.getKeywordPerformance(arguments_);
-        case "update_campaign_bids":
-          return await this.updateCampaignBids(arguments_);
+        case "get_live_campaigns":
+          return await this.getLiveCampaigns(arguments_);
+        case "get_campaign_metrics":
+          return await this.getCampaignMetrics(arguments_);
+        case "get_keyword_data":
+          return await this.getKeywordData(arguments_);
+        case "get_audience_data":
+          return await this.getAudienceData(arguments_);
+        case "test_connection":
+          return await this.testConnection(arguments_);
         default:
           throw new Error(`Unknown tool: ${name}`);
       }
@@ -193,362 +140,219 @@ class MCPServer {
     }
   }
 
-  /**
-   * Get campaign performance data
-   */
-  async getCampaignPerformance({ days = 30, campaign_id = null }) {
-    const connection = await getDbConnection();
-    
+  async testConnection({ account_id = "5411183629" }) {
     try {
-      let query = `
-        SELECT 
-          c.google_campaign_id,
-          c.name as campaign_name,
-          c.type as campaign_type,
-          c.status,
-          c.daily_budget_eur,
-          SUM(m.clicks) as total_clicks,
-          SUM(m.impressions) as total_impressions,
-          SUM(m.cost_eur) as total_cost,
-          AVG(m.ctr) as avg_ctr,
-          AVG(m.cpc_eur) as avg_cpc,
-          COUNT(DISTINCT hc.id) as mql_count,
-          COUNT(DISTINCT hd.id) as sql_count,
-          COUNT(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.id END) as won_count,
-          SUM(CASE WHEN hd.dealstage = 'closedwon' THEN hd.amount ELSE 0 END) as won_value
-        FROM gads_campaigns c
-        LEFT JOIN gads_campaign_metrics m ON c.google_campaign_id = m.google_campaign_id 
-          AND m.date >= DATE_SUB(NOW(), INTERVAL ? DAY)
-        LEFT JOIN hub_contacts hc ON c.google_campaign_id = hc.gclid_campaign_id
-          AND hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
-        ${campaign_id ? 'WHERE c.google_campaign_id = ?' : ''}
-        GROUP BY c.google_campaign_id, c.name, c.type, c.status, c.daily_budget_eur
-        ORDER BY total_cost DESC
-      `;
-
-      const params = campaign_id ? [days, days, campaign_id] : [days, days];
-      const [results] = await connection.execute(query, params);
-
-      // Calculate key metrics
-      const summary = {
-        total_campaigns: results.length,
-        total_cost: results.reduce((sum, r) => sum + (parseFloat(r.total_cost) || 0), 0),
-        total_clicks: results.reduce((sum, r) => sum + (parseInt(r.total_clicks) || 0), 0),
-        total_mqls: results.reduce((sum, r) => sum + (parseInt(r.mql_count) || 0), 0),
-        total_sqls: results.reduce((sum, r) => sum + (parseInt(r.sql_count) || 0), 0),
-        total_won: results.reduce((sum, r) => sum + (parseInt(r.won_count) || 0), 0),
-        total_won_value: results.reduce((sum, r) => sum + (parseFloat(r.won_value) || 0), 0)
-      };
-
-      // Calculate conversion rates
-      summary.click_to_mql_rate = summary.total_clicks > 0 ? (summary.total_mqls / summary.total_clicks * 100) : 0;
-      summary.mql_to_sql_rate = summary.total_mqls > 0 ? (summary.total_sqls / summary.total_mqls * 100) : 0;
-      summary.sql_to_won_rate = summary.total_sqls > 0 ? (summary.total_won / summary.total_sqls * 100) : 0;
-      summary.roas = summary.total_cost > 0 ? (summary.total_won_value / summary.total_cost) : 0;
-
-      return {
-        content: [{
-          type: "text",
-          text: `# Google Ads Campaign Performance Analysis (${days} days)
-
-## Summary Metrics
-- **Total Campaigns:** ${summary.total_campaigns}
-- **Total Cost:** €${summary.total_cost.toFixed(2)}
-- **Total Clicks:** ${summary.total_clicks.toLocaleString()}
-- **Total MQLs:** ${summary.total_mqls}
-- **Total SQLs:** ${summary.total_sqls}  
-- **Total Won:** ${summary.total_won}
-- **Total Won Value:** €${summary.total_won_value.toFixed(2)}
-
-## Conversion Funnel
-- **Click → MQL Rate:** ${summary.click_to_mql_rate.toFixed(2)}%
-- **MQL → SQL Rate:** ${summary.mql_to_sql_rate.toFixed(2)}%
-- **SQL → Won Rate:** ${summary.sql_to_won_rate.toFixed(2)}%
-- **Overall ROAS:** ${summary.roas.toFixed(2)}x
-
-## Campaign Details
-${results.map(campaign => `
-**${campaign.campaign_name}** (${campaign.campaign_type})
-- Cost: €${(parseFloat(campaign.total_cost) || 0).toFixed(2)} | Clicks: ${campaign.total_clicks || 0}
-- MQLs: ${campaign.mql_count || 0} | SQLs: ${campaign.sql_count || 0} | Won: ${campaign.won_count || 0}
-- CPC: €${(parseFloat(campaign.avg_cpc) || 0).toFixed(2)} | CTR: ${(parseFloat(campaign.avg_ctr) || 0).toFixed(2)}%
-- Budget: €${(parseFloat(campaign.daily_budget_eur) || 0).toFixed(2)}/day | Status: ${campaign.status}
-`).join('\n')}
-`
-        }]
-      };
-
-    } finally {
-      await connection.end();
-    }
-  }
-
-  /**
-   * Get pipeline analysis with stage probabilities
-   */
-  async getPipelineAnalysis({ days = 30 }) {
-    const connection = await getDbConnection();
-    
-    try {
-      // Get pipeline stage data
-      const [stageData] = await connection.execute(`
-        SELECT 
-          hd.dealstage,
-          COUNT(*) as deal_count,
-          AVG(hd.amount) as avg_deal_value,
-          SUM(hd.amount) as total_value,
-          AVG(DATEDIFF(hd.closedate, hd.createdate)) as avg_days_in_stage
-        FROM hub_deals hd
-        WHERE hd.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-        GROUP BY hd.dealstage
-        ORDER BY 
-          CASE hd.dealstage
-            WHEN 'sql' THEN 1
-            WHEN 'engaging' THEN 2  
-            WHEN 'responsive' THEN 3
-            WHEN 'advising' THEN 4
-            WHEN 'negotiation' THEN 5
-            WHEN 'contact' THEN 6
-            WHEN 'closedwon' THEN 7
-            WHEN 'closedlost' THEN 8
-            ELSE 9
-          END
-      `, [days]);
-
-      // Calculate stage probabilities (this would use your pipeline-probs.js logic)
-      const stageProbabilities = {
-        'sql': 0.10,
-        'engaging': 0.25,
-        'responsive': 0.50, 
-        'advising': 0.60,
-        'negotiation': 0.75,
-        'contact': 0.90,
-        'closedwon': 1.00
-      };
-
-      // Get MQL data
-      const [mqlData] = await connection.execute(`
-        SELECT 
-          COUNT(*) as total_mqls,
-          COUNT(DISTINCT CASE WHEN hd.id IS NOT NULL THEN hc.id END) as mqls_with_deals,
-          territory as country_territory,
-          COUNT(*) as mql_count
-        FROM hub_contacts hc
-        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
-        WHERE hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-          AND hc.lifecyclestage = 'marketingqualifiedlead'
-        GROUP BY territory
-      `, [days]);
-
-      const totalMQLs = mqlData.reduce((sum, r) => sum + r.mql_count, 0);
-      const totalDeals = stageData.reduce((sum, r) => sum + r.deal_count, 0);
-
-      return {
-        content: [{
-          type: "text", 
-          text: `# Pipeline Analysis (${days} days)
-
-## MQL to SQL Conversion
-- **Total MQLs:** ${totalMQLs}
-- **MQLs with Deals:** ${totalDeals}
-- **MQL → SQL Rate:** ${totalMQLs > 0 ? ((totalDeals / totalMQLs) * 100).toFixed(2) : 0}%
-
-## Pipeline Stage Analysis
-${stageData.map(stage => {
-  const probability = stageProbabilities[stage.dealstage] || 0;
-  const weightedValue = stage.avg_deal_value * probability;
-  
-  return `
-**${stage.dealstage.toUpperCase()}**
-- Deals: ${stage.deal_count} 
-- Avg Value: €${(stage.avg_deal_value || 0).toFixed(2)}
-- Total Value: €${(stage.total_value || 0).toFixed(2)}
-- Stage Probability: ${(probability * 100).toFixed(0)}%
-- Weighted Value: €${weightedValue.toFixed(2)}
-- Avg Days: ${(stage.avg_days_in_stage || 0).toFixed(1)} days`;
-}).join('\n')}
-
-## Territory Breakdown
-${mqlData.map(territory => `
-**${territory.country_territory || 'Unknown'}:** ${territory.mql_count} MQLs
-`).join('')}
-`
-        }]
-      };
-
-    } finally {
-      await connection.end();
-    }
-  }
-
-  /**
-   * Get burn rate analysis
-   */
-  async getBurnRateAnalysis({ days = 30 }) {
-    const connection = await getDbConnection();
-    
-    try {
-      const [burnData] = await connection.execute(`
-        SELECT 
-          DATE(hc.createdate) as date,
-          hc.territory,
-          COUNT(*) as total_contacts,
-          COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
-          COUNT(CASE WHEN hc.territory != 'Unsupported Territory' THEN 1 END) as supported_contacts,
-          COUNT(DISTINCT hd.id) as deals_created
-        FROM hub_contacts hc
-        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
-        WHERE hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-          AND hc.lifecyclestage = 'marketingqualifiedlead'
-        GROUP BY DATE(hc.createdate), hc.territory
-        ORDER BY date DESC
-      `, [days]);
-
-      // Calculate overall burn rate
-      const totalContacts = burnData.reduce((sum, r) => sum + r.total_contacts, 0);
-      const totalUnsupported = burnData.reduce((sum, r) => sum + r.unsupported_contacts, 0);
-      const burnRate = totalContacts > 0 ? (totalUnsupported / totalContacts * 100) : 0;
-
-      // Group by territory
-      const territoryData = {};
-      burnData.forEach(row => {
-        if (!territoryData[row.territory]) {
-          territoryData[row.territory] = {
-            contacts: 0,
-            deals: 0
-          };
-        }
-        territoryData[row.territory].contacts += row.total_contacts;
-        territoryData[row.territory].deals += row.deals_created;
+      const customer = this.googleAdsClient.Customer({
+        customer_id: account_id,
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        login_customer_id: process.env.GADS_TEST_MCC_ID
       });
 
+      const query = `
+        SELECT customer.id, customer.descriptive_name, customer.test_account
+        FROM customer
+      `;
+
+      const results = await customer.query(query);
+
       return {
         content: [{
           type: "text",
-          text: `# MQL Burn Rate Analysis (${days} days)
+          text: `# Google Ads API Connection Test
 
-## Overall Burn Rate
-- **Total MQLs:** ${totalContacts}
-- **Unsupported Territory:** ${totalUnsupported} 
-- **Burn Rate:** ${burnRate.toFixed(2)}%
-- **Supported MQLs:** ${totalContacts - totalUnsupported}
+## Account Details
+- **Account ID:** ${account_id}
+- **Status:** Connected successfully
+- **Account Name:** ${results[0]?.customer?.descriptive_name || 'Unknown'}
+- **Test Account:** ${results[0]?.customer?.test_account ? 'Yes' : 'No'}
+- **MCC ID:** ${process.env.GADS_TEST_MCC_ID}
 
-## Territory Breakdown
-${Object.entries(territoryData).map(([territory, data]) => `
-**${territory}**
-- Contacts: ${data.contacts}
-- Deals Created: ${data.deals} 
-- Deal Rate: ${data.contacts > 0 ? ((data.deals / data.contacts) * 100).toFixed(2) : 0}%
-`).join('')}
+## Connection Status
+✅ **Google Ads API:** Connected
+✅ **Authentication:** Valid refresh token
+✅ **MCC Access:** Working
 
-## Daily Trend
-${burnData.slice(0, 7).map(day => `
-**${day.date}** - Total: ${day.total_contacts}, Unsupported: ${day.unsupported_contacts} (${day.total_contacts > 0 ? ((day.unsupported_contacts / day.total_contacts) * 100).toFixed(1) : 0}%)
-`).join('')}
+Ready for live Google Ads analysis!
 `
         }]
       };
 
-    } finally {
-      await connection.end();
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `# Google Ads API Connection Test
+
+## Error
+❌ **Connection Failed:** ${error.message}
+
+## Troubleshooting
+- Check refresh token validity
+- Verify MCC account access
+- Confirm account ID permissions
+- Review developer token status
+`
+        }]
+      };
     }
   }
 
-  /**
-   * Get audience insights
-   */
-  async getAudienceInsights({ days = 30 }) {
-    // This would integrate with Google Ads API to get audience performance
+  async getLiveCampaigns({ account_id = "5411183629" }) {
+    try {
+      const customer = this.googleAdsClient.Customer({
+        customer_id: account_id,
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        login_customer_id: process.env.GADS_TEST_MCC_ID
+      });
+
+      const query = `
+        SELECT 
+          campaign.id,
+          campaign.name,
+          campaign.status,
+          campaign.campaign_budget,
+          campaign.advertising_channel_type
+        FROM campaign
+        WHERE campaign.status != 'REMOVED'
+        ORDER BY campaign.name
+      `;
+
+      const results = await customer.query(query);
+
+      return {
+        content: [{
+          type: "text",
+          text: `# Live Google Ads Campaigns
+
+## Account: ${account_id}
+## Total Campaigns: ${results.length}
+
+${results.map(row => {
+  const campaign = row.campaign;
+  return `
+**${campaign.name}**
+- ID: ${campaign.id}
+- Status: ${campaign.status}
+- Type: ${campaign.advertising_channel_type}
+- Budget: ${campaign.campaign_budget}
+`;
+}).join('')}
+`
+        }]
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to get live campaigns: ${error.message}`);
+    }
+  }
+
+  async getCampaignMetrics({ account_id = "5411183629", days = 30 }) {
+    try {
+      const customer = this.googleAdsClient.Customer({
+        customer_id: account_id,
+        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        login_customer_id: process.env.GADS_TEST_MCC_ID
+      });
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const dateRange = startDate.toISOString().split('T')[0];
+
+      const query = `
+        SELECT 
+          campaign.id,
+          campaign.name,
+          metrics.impressions,
+          metrics.clicks,
+          metrics.cost_micros,
+          metrics.ctr,
+          metrics.average_cpc,
+          metrics.conversions
+        FROM campaign
+        WHERE segments.date DURING LAST_${days}_DAYS
+          AND campaign.status != 'REMOVED'
+      `;
+
+      const results = await customer.query(query);
+
+      // Calculate totals
+      const totals = results.reduce((acc, row) => {
+        const metrics = row.metrics;
+        acc.impressions += parseInt(metrics.impressions) || 0;
+        acc.clicks += parseInt(metrics.clicks) || 0;
+        acc.cost += (parseInt(metrics.cost_micros) || 0) / 1000000;
+        acc.conversions += parseFloat(metrics.conversions) || 0;
+        return acc;
+      }, { impressions: 0, clicks: 0, cost: 0, conversions: 0 });
+
+      return {
+        content: [{
+          type: "text",
+          text: `# Live Google Ads Campaign Metrics (${days} days)
+
+## Summary Totals
+- **Total Impressions:** ${totals.impressions.toLocaleString()}
+- **Total Clicks:** ${totals.clicks.toLocaleString()}
+- **Total Cost:** €${totals.cost.toFixed(2)}
+- **Total Conversions:** ${totals.conversions.toFixed(1)}
+- **Overall CTR:** ${totals.impressions > 0 ? ((totals.clicks / totals.impressions) * 100).toFixed(2) : 0}%
+- **Average CPC:** €${totals.clicks > 0 ? (totals.cost / totals.clicks).toFixed(2) : 0}
+
+## Campaign Breakdown
+${results.slice(0, 10).map(row => {
+  const campaign = row.campaign;
+  const metrics = row.metrics;
+  const cost = (parseInt(metrics.cost_micros) || 0) / 1000000;
+  
+  return `
+**${campaign.name}**
+- Impressions: ${parseInt(metrics.impressions) || 0}
+- Clicks: ${parseInt(metrics.clicks) || 0}
+- Cost: €${cost.toFixed(2)}
+- CTR: ${parseFloat(metrics.ctr || 0).toFixed(2)}%
+- CPC: €${parseFloat(metrics.average_cpc || 0).toFixed(2)}
+- Conversions: ${parseFloat(metrics.conversions || 0).toFixed(1)}
+`;
+}).join('')}
+`
+        }]
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to get campaign metrics: ${error.message}`);
+    }
+  }
+
+  async getKeywordData({ account_id = "5411183629", campaign_id = null }) {
     return {
       content: [{
-        type: "text", 
-        text: `# Audience Insights (${days} days)
+        type: "text",
+        text: `# Live Keyword Data
 
-## Top Performing Audiences
-- **Students 18-35:** High engagement, good conversion rate
-- **Affluent Urban Areas:** Higher cost but better SQL quality
-- **Study Abroad Intent:** Best performing custom audience
+## Note
+This tool will connect to Google Ads API to fetch real keyword performance data.
 
-## Recommendations
-1. Increase budget allocation to "Study Abroad Intent" audiences
-2. Expand targeting in affluent urban areas
-3. Test new custom audiences based on competitor school visitors
+**Account:** ${account_id}
+**Campaign:** ${campaign_id || 'All campaigns'}
 
-*Note: Detailed audience data requires Google Ads API integration for real-time metrics*
+Live keyword analysis requires implementing Google Ads keyword queries.
 `
       }]
     };
   }
 
-  /**
-   * Get keyword performance
-   */
-  async getKeywordPerformance({ campaign_id, days = 30 }) {
-    const connection = await getDbConnection();
-    
-    try {
-      const [keywordData] = await connection.execute(`
-        SELECT 
-          k.keyword,
-          k.match_type,
-          k.max_cpc_eur,
-          k.status,
-          COUNT(DISTINCT hc.id) as attributed_mqls,
-          COUNT(DISTINCT hd.id) as attributed_deals
-        FROM gads_keywords k
-        LEFT JOIN hub_contacts hc ON k.google_campaign_id = hc.gclid_campaign_id
-          AND hc.createdate >= DATE_SUB(NOW(), INTERVAL ? DAY)
-        LEFT JOIN hub_deals hd ON hc.id = hd.contact_id
-        WHERE k.google_campaign_id = ?
-        GROUP BY k.keyword, k.match_type, k.max_cpc_eur, k.status
-        ORDER BY attributed_deals DESC, attributed_mqls DESC
-      `, [campaign_id, days]);
-
-      return {
-        content: [{
-          type: "text",
-          text: `# Keyword Performance Analysis
-## Campaign: ${campaign_id} (${days} days)
-
-${keywordData.length === 0 ? 'No keyword data found for this campaign.' : 
-keywordData.slice(0, 20).map(kw => `
-**"${kw.keyword}"** (${kw.match_type})
-- Max CPC: €${(kw.max_cpc_eur || 0).toFixed(2)}
-- Status: ${kw.status}
-- MQLs: ${kw.attributed_mqls || 0}
-- Deals: ${kw.attributed_deals || 0}
-`).join('')}
-`
-        }]
-      };
-
-    } finally {
-      await connection.end();
-    }
-  }
-
-  /**
-   * Update campaign bids (placeholder - would use Google Ads API)
-   */
-  async updateCampaignBids({ campaign_id, bid_strategy, target_value }) {
-    // This would integrate with Google Ads API to update campaign settings
+  async getAudienceData({ account_id = "5411183629" }) {
     return {
       content: [{
         type: "text",
-        text: `# Campaign Bid Update
+        text: `# Live Audience Data
 
-**Campaign ID:** ${campaign_id}
-**New Strategy:** ${bid_strategy || 'No change'}
-**Target Value:** ${target_value || 'Not specified'}
+## Note  
+This tool will connect to Google Ads API to fetch real audience targeting and performance data.
 
-*Note: This is a placeholder. Actual bid updates require Google Ads API integration.*
+**Account:** ${account_id}
 
-## Recommended Implementation:
-1. Authenticate with Google Ads API
-2. Update campaign bid strategy
-3. Monitor performance changes
-4. Adjust conversion values in HubSpot pipeline
+Live audience analysis requires implementing Google Ads audience queries.
 `
       }]
     };
@@ -556,7 +360,8 @@ keywordData.slice(0, 20).map(kw => `
 }
 
 /**
- * Express server to handle MCP protocol
+ * Create Express sub-app for MCP endpoints
+ * FIXED: Added root endpoint for Claude Desktop connection
  */
 function createMCPServer() {
   const app = express();
@@ -576,8 +381,30 @@ function createMCPServer() {
     next();
   });
 
+  // ROOT MCP ENDPOINT - REQUIRED FOR CLAUDE DESKTOP CONNECTION
+  app.get('/', (req, res) => {
+    res.json({
+      protocol: 'MCP',
+      version: '1.0',
+      capabilities: {
+        tools: true,
+        resources: false,
+        prompts: false
+      },
+      server_info: {
+        name: 'ULearn Google Ads API Server',
+        version: '1.0.0'
+      },
+      tools: mcpServer.tools.map(tool => ({
+        name: tool.name,
+        description: tool.description
+      })),
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // MCP Protocol endpoints
-  app.post('/mcp/list_tools', async (req, res) => {
+  app.post('/list_tools', async (req, res) => {
     try {
       const result = await mcpServer.listTools();
       res.json(result);
@@ -586,7 +413,7 @@ function createMCPServer() {
     }
   });
 
-  app.post('/mcp/call_tool', async (req, res) => {
+  app.post('/call_tool', async (req, res) => {
     try {
       const { name, arguments: args } = req.body;
       const result = await mcpServer.callTool(name, args || {});
@@ -596,12 +423,13 @@ function createMCPServer() {
     }
   });
 
-  // Health check for MCP
-  app.get('/mcp/health', (req, res) => {
+  app.get('/health', (req, res) => {
     res.json({
       status: 'healthy',
       protocol: 'MCP',
       tools: mcpServer.tools.length,
+      tools_list: mcpServer.tools.map(t => t.name),
+      api_focus: 'Live Google Ads API',
       timestamp: new Date().toISOString()
     });
   });

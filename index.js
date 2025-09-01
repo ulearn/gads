@@ -10,6 +10,7 @@ const dashboardServer = require('./scripts/analytics/dashboard-server');
 const pipelineProb = require('./scripts/analytics/pipeline-probs');
 const eclHandler = require('./scripts/google/ecl-handler');
 const crypto = require('crypto');
+const { createMCPServer } = require('./scripts/mcp/mcp-server');
 
 // Load environment variables
 require('dotenv').config();
@@ -119,29 +120,6 @@ try {
   console.warn('⚠️ Dashboard Server not found');
 }
 
-//=============================================================================//
-//   MCP (Model Context Protocol) SERVER INTEGRATION
-//=============================================================================//
-
-console.log('🤖 Setting up MCP server for Claude Desktop...');
-
-// Load MCP Server and create instance - CORRECTED PATH
-let mcpApp = null;
-try {
-  const { createMCPServer } = require('./scripts/mcp/mcp-server');
-  mcpApp = createMCPServer();
-  modules.mcpServer = true;
-  
-  // Mount MCP endpoints under /gads/mcp
-  router.use('/mcp', mcpApp);
-  
-  console.log('✅ MCP server ready at: https://hub.ulearnschool.com/gads/mcp/');
-  console.log('🔧 Claude Desktop MCP URL: https://hub.ulearnschool.com/gads/mcp');
-} catch (error) {
-  console.warn('⚠️ MCP Server not available:', error.message);
-  console.log('Error details:', error.stack);
-  modules.mcpServer = null;
-}
 
 //=============================================================================//
 //   BASIC ROUTES
@@ -747,6 +725,27 @@ router.get('/ecl/test-live', async (req, res) => {
     });
   }
 });
+
+//=============================================================================//
+//   MCP (Model Context Protocol) SERVER INTEGRATION - FIXED
+//=============================================================================//
+
+console.log('Setting up MCP server for Claude Desktop...');
+
+let mcpApp = null;
+try {
+  mcpApp = createMCPServer();
+  modules.mcpServer = true;
+  
+  // Mount MCP endpoints under /gads/mcp
+  router.use('/mcp', mcpApp);
+  
+  console.log('MCP server ready at: https://hub.ulearnschool.com/gads/mcp/');
+  console.log('Claude Desktop MCP URL: https://hub.ulearnschool.com/gads/mcp');
+} catch (error) {
+  console.warn('MCP Server not available:', error.message);
+  modules.mcpServer = null;
+}
 
 //=============================================================================//
 //   STATIC FILE ROUTES
