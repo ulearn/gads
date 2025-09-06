@@ -1,1 +1,1 @@
-Wed Sep  3 08:03:49 CEST 2025
+Force restart MCP fix

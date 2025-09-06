@@ -69,37 +69,108 @@ async function initializeMCP() {
     log('🔧 MCP Server created successfully');
     log('🔄 Registering Google Ads tools...');
     
-    // Add comprehensive logging for all MCP protocol messages
-    mcpServer.onRequest = (originalOnRequest => {
-      return async (request, extra) => {
-        log('📥 MCP Request received:', JSON.stringify(request, null, 2));
-        const result = await originalOnRequest.call(mcpServer, request, extra);
-        log('📤 MCP Response sent:', JSON.stringify(result, null, 2));
-        return result;
+    // Register tools/list handler
+    mcpServer.setRequestHandler('tools/list', async () => {
+      log('🔧 tools/list handler called');
+      return {
+        tools: [
+          {
+            name: 'echo',
+            description: 'Simple echo tool that returns whatever message you send to it',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                message: {
+                  type: 'string',
+                  description: 'The message to echo back'
+                }
+              },
+              required: ['message']
+            }
+          },
+          {
+            name: 'google_ads_account_overview',
+            description: 'Get comprehensive Google Ads account overview with campaign performance data',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                account_id: {
+                  type: 'string',
+                  description: 'Google Ads account ID (default: live account)'
+                },
+                include_campaigns: {
+                  type: 'boolean',
+                  description: 'Include detailed campaign information',
+                  default: true
+                },
+                date_range_days: {
+                  type: 'number',
+                  description: 'Number of days for performance metrics',
+                  default: 30
+                }
+              }
+            }
+          },
+          {
+            name: 'google_ads_campaign_analysis',
+            description: 'Analyze campaign settings, bidding strategies, targeting, and optimization configurations',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                account_id: {
+                  type: 'string',
+                  description: 'Google Ads account ID (default: live account)'
+                },
+                campaign_id: {
+                  type: 'string',
+                  description: 'Specific campaign ID to analyze (optional - analyzes all if not provided)'
+                },
+                include_targeting: {
+                  type: 'boolean',
+                  description: 'Include detailed targeting settings analysis',
+                  default: true
+                },
+                include_bidding: {
+                  type: 'boolean',
+                  description: 'Include detailed bidding strategy analysis',
+                  default: true
+                }
+              }
+            }
+          }
+        ]
       };
-    })(mcpServer.onRequest?.bind(mcpServer));
-    
-    // Register Google Ads Account Overview tool
-    mcpServer.tool(
-      'google_ads_account_overview',
-      {
-        account_id: { 
-          type: 'string', 
-          description: 'Google Ads account ID (default: live account)',
-          default: process.env.GADS_LIVE_ID
-        },
-        include_campaigns: {
-          type: 'boolean',
-          description: 'Include detailed campaign information',
-          default: true
-        },
-        date_range_days: {
-          type: 'number',
-          description: 'Number of days for performance metrics',
-          default: 30
-        }
-      },
-      async ({ account_id = process.env.GADS_LIVE_ID, include_campaigns = true, date_range_days = 30 }) => {
+    });
+
+    // Register tools/call handler  
+    mcpServer.setRequestHandler('tools/call', async (request) => {
+      log('🔧 🎯 NEW TOOLS/CALL HANDLER CALLED!');
+      log('🔧 tools/call handler called with request:', JSON.stringify(request, null, 2));
+      
+      if (!request || !request.params) {
+        throw new Error('Invalid request: missing params');
+      }
+      
+      const { name, arguments: args } = request.params;
+      
+      // Handle echo tool
+      if (name === 'echo') {
+        const message = args?.message || 'No message provided';
+        log('📢 Echo tool called with message:', message);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Echo: ${message}`
+            }
+          ]
+        };
+      }
+      
+      // Handle Google Ads Account Overview tool
+      if (name === 'google_ads_account_overview') {
+        const { account_id = process.env.GADS_LIVE_ID, include_campaigns = true, date_range_days = 30 } = args || {};
         log('🏢 Google Ads Account Overview tool called:', { account_id, include_campaigns, date_range_days });
         
         try {
@@ -273,34 +344,10 @@ ${campaignData.map(campaign => `
           };
         }
       }
-    );
-
-    // Register Campaign Settings Analysis tool
-    mcpServer.tool(
-      'google_ads_campaign_analysis',
-      {
-        account_id: { 
-          type: 'string', 
-          description: 'Google Ads account ID (default: live account)',
-          default: process.env.GADS_LIVE_ID
-        },
-        campaign_id: {
-          type: 'string',
-          description: 'Specific campaign ID to analyze (optional - analyzes all if not provided)',
-          default: ''
-        },
-        include_targeting: {
-          type: 'boolean',
-          description: 'Include detailed targeting settings analysis',
-          default: true
-        },
-        include_bidding: {
-          type: 'boolean',
-          description: 'Include detailed bidding strategy analysis',
-          default: true
-        }
-      },
-      async ({ account_id = process.env.GADS_LIVE_ID, campaign_id = '', include_targeting = true, include_bidding = true }) => {
+      
+      // Handle Google Ads Campaign Analysis tool
+      if (name === 'google_ads_campaign_analysis') {
+        const { account_id = process.env.GADS_LIVE_ID, campaign_id = '', include_targeting = true, include_bidding = true } = args || {};
         log('🎯 Campaign Settings Analysis tool called:', { account_id, campaign_id, include_targeting, include_bidding });
         
         try {
@@ -411,7 +458,10 @@ ${campaignData.map(campaign => `
           };
         }
       }
-    );
+      
+      // Return error for unknown tools
+      throw new Error(`Unknown tool: ${name}`);
+    });
     
     log('✅ MCP SDK initialized with Google Ads tools');
     return true;
@@ -523,6 +573,225 @@ router.post('/', async (req, res) => {
       id: req.body.id || null
     });
     return;
+  }
+
+  // For tools/call, always handle directly (bypass SSE transport issues)  
+  if (req.body?.method === 'tools/call') {
+    log('🔧 🎯 TOOLS/CALL - handling directly at root (bypass SSE)');
+    log('🔧 🚨 Tool call params:', JSON.stringify(req.body.params, null, 2));
+    
+    // Handle echo tool
+    if (req.body.params?.name === 'echo') {
+      log('📢 Echo tool called at root endpoint');
+      
+      const message = req.body.params?.arguments?.message || 'No message provided';
+      
+      const response = {
+        jsonrpc: '2.0',
+        id: req.body.id || 0,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: `Echo: ${message}`
+            }
+          ]
+        }
+      };
+      
+      log('📤 Sending echo response:', JSON.stringify(response, null, 2));
+      return res.status(200).json(response);
+    }
+    
+    // Handle Google Ads Account Overview tool directly  
+    if (req.body.params?.name === 'google_ads_account_overview') {
+      log('🏢 Google Ads Account Overview tool called at root endpoint');
+      
+      const { account_id = process.env.GADS_LIVE_ID, include_campaigns = true, date_range_days = 30 } = req.body.params.arguments || {};
+      
+      try {
+        const customer = googleAdsClient.Customer({
+          customer_id: account_id,
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+          login_customer_id: process.env.GADS_LIVE_MCC_ID
+        });
+
+        log('🔍 Querying Google Ads API for account:', account_id);
+
+        // Get account basic info
+        const accountQuery = `
+          SELECT 
+            customer.id,
+            customer.descriptive_name,
+            customer.currency_code,
+            customer.time_zone,
+            customer.test_account,
+            customer.auto_tagging_enabled,
+            customer.conversion_tracking_setting.conversion_tracking_id,
+            customer.optimization_score
+          FROM customer 
+          LIMIT 1
+        `;
+
+        const accountResults = await customer.query(accountQuery);
+        const accountInfo = accountResults[0]?.customer || {};
+
+        let campaignData = [];
+        let summary = {};
+
+        if (include_campaigns) {
+          // Get campaign overview with performance metrics
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - date_range_days);
+          const endDate = new Date();
+          
+          const campaignQuery = `
+            SELECT 
+              campaign.id,
+              campaign.name,
+              campaign.status,
+              campaign.advertising_channel_type,
+              campaign.bidding_strategy_type,
+              metrics.clicks,
+              metrics.impressions,
+              metrics.cost_micros,
+              metrics.conversions,
+              metrics.conversions_value,
+              metrics.ctr,
+              metrics.average_cpc
+            FROM campaign 
+            WHERE segments.date BETWEEN '${startDate.toISOString().split('T')[0]}' AND '${endDate.toISOString().split('T')[0]}'
+          `;
+
+          log('🔍 Querying campaign data for date range:', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
+
+          const campaignResults = await customer.query(campaignQuery);
+          
+          // Process campaign data
+          const campaignMap = new Map();
+          campaignResults.forEach(row => {
+            const campaignId = row.campaign.id;
+            if (!campaignMap.has(campaignId)) {
+              campaignMap.set(campaignId, {
+                id: campaignId,
+                name: row.campaign.name,
+                status: row.campaign.status,
+                type: row.campaign.advertising_channel_type,
+                budget: row.campaign.campaign_budget,
+                bidding_strategy: row.campaign.bidding_strategy_type,
+                optimization_score: row.campaign.optimization_score,
+                metrics: {
+                  clicks: 0,
+                  impressions: 0,
+                  cost: 0,
+                  conversions: 0,
+                  conversion_value: 0,
+                  ctr: 0,
+                  avg_cpc: 0
+                }
+              });
+            }
+            
+            const campaign = campaignMap.get(campaignId);
+            campaign.metrics.clicks += row.metrics.clicks || 0;
+            campaign.metrics.impressions += row.metrics.impressions || 0;
+            campaign.metrics.cost += (row.metrics.cost_micros || 0) / 1000000;
+            campaign.metrics.conversions += row.metrics.conversions || 0;
+            campaign.metrics.conversion_value += row.metrics.conversions_value || 0;
+            campaign.metrics.ctr = row.metrics.ctr || 0;
+            campaign.metrics.avg_cpc = (row.metrics.average_cpc || 0) / 1000000;
+          });
+
+          campaignData = Array.from(campaignMap.values());
+          log('🔍 Processed', campaignData.length, 'campaigns');
+
+          // Calculate account summary
+          summary = {
+            total_campaigns: campaignData.length,
+            active_campaigns: campaignData.filter(c => c.status === 'ENABLED').length,
+            total_clicks: campaignData.reduce((sum, c) => sum + c.metrics.clicks, 0),
+            total_impressions: campaignData.reduce((sum, c) => sum + c.metrics.impressions, 0),
+            total_cost: campaignData.reduce((sum, c) => sum + c.metrics.cost, 0),
+            total_conversions: campaignData.reduce((sum, c) => sum + c.metrics.conversions, 0),
+            total_conversion_value: campaignData.reduce((sum, c) => sum + c.metrics.conversion_value, 0)
+          };
+        }
+
+        const reportText = `# 📊 Google Ads Account Overview
+
+## 🏢 Account Information
+- **Account:** ${accountInfo.descriptive_name} (${accountInfo.id})
+- **Currency:** ${accountInfo.currency_code}
+- **Timezone:** ${accountInfo.time_zone}
+- **Test Account:** ${accountInfo.test_account ? 'Yes' : 'No'}
+- **Auto-tagging:** ${accountInfo.auto_tagging_enabled ? 'Enabled' : 'Disabled'}
+- **Optimization Score:** ${accountInfo.optimization_score || 'N/A'}
+
+${include_campaigns ? `## 📈 Performance Summary (Last ${date_range_days} days)
+- **Total Campaigns:** ${summary.total_campaigns} (${summary.active_campaigns} active)
+- **Total Clicks:** ${summary.total_clicks.toLocaleString()}
+- **Total Impressions:** ${summary.total_impressions.toLocaleString()}
+- **Total Cost:** €${summary.total_cost.toFixed(2)}
+- **Total Conversions:** ${summary.total_conversions}
+- **Total Conversion Value:** €${summary.total_conversion_value.toFixed(2)}
+
+## 🎯 Campaign Breakdown
+${campaignData.map(campaign => `
+### ${campaign.name}
+- **Status:** ${campaign.status}
+- **Type:** ${campaign.type}
+- **Optimization Score:** ${campaign.optimization_score || 'N/A'}
+- **Clicks:** ${campaign.metrics.clicks} | **Impressions:** ${campaign.metrics.impressions}
+- **Cost:** €${campaign.metrics.cost.toFixed(2)} | **Conversions:** ${campaign.metrics.conversions}
+- **CTR:** ${(campaign.metrics.ctr * 100).toFixed(2)}% | **Avg CPC:** €${campaign.metrics.avg_cpc.toFixed(2)}
+`).join('')}` : ''}
+
+*Generated: ${new Date().toISOString()}*`;
+
+        const toolResponse = {
+          jsonrpc: '2.0',
+          id: req.body.id || 0,
+          result: {
+            content: [{
+              type: 'text',
+              text: reportText
+            }]
+          }
+        };
+
+        log('✅ Google Ads Account Overview completed successfully');
+        log('📤 Sending tool response with', campaignData.length, 'campaigns');
+        
+        return res.status(200).json(toolResponse);
+
+      } catch (error) {
+        log('❌ Google Ads Account Overview failed:', error.message);
+        log('❌ Error details:', error);
+        
+        const errorResponse = {
+          jsonrpc: '2.0',
+          id: req.body.id || 0,
+          result: {
+            content: [{
+              type: 'text',
+              text: `❌ **Error getting Google Ads account overview:**\n\n${error.message}\n\nPlease check your Google Ads API credentials and account access.`
+            }]
+          }
+        };
+        
+        return res.status(200).json(errorResponse);
+      }
+    }
+    
+    // Return error for unknown tools
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      id: req.body.id || 0,
+      error: {
+        code: -32601,
+        message: `Tool not found: ${req.body.params?.name}`
+      }
+    });
   }
 
   // For other requests, handle properly even without existing transport
@@ -920,8 +1189,12 @@ ${campaignData.map(campaign => `
     }
     
     // Handle through existing SSE transport
+    log('🔄 Delegating to SSE transport handlePostMessage');
+    log('🔄 Request method:', req.body?.method);
+    log('🔄 Request params:', req.body?.params?.name);
+    
     await sseTransport.handlePostMessage(req, res);
-    log('✅ Root POST message handled successfully');
+    log('✅ Root POST message handled successfully via SSE transport');
   } catch (error) {
     log('❌ Root POST handling failed:', error.message);
     res.status(500).json({
