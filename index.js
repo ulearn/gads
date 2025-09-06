@@ -10,7 +10,7 @@ const dashboardServer = require('./scripts/analytics/dashboard-server');
 const pipelineProb = require('./scripts/analytics/pipeline-probs');
 const eclHandler = require('./scripts/google/ecl-handler');
 const crypto = require('crypto');
-const { createMCPServer } = require('./scripts/mcp/mcp-server');
+const mcpRouter = require('./scripts/mcp/mcp');
 
 // Load environment variables
 require('dotenv').config();
@@ -731,27 +731,19 @@ router.get('/ecl/test-live', async (req, res) => {
 //=============================================================================//
 
 //=============================== 
-// Our First Remote MCP Server Effort - DISABLED
+// MCP Integration - USING WORKING VERSION (mcp.js)
 //=============================== 
-if (!process.env.MCP_SERVER_DISABLED) {
-  console.log('Setting up MCP server v2.0 for Claude AI integration...');
-  // ... keep existing code
-} else {
-  console.log('🚫 Old MCP server disabled - using remote MCP server only');
-  modules.mcpServer = false;
-}
-
-// Remote MCP Server Integration - 3rd/4th Attempt 21:00
-const { createWorkingRemoteMCP } = require('./scripts/mcp-remote/remote-server');
-
-// Mount MCP endpoints under /gads/mcp-remote
 try {
-  const mcpRemoteApp = createWorkingRemoteMCP();
-  router.use('/mcp-remote', mcpRemoteApp);
-  console.log('✅ Remote MCP Server mounted at /gads/mcp-remote');
+  router.use('/mcp', mcpRouter);
+  modules.mcpServer = true;
+  console.log('✅ MCP Router loaded and mounted at /gads/mcp (working version)');
 } catch (error) {
-  console.error('❌ Remote MCP Server failed to load:', error.message);
+  console.error('❌ MCP Router failed to load:', error.message);
+  modules.mcpServer = null;
 }
+
+// Remote MCP Server Integration - REMOVED
+// Removed: mcp-remote folder and dependencies
 
 
 // SSE MCP Server Integration (Working Pattern)

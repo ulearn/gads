@@ -2,11 +2,21 @@ const express = require('express');
 const router = express.Router();
 const { GoogleAdsApi } = require('google-ads-api');
 const mysql = require('mysql2/promise');
+const path = require('path');
+
+// Ensure environment variables are loaded
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 /** ---------- Small util for timestamped logs ---------- */
 const log = (...args) => console.log(new Date().toISOString(), ...args);
 
 // Initialize Google Ads client
+console.log('🔍 MCP Environment Variables Check:');
+console.log('  CLIENT_ID:', process.env.CLIENT_ID ? 'Present (' + process.env.CLIENT_ID.substring(0, 20) + '...)' : 'Missing');
+console.log('  CLIENT_SECRET:', process.env.CLIENT_SECRET ? 'Present' : 'Missing');
+console.log('  GAdsAPI:', process.env.GAdsAPI ? 'Present' : 'Missing');
+console.log('  GOOGLE_REFRESH_TOKEN:', process.env.GOOGLE_REFRESH_TOKEN ? 'Present' : 'Missing');
+
 const googleAdsClient = new GoogleAdsApi({
   client_id: process.env.CLIENT_ID,
   client_secret: process.env.CLIENT_SECRET,
@@ -554,6 +564,20 @@ router.post('/', async (req, res) => {
         result: {
           tools: [
             {
+              name: 'echo',
+              description: 'Simple echo tool that returns whatever message you send to it',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  message: {
+                    type: 'string',
+                    description: 'The message to echo back'
+                  }
+                },
+                required: ['message']
+              }
+            },
+            {
               name: 'google_ads_account_overview',
               description: 'Get comprehensive Google Ads account overview with campaign performance data',
               inputSchema: {
@@ -644,6 +668,29 @@ router.post('/', async (req, res) => {
     if (req.body?.method === 'tools/call') {
       log('🔧 🚨 TOOLS/CALL request at ROOT endpoint!');
       log('🔧 🚨 Tool call params:', JSON.stringify(req.body.params, null, 2));
+      
+      // Handle echo tool
+      if (req.body.params?.name === 'echo') {
+        log('📢 Echo tool called at root endpoint');
+        
+        const message = req.body.params?.arguments?.message || 'No message provided';
+        
+        const response = {
+          jsonrpc: '2.0',
+          id: req.body.id || 0,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: `Echo: ${message}`
+              }
+            ]
+          }
+        };
+        
+        log('📤 Sending echo response:', JSON.stringify(response, null, 2));
+        return res.status(200).json(response);
+      }
       
       // Handle Google Ads tools directly
       if (req.body.params?.name === 'google_ads_account_overview') {
@@ -851,13 +898,14 @@ ${campaignData.map(campaign => `
       });
     }
     
-    // For non-initialize requests, we still need SSE
+    // For other methods when no SSE transport, return error
     return res.status(503).json({
       error: 'No active SSE connection',
       message: 'Establish SSE connection first via GET /'
     });
   }
 
+  // If we have SSE transport, use it for other methods
   try {
     // Add response logging for root POST too
     const originalJSON = res.json?.bind(res);

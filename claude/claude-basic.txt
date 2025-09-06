@@ -18,3 +18,10 @@ GIT
 Repo: https://github.com/ulearn/gads
 - We are only operating on the claude branch
 - Never do anything destructive with git without asking permission
+
+
+HEURISTICS & GUIDELINES
+1) RULE#1 Always suspect our own code to be at fault first. (ie: look in the mirror AKA the "Mirror Test")
+While searching for a soultion to an issue never blame the entity that is producing the API (Google, Anthropic etc). The first suspect should
+always be our code / server / settings etc. The first suspect is the entity with lower resources - large companies outputting APIs & applications (like those listed) 
+are well-funded and highly  unlikely to release software with major bugs. It is not impossible but improbable and wastes our resources chashing red herrings

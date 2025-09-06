@@ -26,119 +26,24 @@ class MCPServer {
 
     // FIXED: Exact MCP capabilities format
 this.capabilities = {
-  tools: {
-    listChanged: false
-  }
+  tools: {}
 };
 
 
-    // FIXED: Tool names must match ^[a-zA-Z0-9_-]{1,64}$ pattern
+    // SIMPLIFIED: Just one simple test tool like working version
     this.tools = [
       {
-        name: "test_gads_connection",
-        description: "Test Google Ads API connection and account access",
+        name: "echo",
+        description: "Simple echo tool for testing MCP connection",
         inputSchema: {
           type: "object",
           properties: {
-            account_id: {
+            message: {
               type: "string", 
-              description: "Google Ads account ID",
-              default: process.env.GADS_LIVE_ID || "1051706978"
+              description: "Message to echo back"
             }
           },
-          required: []
-        }
-      },
-      {
-        name: "get_campaign_performance",
-        description: "Get live campaign performance metrics from Google Ads API",
-        inputSchema: {
-          type: "object",
-          properties: {
-            days: {
-              type: "number",
-              description: "Number of days to analyze",
-              default: 30,
-              minimum: 1,
-              maximum: 365
-            },
-            account_id: {
-              type: "string",
-              description: "Google Ads account ID", 
-              default: process.env.GADS_LIVE_ID || "1051706978"
-            }
-          },
-          required: []
-        }
-      },
-      {
-        name: "analyze_pipeline_attribution",
-        description: "Analyze Google Ads to HubSpot pipeline attribution using MySQL data",
-        inputSchema: {
-          type: "object", 
-          properties: {
-            days: {
-              type: "number",
-              description: "Number of days to analyze",
-              default: 30,
-              minimum: 1,
-              maximum: 180
-            }
-          },
-          required: []
-        }
-      },
-      {
-        name: "get_territory_burnrate",
-        description: "Analyze MQL burn rate by territory classification",
-        inputSchema: {
-          type: "object",
-          properties: {
-            days: {
-              type: "number", 
-              description: "Number of days to analyze",
-              default: 90,
-              minimum: 7,
-              maximum: 365
-            }
-          },
-          required: []
-        }
-      },
-      {
-        name: "optimize_campaign_budget",
-        description: "Get budget optimization recommendations based on performance data",
-        inputSchema: {
-          type: "object",
-          properties: {
-            days: {
-              type: "number",
-              description: "Number of days to analyze for recommendations", 
-              default: 30,
-              minimum: 7,
-              maximum: 90
-            }
-          },
-          required: []
-        }
-      },
-      {
-        name: "run_custom_gaql_query",
-        description: "Execute custom GAQL query on live Google Ads data",
-        inputSchema: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "GAQL query to execute"
-            },
-            account_id: {
-              type: "string",
-              description: "Google Ads account ID",
-              default: process.env.GADS_LIVE_ID || "1051706978"
-            }
-          },
-          required: ["query"]
+          required: ["message"]
         }
       }
     ];
@@ -165,6 +70,8 @@ this.capabilities = {
   // FIXED: Exact MCP protocol initialize response
 async initialize(params = {}) {
   console.log('🔧 MCP Initialize called with params:', params);
+  console.log('🔧 MCP Initialize returning capabilities:', this.capabilities);
+  console.log('🔧 MCP Initialize tools available:', this.tools.length);
   
   return {
     protocolVersion: "2025-06-18",
@@ -771,6 +678,14 @@ function createMCPServer() {
   break;
         case 'tools/call':
           result = await mcp.callTool(params.name, params.arguments);
+          break;
+        case 'prompts/list':
+          console.log('🔧 PROMPTS/LIST REQUESTED BY CLAUDE!');
+          result = { prompts: [] };
+          break;
+        case 'resources/list':
+          console.log('🔧 RESOURCES/LIST REQUESTED BY CLAUDE!');
+          result = { resources: [] };
           break;
         case 'notifications/initialized':
           console.log('✅ MCP Client initialized');
