@@ -446,48 +446,23 @@
                     setLoading(true);
                     setError(null);
                     
-                    const response = await fetch(`/gads/analytics/pipeline-data?days=${dateRange}&campaign=${campaign}`);
+                    console.log(`🔍 Fetching: days=${dateRange}, campaign=${campaign}`);
+                    const response = await fetch(`https://hub.ulearnschool.com/gads/analytics/pipeline-data?days=${dateRange}&campaign=${campaign}`);
+                    console.log('📡 Response status:', response.status, response.statusText);
                     const result = await response.json();
+                    console.log('📊 Response data:', result);
                     
                     if (result.success) {
+                        console.log('✅ Setting data:', result.summary);
                         setData(result);
                     } else {
+                        console.log('❌ Response not successful:', result);
                         throw new Error(result.error || 'Failed to fetch data');
                     }
                 } catch (err) {
-                    console.error('Fetch error:', err);
-                    setError(err.message);
-                    // Mock data with your actual numbers
-                    setData({
-                        success: true,
-                        summary: {
-                            campaign: campaign === 'all' ? 'All Campaigns' : campaign,
-                            totalContacts: 184,
-                            contactsWithDeals: 99,
-                            period: `Last ${dateRange} days`,
-                            totalCost: 2705.06,
-                            active_deals: 50,
-                            won_deals: 1,
-                            lost_deals: 33
-                        },
-                        mqlStages: {
-                            impressions: { count: 59988 },
-                            clicks: { count: 47286, ctr: '1.47%' },
-                            ctaComplete: { count: 184, conversionRate: '0.39%' },
-                            territoryValidation: { accepted: 99, rejected: 85, rejectionRate: '46.2%' }
-                        },
-                        sqlStages: {
-                            inbox: { count: 0, percentage: '0%', friendlyName: 'INBOX' },
-                            sequenced: { count: 36, percentage: '72%', friendlyName: 'SEQUENCED' },
-                            engaging: { count: 12, percentage: '24%', friendlyName: 'ENGAGING' },
-                            responsive: { count: 2, percentage: '4%', friendlyName: 'RESPONSIVE' },
-                            advising: { count: 0, percentage: '0%', friendlyName: 'ADVISING' },
-                            contract: { count: 0, percentage: '0%', friendlyName: 'CONTRACT' },
-                            won: { count: 1, percentage: '2%', friendlyName: 'WON' },
-                            lost: { count: 33, percentage: '66%', friendlyName: 'LOST' }
-                        },
-                        campaigns: []
-                    });
+                    console.error('Pipeline API fetch failed:', err);
+                    setError(`API Error: ${err.message} - Unable to load pipeline data`);
+                    setData(null);
                 } finally {
                     setLoading(false);
                 }

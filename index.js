@@ -68,6 +68,19 @@ googleOAuth.setCredentials({
   refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
 });
 
+// Google Ads API Client - Initialized once
+const googleAdsClient = new GoogleAdsApi({
+  client_id: process.env.CLIENT_ID,
+  client_secret: process.env.CLIENT_SECRET,
+  developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+});
+
+const customer = googleAdsClient.Customer({
+  customer_id: process.env.GADS_LIVE_ID,
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+  login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+});
+
 // Database Connection Pool - Reusable
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -90,18 +103,18 @@ const getDbConnection = async () => {
 //=============================================================================//
 
 const modules = {
-  mysqlCampaignUpdater: null,
+  googleAdsSync: null,
   pipelineProb: null,
   dashboardServer: null,
   mcpServer: null
 };
 
-// Load MySQL Campaign Updater
+// Load Google Ads Sync Module
 try {
-  modules.mysqlCampaignUpdater = require('./update-mysql-campaigns.js');
-  console.log('✅ MySQL Campaign Updater loaded');
+  modules.googleAdsSync = require('./scripts/google/gads-sync.js');
+  console.log('✅ Google Ads Sync module loaded');
 } catch (error) {
-  console.warn('⚠️ MySQL Campaign Updater not found');
+  console.warn('⚠️ Google Ads Sync module not found');
 }
 
 // Load Pipeline Probabilities
@@ -127,13 +140,14 @@ try {
 
 // Root dashboard
 router.get('/', (req, res) => {
-  const hasUpdater = !!modules.mysqlCampaignUpdater;
+  const hasGoogleAdsSync = !!modules.googleAdsSync;
   const hasDashboard = !!modules.dashboardServer;
   const hasPipeline = !!modules.pipelineProb;
   const hasMCP = !!modules.mcpServer;
+  const isRecoveryMode = !hasGoogleAdsSync || !hasPipeline || !hasDashboard || !hasMCP;
   
   res.send(`
-    <h1>🎯 Google Ads AI Iterator - RECOVERY MODE v7</h1>
+    <h1>🎯 Google Ads AI Iterator${isRecoveryMode ? ' - RECOVERY MODE v7' : ''}</h1>
     <p><strong>System Status:</strong> Running | <strong>Build:</strong> ${new Date().toISOString()}</p>
     
     <h2>🏥 System Health</h2>
@@ -174,6 +188,7 @@ router.get('/', (req, res) => {
 
 // Health check
 router.get('/health', async (req, res) => {
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
   const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -182,9 +197,9 @@ router.get('/health', async (req, res) => {
       hubspot: 'unknown', 
       google_ads: 'unknown'
     },
-    recovery_mode: true,
+    recovery_mode: isRecoveryMode,
     loaded_modules: {
-      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      google_ads_sync: !!modules.googleAdsSync,
       pipeline_probabilities: !!modules.pipelineProb,
       dashboard_server: !!modules.dashboardServer,
       mcp_server: !!modules.mcpServer
@@ -225,9 +240,10 @@ router.get('/health', async (req, res) => {
 
 // Environment test
 router.get('/test', (req, res) => {
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
   res.json({
     timestamp: new Date().toISOString(),
-    recovery_mode: true,
+    recovery_mode: isRecoveryMode,
     api_clients: {
       hubspot_token: process.env.HubAccess ? 'Present' : 'Missing',
       google_client_id: process.env.CLIENT_ID ? 'Present' : 'Missing',
@@ -240,7 +256,7 @@ router.get('/test', (req, res) => {
     },
     logging: logger ? logger.getLogStats() : { message: 'Console logging' },
     loaded_modules: {
-      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      google_ads_sync: !!modules.googleAdsSync,
       pipeline_probabilities: !!modules.pipelineProb,
       dashboard_server: !!modules.dashboardServer,
       mcp_server: !!modules.mcpServer
@@ -368,13 +384,26 @@ router.get('/hubspot/contact/:id', async (req, res) => {
 //   MYSQL ROUTES
 //=============================================================================//
 
-if (modules.mysqlCampaignUpdater) {
-  router.post('/mysql/bulk-update-campaigns', (req, res) => {
-    modules.mysqlCampaignUpdater.handleBulkCampaignUpdate(req, res, getDbConnection);
+if (modules.googleAdsSync) {
+  // Google Ads sync endpoints
+  router.get('/google-ads/sync/status', (req, res) => {
+    modules.googleAdsSync.handleSyncStatus(req, res, getDbConnection);
   });
-
-  router.get('/mysql/campaign-stats', (req, res) => {
-    modules.mysqlCampaignUpdater.handleCampaignStats(req, res, getDbConnection);
+  
+  router.post('/google-ads/sync/full', (req, res) => {
+    modules.googleAdsSync.handleFullSync(req, res, customer, getDbConnection);
+  });
+  
+  router.post('/google-ads/sync/incremental', (req, res) => {
+    modules.googleAdsSync.handleIncrementalSync(req, res, customer, getDbConnection);
+  });
+  
+  router.post('/google-ads/sync/campaigns', (req, res) => {
+    modules.googleAdsSync.handleCampaignsSync(req, res, customer, getDbConnection);
+  });
+  
+  router.post('/google-ads/sync/backfill', (req, res) => {
+    modules.googleAdsSync.handleDateRangeBackfill(req, res, customer, getDbConnection);
   });
 }
 
@@ -516,6 +545,26 @@ router.get('/analytics/attribution-test', async (req, res) => {
   }
 });
 
+// Pipeline Data API - ROUTING ONLY, NO BUSINESS LOGIC
+router.get('/analytics/pipeline-data', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const campaign = req.query.campaign || 'all';
+    console.log(`📈 Pipeline data request: ${days} days, campaign: ${campaign}`);
+    
+    const pipelineServer = require('./scripts/analytics/pipeline-server');
+    const result = await pipelineServer.getFastPipelineData(getDbConnection, { days, campaign });
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Pipeline data failed:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Burn Rate Timeseries API - ROUTING ONLY, NO BUSINESS LOGIC
 router.get('/analytics/burn-rate-timeseries', (req, res) => {
   const burnRateTimeseries = require('./scripts/analytics/burn-rate-timeseries');
@@ -594,93 +643,6 @@ router.post('/ecl/lost-process', (req, res) => {
   eclLost.handleLostProcessRequest(req, res, hubspotClient);
 });
 
-//=============================================================================//
-//   ECL DIAGNOSTIC ROUTES - V2
-//=============================================================================//
-
-// Test conversion action setup with detailed diagnostics
-router.get('/ecl/diagnose', async (req, res) => {
-  try {
-    console.log('🔍 Running ECL diagnostics...');
-    const result = await eclHandler.testConversionActionSetup();
-    res.json(result);
-  } catch (error) {
-    console.error('❌ ECL diagnostics failed:', error.message);
-    res.status(500).json({ 
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Test upload with validation only (won't actually send conversion)
-router.post('/ecl/test', async (req, res) => {
-  try {
-    console.log('🧪 Testing ECL upload (validation only)...');
-    
-    // Force validation-only mode
-    const testPayload = { 
-      ...req.body, 
-      validate_only: true,
-      conversion_action_id: req.body.conversion_action_id || '938018560'
-    };
-    
-    const result = await eclHandler.processConversionAdjustment(testPayload, {
-      googleOAuth,
-      getDbConnection
-    });
-    
-    res.json({
-      success: true,
-      message: 'ECL test completed (validation only)',
-      result,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ ECL test failed:', error.message);
-    res.status(500).json({ 
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-// Get recent ECL logs for debugging
-router.get('/ecl/logs', async (req, res) => {
-  try {
-    const connection = await getDbConnection();
-    try {
-      const [rows] = await connection.execute(`
-        SELECT 
-          id, deal_id, contact_id, stage, adjustment_value, 
-          order_id, success, error_message, created_at,
-          processing_time_ms, currency_code
-        FROM ecl_logs 
-        ORDER BY created_at DESC 
-        LIMIT 20
-      `);
-      
-      res.json({
-        success: true,
-        logs: rows,
-        count: rows.length,
-        timestamp: new Date().toISOString()
-      });
-    } finally {
-      await connection.end();
-    }
-  } catch (error) {
-    console.error('❌ ECL logs retrieval failed:', error.message);
-    res.status(500).json({ 
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 //-------------------------------------------------------
 // Main ECL Webhook Endpoint
@@ -804,12 +766,13 @@ router.get('/recovery/status', (req, res) => {
       return false;
     }
   };
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
 
   res.json({
-    recovery_mode: true,
+    recovery_mode: isRecoveryMode,
     timestamp: new Date().toISOString(),
     loaded_modules: {
-      mysql_campaign_updater: !!modules.mysqlCampaignUpdater,
+      google_ads_sync: !!modules.googleAdsSync,
       pipeline_probabilities: !!modules.pipelineProb,
       dashboard_server: !!modules.dashboardServer,
       mcp_server: !!modules.mcpServer
@@ -819,14 +782,14 @@ router.get('/recovery/status', (req, res) => {
       'scripts/analytics/dashboard-server.js': checkFile('scripts/analytics/dashboard-server.js'),
       'scripts/analytics/burn-rate.html': checkFile('scripts/analytics/burn-rate.html'),
       'scripts/analytics/pipeline-analysis.html': checkFile('scripts/analytics/pipeline-analysis.html'),
-      'update-mysql-campaigns.js': checkFile('update-mysql-campaigns.js'),
-      'scripts/mcp/mcp-server.js': checkFile('scripts/mcp/mcp-server.js')
+      'gads-sync.js': checkFile('scripts/google/gads-sync.js'),
     }
   });
 });
 
 // Logs endpoint
 router.get('/logs', (req, res) => {
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
   try {
     const fs = require('fs');
     const logFile = './gads.log';
@@ -835,7 +798,7 @@ router.get('/logs', (req, res) => {
       return res.json({
         message: 'No log file found yet',
         timestamp: new Date().toISOString(),
-        recovery_mode: true
+        recovery_mode: isRecoveryMode
       });
     }
     
@@ -844,14 +807,14 @@ router.get('/logs', (req, res) => {
     
     res.json({
       recent_logs: lines,
-      recovery_mode: true,
+      recovery_mode: isRecoveryMode,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ Log retrieval failed:', error.message);
     res.status(500).json({
       error: error.message,
-      recovery_mode: true,
+      recovery_mode: isRecoveryMode,
       timestamp: new Date().toISOString()
     });
   }
@@ -859,17 +822,19 @@ router.get('/logs', (req, res) => {
 
 // Error handling
 router.use((error, req, res, next) => {
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
   console.error('❌ Unhandled error:', error.message);
   res.status(500).json({
     error: 'Internal server error',
     message: error.message,
-    recovery_mode: true,
+    recovery_mode: isRecoveryMode,
     timestamp: new Date().toISOString()
   });
 });
 
 // 404 handler
 router.use((req, res) => {
+  const isRecoveryMode = !modules.googleAdsSync || !modules.pipelineProb || !modules.dashboardServer || !modules.mcpServer;
   const mcpEndpoints = modules.mcpServer ? [
     '/gads/mcp/health',
     '/gads/mcp/list_tools', 
@@ -879,7 +844,7 @@ router.use((req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
     path: req.path,
-    recovery_mode: true,
+    recovery_mode: isRecoveryMode,
     available_endpoints: [
       '/gads/',
       '/gads/health', 
@@ -911,7 +876,7 @@ app.listen(PORT, () => {
   console.log(`🏥 Health: https://hub.ulearnschool.com/gads/health`);
   console.log('');
   console.log('⚠️  RECOVERY MODE v7 ACTIVE:');
-  console.log(`   🔧 MySQL Updater: ${modules.mysqlCampaignUpdater ? 'Available' : 'Missing'}`);
+  console.log(`   🔧 Google Ads Sync: ${modules.googleAdsSync ? 'Available' : 'Missing'}`);
   console.log(`   📊 Dashboard: ${modules.dashboardServer ? 'Available' : 'Missing'}`);
   console.log(`   📈 Pipeline: ${modules.pipelineProb ? 'Available' : 'Missing'}`);
   console.log(`   🤖 MCP Server: ${modules.mcpServer ? 'Available' : 'Missing'}`);

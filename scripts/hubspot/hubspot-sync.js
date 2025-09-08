@@ -92,16 +92,16 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
     while (true) {
       let response;
       
-      // 🔧 FIXED: Use correct field names for each object type
-      const lastModifiedFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
-      console.log(`🔍 Using field: ${lastModifiedFieldName} for ${objectType}`);
+      // 🔧 FIXED: Use lastmodifieddate for BOTH contacts and deals to capture updates
+      const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
+      console.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
       
       if (objectType === 'contacts') {
         response = await hubspotClient.crm.contacts.searchApi.doSearch({
           filterGroups: [{
             filters: [
               {
-                propertyName: lastModifiedFieldName, // ✅ 'lastmodifieddate' for contacts
+                propertyName: dateFieldName, // ✅ 'lastmodifieddate' for contacts - CRITICAL FIX
                 operator: 'BETWEEN',
                 value: startDate.getTime().toString(),
                 highValue: endDate.getTime().toString()
@@ -123,7 +123,7 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
         response = await hubspotClient.crm.deals.searchApi.doSearch({
           filterGroups: [{
             filters: [{
-              propertyName: lastModifiedFieldName, // ✅ 'hs_lastmodifieddate' for deals
+              propertyName: dateFieldName, // ✅ 'hs_lastmodifieddate' for deals
               operator: 'BETWEEN', 
               value: startDate.getTime().toString(),
               highValue: endDate.getTime().toString()
@@ -383,9 +383,9 @@ async function syncSchema(hubspotClient, getDbConnection) {
       );
       
       console.log(`📊 Contacts: ${contactProperties.length} properties, ${missingContactColumns.length} missing`);
-      await addMissingColumns(connection, 'hub_contacts', missingContactColumns);
+      console.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
       
-      // Process deals schema
+      // Process deals schema  
       const dealProperties = await getAllAvailableProperties(hubspotClient, 'deals');
       const existingDealColumns = await getExistingColumns(connection, 'hub_deals');
       
@@ -394,7 +394,7 @@ async function syncSchema(hubspotClient, getDbConnection) {
       );
       
       console.log(`📊 Deals: ${dealProperties.length} properties, ${missingDealColumns.length} missing`);
-      await addMissingColumns(connection, 'hub_deals', missingDealColumns);
+      console.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
       
       console.log('✅ Schema sync completed');
       

@@ -32,19 +32,9 @@ function hashPhone(phone) {
  */
 async function uploadEnhancedConversion(conversion) {
   try {
-    // Mock Google Ads API call - replace with actual implementation
-    console.log('FULL GOOGLE RESPONSE:', JSON.stringify({
-      results: [{
-        user_identifiers: conversion.user_identifiers || [],
-        gbraid: "",
-        wbraid: "",
-        gclid: conversion.gclid,
-        conversion_action: conversion.conversion_action,
-        conversion_date_time: conversion.conversion_date_time
-      }],
-      partial_failure_error: null,
-      job_id: Math.floor(Math.random() * 9000000000000000000).toString()
-    }, null, 2));
+    // PRODUCTION: Enhanced Conversion API implementation required
+    console.error('❌ PRODUCTION ERROR: Enhanced Conversion API not implemented');
+    throw new Error('Enhanced Conversion API not available in production');
     
     return {
       success: true,

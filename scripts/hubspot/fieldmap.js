@@ -11,11 +11,13 @@
 const TABLE_CONFIGS = {
   contacts: {
     tableName: 'hub_contacts',
+    extensionTableName: 'hub_contacts_ext',
     primaryKey: 'contact_id',
     hubspotIdField: 'hubspot_id'
   },
   deals: {
     tableName: 'hub_deals',
+    extensionTableName: 'hub_deals_ext',
     primaryKey: 'deal_id',
     hubspotIdField: 'hubspot_deal_id'
   }
@@ -26,12 +28,15 @@ const TABLE_CONFIGS = {
 //=============================================================================//
 
 /**
- * Check if a column exists in the table and add it if missing
+ * Check if a column exists and route appropriately:
+ * - If exists in main table → use main table
+ * - If exists in extension table → use extension table  
+ * - If doesn't exist anywhere → create in extension table (NEW FIELDS GO TO EXTENSION)
  */
-async function ensureColumnExists(connection, tableName, hubspotFieldName, fieldValue) {
+async function ensureColumnExists(connection, tableName, hubspotFieldName, fieldValue, extensionTableName = null) {
   try {
-    // Check if column exists
-    const [columns] = await connection.execute(
+    // Check if column exists in main table
+    const [mainColumns] = await connection.execute(
       `SELECT COLUMN_NAME 
        FROM INFORMATION_SCHEMA.COLUMNS 
        WHERE TABLE_SCHEMA = ? 
@@ -40,20 +45,62 @@ async function ensureColumnExists(connection, tableName, hubspotFieldName, field
       [process.env.DB_NAME, tableName, hubspotFieldName]
     );
     
-    if (columns.length === 0) {
-      // Column doesn't exist, add it
-      const dataType = getMySQLDataType(hubspotFieldName, fieldValue);
-      
-      await connection.execute(
-        `ALTER TABLE ${tableName} ADD COLUMN \`${hubspotFieldName}\` ${dataType} DEFAULT NULL`
-      );
-      
-      console.log(`   ✅ Added column: ${hubspotFieldName} (${dataType})`);
+    if (mainColumns.length > 0) {
+      // Column exists in main table - use it
+      return { tableName, columnName: hubspotFieldName };
     }
     
-    return hubspotFieldName;
+    // Check if column exists in extension table
+    if (extensionTableName) {
+      const [extColumns] = await connection.execute(
+        `SELECT COLUMN_NAME 
+         FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = ? 
+         AND TABLE_NAME = ? 
+         AND COLUMN_NAME = ?`,
+        [process.env.DB_NAME, extensionTableName, hubspotFieldName]
+      );
+      
+      if (extColumns.length > 0) {
+        // Column exists in extension table - use it
+        return { tableName: extensionTableName, columnName: hubspotFieldName };
+      }
+      
+      // Column doesn't exist anywhere - CREATE IN EXTENSION TABLE (new strategy)
+      const dataType = getMySQLDataType(hubspotFieldName, fieldValue);
+      
+      try {
+        await connection.execute(
+          `ALTER TABLE ${extensionTableName} ADD COLUMN \`${hubspotFieldName}\` ${dataType} DEFAULT NULL`
+        );
+        
+        console.log(`   ✅ NEW field → Extension: ${hubspotFieldName} (${dataType}) in ${extensionTableName}`);
+        return { tableName: extensionTableName, columnName: hubspotFieldName };
+        
+      } catch (error) {
+        console.error(`   ❌ Failed to add new field ${hubspotFieldName} to extension table: ${error.message}`);
+        return null;
+      }
+    } else {
+      // No extension table available, fall back to main table
+      const dataType = getMySQLDataType(hubspotFieldName, fieldValue);
+      
+      try {
+        await connection.execute(
+          `ALTER TABLE ${tableName} ADD COLUMN \`${hubspotFieldName}\` ${dataType} DEFAULT NULL`
+        );
+        
+        console.log(`   ✅ Added column: ${hubspotFieldName} (${dataType}) to ${tableName}`);
+        return { tableName, columnName: hubspotFieldName };
+        
+      } catch (error) {
+        console.error(`   ❌ Failed to add column ${hubspotFieldName}: ${error.message}`);
+        return null;
+      }
+    }
+    
   } catch (error) {
-    console.error(`   ❌ Could not add column ${hubspotFieldName}: ${error.message}`);
+    console.error(`   ❌ Error checking column ${hubspotFieldName}: ${error.message}`);
     return null;
   }
 }
@@ -182,11 +229,13 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
       throw new Error(`Unknown object type: ${objectType}`);
     }
     
-    const { tableName, hubspotIdField } = config;
+    const { tableName, extensionTableName, hubspotIdField } = config;
     
-    // Start with HubSpot ID
-    const data = {};
-    data[hubspotIdField] = hubspotObject.id;
+    // Separate data for main table and extension table
+    const mainTableData = {};
+    const extTableData = {};
+    mainTableData[hubspotIdField] = hubspotObject.id;
+    extTableData[hubspotIdField] = hubspotObject.id;
     
     let processedFields = 0;
     
@@ -199,13 +248,18 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
         }
         
         try {
-          // Ensure column exists
-          const columnName = await ensureColumnExists(connection, tableName, hubspotFieldName, fieldValue);
+          // Ensure column exists (may return main table or extension table)
+          const columnResult = await ensureColumnExists(connection, tableName, hubspotFieldName, fieldValue, extensionTableName);
           
-          if (columnName) {
-            // Transform and store value
+          if (columnResult) {
+            // Transform and store value in appropriate table
             const transformedValue = transformValue(hubspotFieldName, fieldValue);
-            data[columnName] = transformedValue;
+            
+            if (columnResult.tableName === extensionTableName) {
+              extTableData[columnResult.columnName] = transformedValue;
+            } else {
+              mainTableData[columnResult.columnName] = transformedValue;
+            }
             processedFields++;
           }
         } catch (error) {
@@ -214,22 +268,13 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
       }
     }
     
-    // Build and execute query
-    const columns = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = columns.map(() => '?').join(', ');
-    const updateClauses = columns
-      .filter(col => col !== hubspotIdField)
-      .map(col => `\`${col}\` = VALUES(\`${col}\`)`)
-      .join(', ');
+    // Save to main table
+    await saveTableData(connection, tableName, mainTableData, hubspotIdField);
     
-    const query = `
-      INSERT INTO ${tableName} (${columns.map(c => `\`${c}\``).join(', ')})
-      VALUES (${placeholders})
-      ON DUPLICATE KEY UPDATE ${updateClauses}
-    `;
-    
-    await connection.execute(query, values);
+    // Save to extension table if we have extension data
+    if (Object.keys(extTableData).length > 1) { // More than just the hubspot_id
+      await saveTableData(connection, extensionTableName, extTableData, hubspotIdField);
+    }
     
     if (processedFields > 0) {
       console.log(`✅ Saved ${objectType} ${hubspotObject.id} (${processedFields} fields)`);
@@ -242,6 +287,29 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
   }
 }
 
+/**
+ * Helper function to save data to a specific table
+ */
+async function saveTableData(connection, tableName, data, hubspotIdField) {
+  if (Object.keys(data).length <= 1) return; // Only hubspot_id, nothing to save
+  
+  const columns = Object.keys(data);
+  const values = Object.values(data);
+  const placeholders = columns.map(() => '?').join(', ');
+  const updateClauses = columns
+    .filter(col => col !== hubspotIdField)
+    .map(col => `\`${col}\` = VALUES(\`${col}\`)`)
+    .join(', ');
+  
+  const query = `
+    INSERT INTO ${tableName} (${columns.map(c => `\`${c}\``).join(', ')})
+    VALUES (${placeholders})
+    ON DUPLICATE KEY UPDATE ${updateClauses}
+  `;
+  
+  await connection.execute(query, values);
+}
+
 //=============================================================================//
 //   EXPORTED FUNCTIONS
 //=============================================================================//
@@ -250,6 +318,7 @@ module.exports = {
   ensureTableExists,
   ensureColumnExists,
   processHubSpotObject,
+  saveTableData,
   getMySQLDataType,
   transformValue,
   TABLE_CONFIGS

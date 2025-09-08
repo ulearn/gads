@@ -452,12 +452,12 @@
                 
                 errorContainer.innerHTML = 
                     '<div class="error">' +
-                    '❌ Error: ' + error.message + '<br><br>' +
+                    '❌ Critical Error: ' + error.message + '<br><br>' +
                     '<strong>Endpoint:</strong> /gads/analytics/burn-rate-timeseries?days=' + timeRange + '<br>' +
-                    '<strong>Expected:</strong> Time-series data with flexible date ranges' +
+                    '<strong>Status:</strong> Unable to load production data - dashboard unavailable' +
                     '</div>';
                 
-                loadMockTimeseriesData();
+                // PRODUCTION: No fallback - show error instead
             }
         }
 
@@ -662,53 +662,7 @@
             nationalityContainer.style.display = 'block';
         }
 
-        function loadMockTimeseriesData() {
-            const mockData = {
-                success: true,
-                data: [
-                    { date: '2025-08-01', totalContacts: 8, supportedContacts: 5, unsupportedContacts: 3, burnRatePercentage: 37.5 },
-                    { date: '2025-08-02', totalContacts: 12, supportedContacts: 7, unsupportedContacts: 5, burnRatePercentage: 41.7 },
-                    { date: '2025-08-03', totalContacts: 6, supportedContacts: 4, unsupportedContacts: 2, burnRatePercentage: 33.3 },
-                    { date: '2025-08-04', totalContacts: 15, supportedContacts: 9, unsupportedContacts: 6, burnRatePercentage: 40.0 },
-                    { date: '2025-08-05', totalContacts: 10, supportedContacts: 7, unsupportedContacts: 3, burnRatePercentage: 30.0 },
-                    { date: '2025-08-06', totalContacts: 18, supportedContacts: 11, unsupportedContacts: 7, burnRatePercentage: 38.9 },
-                    { date: '2025-08-07', totalContacts: 14, supportedContacts: 8, unsupportedContacts: 6, burnRatePercentage: 42.9 }
-                ],
-                summary: {
-                    totalContacts: 83,
-                    totalSupported: 51,
-                    totalUnsupported: 32,
-                    overallBurnRate: 38.6,
-                    trend: { direction: 'increasing', change: '2.3' },
-                    period: { days: 7 }
-                },
-                nationalityBreakdown: {
-                    totalBurnedContacts: 32,
-                    totalEstimatedWaste: 800,
-                    nationalities: [
-                        { nationality: 'Algeria', burnedContacts: 7, estimatedWaste: 175, percentage: '21.9' },
-                        { nationality: 'Pakistan', burnedContacts: 6, estimatedWaste: 150, percentage: '18.8' },
-                        { nationality: 'Morocco', burnedContacts: 3, estimatedWaste: 75, percentage: '9.4' },
-                        { nationality: 'Nigeria', burnedContacts: 1, estimatedWaste: 25, percentage: '3.1' },
-                        { nationality: 'Unknown', burnedContacts: 15, estimatedWaste: 375, percentage: '46.9' }
-                    ]
-                },
-                metadata: {
-                    granularity: 'daily',
-                    dataSource: 'Mock Data for Development'
-                }
-            };
-            
-            updateBurnRateStats(mockData);
-            updateBurnRateChart(mockData);
-            displayNationalityBreakdown(mockData);
-            
-            document.getElementById('successContainer').innerHTML = 
-                '<div class="success">' +
-                '✅ Loaded mock timeseries data for development<br>' +
-                '<small>Using sample time-series data while API is being tested</small>' +
-                '</div>';
-        }
+        // PRODUCTION: Mock data function removed for production safety
 
         // Load data on page load
         document.addEventListener('DOMContentLoaded', function() {
