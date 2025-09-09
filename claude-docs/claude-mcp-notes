@@ -9,6 +9,84 @@ LOG:[2025-09-07T12:21:17.350Z] 2025-09-07T12:21:17.350Z ❌ MCP SDK initializati
 
 =====================================================================================================================================
 DONE
+09/09/2025
+hub_contact_deal_associations not populating - FIXED 
+- It was missing a column called "updated_at"
+- We debated whether this was atually reuqired - it just tracks when the row record in MySql is updated (nothing to do with HubSpot data). 
+- It may be unncecessary as the assocation is either there or not (and perhaps should be deleted during a cleanup script eg: once a month.) 
+- As we filter on deals associated > 0 it doesn't really matter that assocations exist on the very occassional deleted Deal as the Contact 
+probably won't appear (the assocation record will have no appear on the pipeline display) 
+
+09/09/2025
+API Expansion
+● ✅ Complete Implementation Summary
+
+  I've successfully expanded your Google Ads API access as requested. Here's what's now implemented:
+
+  1. Fixed Tool Ordering ✅
+
+  - GAds_Account_API now comes before GAds_Campaign_API in the tool list
+  - Proper ordering: MySQL tools first, then API tools in logical sequence
+
+  2. Restructured Account API Tool ✅
+
+  - Now focuses ONLY on account-level settings:
+    - Account info (name, ID, currency, timezone)
+    - Tracking & conversion settings (auto-tagging, conversion tracking ID, global site tag)
+    - All conversion actions with their settings
+    - Account health metrics
+
+  3. Massively Expanded Campaign API Tool ✅
+
+  - Now includes comprehensive data for:
+    - Campaign Settings: Languages, geo-targeting, bidding strategies, performance metrics
+    - Ad Groups: All ad groups with bidding, targeting, and performance data
+    - Keywords: All keywords with match types, bids, and performance (limited to 200 for performance)
+    - Ads: All ads with headlines/descriptions count and performance (limited to 100)
+
+  4. Created New Audience API Tool ✅
+
+  - Audience Manager access for:
+    - User lists (remarketing audiences) with sizes and membership settings
+    - Custom audience segments
+    - Demographic targeting criteria currently active
+    - Student-focused audience identification
+
+  Current API Coverage vs. Your Requirements:
+
+  ✅ High Priority - COMPLETED:
+  - ✅ Audiences (comprehensive audience lists, custom segments, demographics)
+  - ✅ Keywords (all keywords with match types and performance)
+  - ✅ Campaign settings (languages, geo-targeting - critical for your English school)
+  - ✅ Demographics (age, gender, parental status, income targeting)
+
+  🔄 Medium Priority - PARTIAL:
+  - ✅ Bidding strategies (comprehensive)
+  - ✅ Ad performance data
+  - 🔄 Ad assets, recommendations, shared library (next phase)
+
+  📋 Lower Priority - FUTURE:
+  - Experiments, advanced ad types
+
+  Perfect for Your English School Business:
+
+  The expanded API now gives Claude Desktop access to exactly what you need for targeting non-English speakers aged 18-35 from affluent areas wanting to study English in
+  Dublin:
+
+  - Language targeting (critical!)
+  - Geographic targeting for specific countries/territories
+  - Age & income demographics (18-35, high income)
+  - Custom audience segments including your 40 years of customer data
+  - Keywords analysis for competitor terms (EEI schools, etc.)
+  - Campaign performance with your actual tROAS optimization data
+
+  The AI can now analyze and optimize your targeting for the Work&Study programmes for LATAM students, competitor analysis, and all the sophisticated targeting your business
+  requires.
+
+  All tools are active and ready to test in Claude Desktop! 🚀
+
+
+=================================================================================================================================================
 07.09.2025 @ 10am -> SQL Views (Managing the MySql columns limit)
 ● Perfect! Let's test the views:
 

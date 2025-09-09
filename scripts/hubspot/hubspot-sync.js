@@ -430,24 +430,29 @@ async function syncContactDealAssociations(hubspotClient, connection) {
   try {
     console.log('🔗 Starting contact-deal associations sync using Associations API v4...');
     
-    // Step 1: Get all contact IDs from our database that have deals
+    // FIXED: Get contacts that either have deals OR were recently modified
     const [contacts] = await connection.execute(`
-      SELECT hubspot_id 
+      SELECT DISTINCT hubspot_id 
       FROM hub_contacts 
-      WHERE num_associated_deals > 0
-      LIMIT 1000
+      WHERE (
+        num_associated_deals > 0 
+        OR DATE(lastmodifieddate) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+      )
+      ORDER BY lastmodifieddate DESC
+      LIMIT 2000
     `);
     
+    console.log(`   📊 Found ${contacts.length} contacts to check (existing + recently modified)`);
+    
     if (contacts.length === 0) {
-      console.log('   ⚠️ No contacts with associated deals found');
+      console.log('   ⚠️ No contacts found with deals or recent modifications');
       return { success: true, associations: 0 };
     }
-    
-    console.log(`   📊 Found ${contacts.length} contacts with associated deals`);
     
     // Step 2: Batch query associations using HubSpot Associations API v4
     const contactIds = contacts.map(row => ({ id: row.hubspot_id }));
     let totalAssociations = 0;
+    let contactsWithAssociations = 0;
     
     // Process in batches of 100 (API limit)
     for (let i = 0; i < contactIds.length; i += 100) {
@@ -467,36 +472,47 @@ async function syncContactDealAssociations(hubspotClient, connection) {
         
         console.log(`   🔍 API Response for batch:`, {
           status: response.status,
-          resultsCount: response.results?.length || 0,
-          sampleResult: response.results?.[0] ? JSON.stringify(response.results[0], null, 2) : 'No results'
+          resultsCount: response.results?.length || 0
         });
         
         // Step 3: Process the associations
         if (response.results && response.results.length > 0) {
           for (const result of response.results) {
-            console.log(`   🔍 DEBUG: Processing result structure:`, JSON.stringify(result, null, 2));
-            
             // FIXED: Parse the correct structure from V3 API
-            const contactId = result._from.id;
+            const contactId = result._from?.id || result.from?.id;
             const dealAssociations = result.to || [];
             
-            console.log(`   🔗 Contact ${contactId} has ${dealAssociations.length} deal associations`);
-            
-            // Save each association
-            for (const dealAssoc of dealAssociations) {
-              const dealId = dealAssoc.id;
+            if (contactId && dealAssociations.length > 0) {
+              console.log(`   🔗 Contact ${contactId} has ${dealAssociations.length} deal associations`);
+              contactsWithAssociations++;
               
-              try {
-                await connection.execute(`
-                  INSERT IGNORE INTO hub_contact_deal_associations 
-                  (contact_hubspot_id, deal_hubspot_id, association_type) 
-                  VALUES (?, ?, ?)
-                `, [contactId, dealId, 'primary']);
+              // Save each association
+              for (const dealAssoc of dealAssociations) {
+                const dealId = dealAssoc.id;
                 
-                totalAssociations++;
-                
-              } catch (error) {
-                console.error(`     ❌ Failed to save association ${contactId} → ${dealId}:`, error.message);
+                if (dealId) {
+                  try {
+                    const [insertResult] = await connection.execute(`
+                      INSERT INTO hub_contact_deal_associations 
+                      (contact_hubspot_id, deal_hubspot_id, association_type) 
+                      VALUES (?, ?, ?)
+                      ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
+                    `, [contactId, dealId, 'primary']);
+                    
+                    // Check if it was a new association
+                    if (insertResult.affectedRows > 0) {
+                      totalAssociations++;
+                      if (insertResult.insertId > 0) {
+                        console.log(`     ✅ NEW association: ${contactId} → ${dealId}`);
+                      } else {
+                        console.log(`     🔄 Updated association: ${contactId} → ${dealId}`);
+                      }
+                    }
+                    
+                  } catch (error) {
+                    console.error(`     ❌ Failed to save association ${contactId} → ${dealId}:`, error.message);
+                  }
+                }
               }
             }
           }
@@ -507,15 +523,18 @@ async function syncContactDealAssociations(hubspotClient, connection) {
         
       } catch (error) {
         console.error(`   ❌ Failed to fetch associations for batch:`, error.message);
+        console.error(`   📋 Batch sample:`, batch.slice(0, 3)); // Log first 3 for debugging
       }
     }
     
-    console.log(`✅ Associations sync complete: ${totalAssociations} associations saved`);
+    console.log(`✅ Associations sync complete: ${totalAssociations} associations processed`);
+    console.log(`   📊 Contacts with associations: ${contactsWithAssociations}`);
     
     return {
       success: true,
       associations: totalAssociations,
-      contacts_processed: contacts.length
+      contacts_processed: contacts.length,
+      contacts_with_associations: contactsWithAssociations
     };
     
   } catch (error) {

@@ -4,50 +4,24 @@
  */
 
 const toolDefinitions = {
-  // Basic echo tool for testing
-  echo: {
-    name: 'echo',
-    description: 'Simple echo tool that returns whatever message you send to it',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          description: 'The message to echo back'
-        }
-      },
-      required: ['message']
-    }
-  },
-
-  // Google Ads API Tools
-  google_ads_account_overview: {
-    name: 'google_ads_account_overview',
-    description: 'Get comprehensive Google Ads account overview with campaign performance data',
+  // Google Ads API Tools - Direct API Access
+  GAds_Account_API: {
+    name: 'GAds_Account_API',
+    description: 'Get Google Ads account-level settings and basic information (Direct API)',
     inputSchema: {
       type: 'object',
       properties: {
         account_id: {
           type: 'string',
           description: 'Google Ads account ID (default: live account)'
-        },
-        include_campaigns: {
-          type: 'boolean',
-          description: 'Include detailed campaign information',
-          default: true
-        },
-        date_range_days: {
-          type: 'number',
-          description: 'Number of days for performance metrics',
-          default: 30
         }
       }
     }
   },
 
-  google_ads_campaign_analysis: {
-    name: 'google_ads_campaign_analysis',
-    description: 'Analyze campaign settings, bidding strategies, targeting, and optimization configurations',
+  GAds_Campaign_API: {
+    name: 'GAds_Campaign_API',
+    description: 'Comprehensive campaign analysis including settings, performance, ad groups, keywords, and ads (Direct API)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -59,24 +33,63 @@ const toolDefinitions = {
           type: 'string',
           description: 'Specific campaign ID to analyze (optional - analyzes all if not provided)'
         },
-        include_targeting: {
+        date_range_days: {
+          type: 'number',
+          description: 'Number of days for performance metrics',
+          default: 30
+        },
+        include_ad_groups: {
           type: 'boolean',
-          description: 'Include detailed targeting settings analysis',
+          description: 'Include ad group settings and targeting',
           default: true
         },
-        include_bidding: {
+        include_keywords: {
           type: 'boolean',
-          description: 'Include detailed bidding strategy analysis',
+          description: 'Include keywords and match types',
+          default: true
+        },
+        include_ads: {
+          type: 'boolean',
+          description: 'Include ad content and performance',
           default: true
         }
       }
     }
   },
 
-  // MySQL Database Tools - Refactored to use proven analytics modules
-  summary: {
-    name: 'summary',
-    description: 'Get comprehensive Google Ads dashboard summary with MQLs, SQLs, deals, and revenue metrics using proven analytics logic',
+  GAds_Audience_API: {
+    name: 'GAds_Audience_API',
+    description: 'Audience Manager access for segments, custom audiences, targeting insights, and demographic data (Direct API)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        include_segments: {
+          type: 'boolean',
+          description: 'Include audience segments and custom segments',
+          default: true
+        },
+        include_demographics: {
+          type: 'boolean',
+          description: 'Include demographic targeting data',
+          default: true
+        },
+        include_insights: {
+          type: 'boolean',
+          description: 'Include audience insights and performance data',
+          default: true
+        }
+      }
+    }
+  },
+
+  // MySQL Database Tools - Historical Data Analysis
+  Summary_MySql: {
+    name: 'Summary_MySql',
+    description: 'Get comprehensive Google Ads dashboard summary with MQLs, SQLs, deals, revenue, and monthly spend data (MySQL Database)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -95,9 +108,45 @@ const toolDefinitions = {
     }
   },
 
-  pipeline: {
-    name: 'pipeline',
-    description: 'Comprehensive pipeline analysis showing Google Ads MQL stages and HubSpot SQL deal stages with proven analytics logic',
+  Campaign_MySql: {
+    name: 'Campaign_MySql',
+    description: 'Detailed campaign performance analysis with contacts, deals, revenue, monthly spend data, and conversion rates (MySQL Database)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: {
+          type: 'number',
+          description: 'Number of days to analyze',
+          default: 30
+        },
+        mode: {
+          type: 'string',
+          description: 'Analysis mode: pipeline or revenue',
+          enum: ['pipeline', 'revenue'],
+          default: 'pipeline'
+        }
+      }
+    }
+  },
+
+  Budget_MySql: {
+    name: 'Budget_MySql',
+    description: 'Budget analysis and ROI insights with historical spend data (MySQL Database - Placeholder)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: {
+          type: 'number',
+          description: 'Number of days to analyze',
+          default: 30
+        }
+      }
+    }
+  },
+
+  Pipeline_MySql: {
+    name: 'Pipeline_MySql',
+    description: 'Comprehensive pipeline analysis with Google Ads costs, MQL stages, and HubSpot SQL deal stages (MySQL Database)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -115,9 +164,30 @@ const toolDefinitions = {
     }
   },
 
-  burn: {
-    name: 'burn',
-    description: 'Advanced burn rate analysis with timeseries data and nationality breakdown using proven analytics logic',
+  Territory_MySql: {
+    name: 'Territory_MySql',
+    description: 'Territory performance analysis showing supported vs unsupported territories with spend data and burn rate insights (MySQL Database)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: {
+          type: 'number',
+          description: 'Number of days to analyze',
+          default: 30
+        },
+        mode: {
+          type: 'string',
+          description: 'Analysis mode: pipeline or revenue',
+          enum: ['pipeline', 'revenue'],
+          default: 'pipeline'
+        }
+      }
+    }
+  },
+
+  Burn_MySql: {
+    name: 'Burn_MySql',
+    description: 'Advanced burn rate analysis with timeseries data, nationality breakdown, and spend tracking (MySQL Database)',
     inputSchema: {
       type: 'object',
       properties: {
@@ -134,64 +204,25 @@ const toolDefinitions = {
         }
       }
     }
-  },
+  }
 
-  campaign: {
-    name: 'campaign',
-    description: 'Detailed campaign performance analysis with contacts, deals, revenue, and conversion rates',
+  // Basic echo tool for testing - COMMENTED OUT
+  /*
+  echo: {
+    name: 'echo',
+    description: 'Simple echo tool that returns whatever message you send to it',
     inputSchema: {
       type: 'object',
       properties: {
-        days: {
-          type: 'number',
-          description: 'Number of days to analyze',
-          default: 30
-        },
-        mode: {
+        message: {
           type: 'string',
-          description: 'Analysis mode: pipeline or revenue',
-          enum: ['pipeline', 'revenue'],
-          default: 'pipeline'
+          description: 'The message to echo back'
         }
-      }
-    }
-  },
-
-  territory: {
-    name: 'territory',
-    description: 'Territory performance analysis showing supported vs unsupported territories with burn rate insights',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        days: {
-          type: 'number',
-          description: 'Number of days to analyze',
-          default: 30
-        },
-        mode: {
-          type: 'string',
-          description: 'Analysis mode: pipeline or revenue',
-          enum: ['pipeline', 'revenue'],
-          default: 'pipeline'
-        }
-      }
-    }
-  },
-
-  budget: {
-    name: 'budget',
-    description: 'Budget analysis and ROI insights (requires Google Ads API integration)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        days: {
-          type: 'number',
-          description: 'Number of days to analyze',
-          default: 30
-        }
-      }
+      },
+      required: ['message']
     }
   }
+  */
 };
 
 /**
@@ -202,55 +233,30 @@ function getAllTools() {
 }
 
 /**
- * Get tool definition by name
+ * Get tool by name
  */
 function getToolByName(name) {
-  return toolDefinitions[name] || null;
+  // Check by object key first (for compatibility)
+  const toolByKey = Object.values(toolDefinitions).find(tool => 
+    Object.keys(toolDefinitions).includes(name) && toolDefinitions[name] === tool
+  );
+  
+  if (toolByKey) return toolByKey;
+  
+  // Check by display name
+  return Object.values(toolDefinitions).find(tool => tool.name === name);
 }
 
 /**
- * Get tools by category
- */
-function getToolsByCategory(category) {
-  switch (category) {
-    case 'api':
-    case 'google_ads':
-      return [
-        toolDefinitions.google_ads_account_overview,
-        toolDefinitions.google_ads_campaign_analysis
-      ];
-    
-    case 'database':
-    case 'mysql':
-    case 'hubspot':
-      return [
-        toolDefinitions.summary,
-        toolDefinitions.pipeline,
-        toolDefinitions.burn,
-        toolDefinitions.campaign,
-        toolDefinitions.territory,
-        toolDefinitions.budget
-      ];
-    
-    case 'testing':
-      return [toolDefinitions.echo];
-    
-    default:
-      return getAllTools();
-  }
-}
-
-/**
- * Check if a tool exists
+ * Check if tool exists
  */
 function toolExists(name) {
-  return !!toolDefinitions[name];
+  return getToolByName(name) !== undefined;
 }
 
 module.exports = {
   toolDefinitions,
   getAllTools,
   getToolByName,
-  getToolsByCategory,
   toolExists
 };

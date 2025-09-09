@@ -94,46 +94,41 @@ async function handleToolCall(toolName, args) {
   let result;
   
   switch (toolName) {
-    // Basic tools
-    case 'echo':
-      const message = args.message || 'No message provided';
-      result = {
-        success: true,
-        report: `Echo: ${message}`
-      };
-      break;
-    
     // Google Ads API tools
-    case 'google_ads_account_overview':
+    case 'GAds_Account_API':
       result = await apiTools.getAccountOverview(args);
       break;
     
-    case 'google_ads_campaign_analysis':
+    case 'GAds_Campaign_API':
       result = await apiTools.getCampaignAnalysis(args);
       break;
     
+    case 'GAds_Audience_API':
+      result = await apiTools.getAudienceAnalysis(args);
+      break;
+    
     // MySQL database tools - Refactored to use proven analytics modules  
-    case 'summary':
+    case 'Summary_MySql':
       result = await mysqlTools.getDashboardSummary(args);
       break;
     
-    case 'pipeline':
+    case 'Pipeline_MySql':
       result = await mysqlTools.getPipelineAnalysis(args);
       break;
     
-    case 'burn':
+    case 'Burn_MySql':
       result = await mysqlTools.getBurnRateAnalysis(args);
       break;
     
-    case 'campaign':
+    case 'Campaign_MySql':
       result = await mysqlTools.getCampaignPerformance(args);
       break;
     
-    case 'territory':
+    case 'Territory_MySql':
       result = await mysqlTools.getTerritoryAnalysis(args);
       break;
     
-    case 'budget':
+    case 'Budget_MySql':
       result = await mysqlTools.getBudgetAnalysis(args);
       break;
     
