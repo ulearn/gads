@@ -28,3 +28,11 @@ GIT
 Repo: https://github.com/ulearn/gads
 - We are only operating on the claude branch
 - Never do anything destructive with git without asking permission
+
+=========================================================================================================
+
+PROJECT SPECIFIC CONTEXT
+
+Read these files:
+1) /home/hub/public_html/gads/claude-docs/click-to-close.txt  
+2) /home/hub/public_html/gads/claude-docs/claude-mcp-notes

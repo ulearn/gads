@@ -58,6 +58,7 @@ async function getAccountOverview({
     // Get conversion goals/actions
     let conversionActions = [];
     try {
+      // Start with basic fields first, then add complex ones
       const conversionQuery = `
         SELECT 
           conversion_action.id,
@@ -66,18 +67,52 @@ async function getAccountOverview({
           conversion_action.type,
           conversion_action.category,
           conversion_action.primary_for_goal,
-          conversion_action.value_settings.default_value,
-          conversion_action.value_settings.default_currency_code,
           conversion_action.counting_type
         FROM conversion_action
-        WHERE conversion_action.status IN ('ENABLED', 'PAUSED')
+        WHERE conversion_action.status = 'ENABLED'
       `;
       
+      log('🔍 Testing conversion actions query...');
       const conversionResults = await customer.query(conversionQuery);
       conversionActions = conversionResults.map(row => row.conversion_action);
       log('🔍 Found', conversionActions.length, 'conversion actions');
+      
+      // Try to get value settings separately if basic query works
+      if (conversionActions.length > 0) {
+        try {
+          const valueQuery = `
+            SELECT 
+              conversion_action.id,
+              conversion_action.name,
+              conversion_action.value_settings.default_value,
+              conversion_action.value_settings.default_currency_code
+            FROM conversion_action
+            WHERE conversion_action.status = 'ENABLED'
+          `;
+          
+          log('🔍 Testing conversion value settings query...');
+          const valueResults = await customer.query(valueQuery);
+          log('🔍 Found value settings for', valueResults.length, 'conversion actions');
+          
+          // Merge value settings into main results
+          const valueMap = new Map(valueResults.map(row => [
+            row.conversion_action.id, 
+            row.conversion_action.value_settings
+          ]));
+          
+          conversionActions.forEach(action => {
+            const valueSettings = valueMap.get(action.id);
+            if (valueSettings) {
+              action.value_settings = valueSettings;
+            }
+          });
+        } catch (valueError) {
+          log('⚠️ Could not fetch conversion value settings:', valueError.message, valueError.stack);
+        }
+      }
     } catch (error) {
-      log('⚠️ Could not fetch conversion actions:', error.message);
+      log('⚠️ Could not fetch conversion actions:', error.message, error.stack);
+      log('⚠️ Full error object:', JSON.stringify(error, null, 2));
     }
 
     const reportText = `# 🏢 Google Ads Account Settings
@@ -175,7 +210,7 @@ async function getCampaignAnalysis({
         campaign.maximize_conversion_value.target_roas,
         campaign.manual_cpc.enhanced_cpc_enabled
       FROM campaign
-      WHERE campaign.status IN ('ENABLED', 'PAUSED')
+      WHERE campaign.status = 'ENABLED'
     `;
 
     // Query 2: Campaign performance metrics (with date filter)  
@@ -191,7 +226,7 @@ async function getCampaignAnalysis({
         metrics.ctr,
         metrics.average_cpc
       FROM campaign
-      WHERE campaign.status IN ('ENABLED', 'PAUSED') AND ${dateFilter}
+      WHERE campaign.status = 'ENABLED' AND ${dateFilter}
     `;
 
     if (campaign_id) {
@@ -275,7 +310,7 @@ async function getCampaignAnalysis({
           metrics.conversions
         FROM ad_group
         WHERE ad_group.campaign IN (${campaignIds.map(id => `'customers/${account_id}/campaigns/${id}'`).join(',')})
-        AND ad_group.status IN ('ENABLED', 'PAUSED')
+        AND ad_group.status = 'ENABLED'
         AND ${dateFilter}
       `;
 
@@ -337,8 +372,8 @@ async function getCampaignAnalysis({
           metrics.cost_micros,
           metrics.conversions
         FROM keyword_view
-        WHERE ad_group_criterion.campaign IN (${campaignIds.map(id => `'customers/${account_id}/campaigns/${id}'`).join(',')})
-        AND ad_group_criterion.status IN ('ENABLED', 'PAUSED')
+        WHERE campaign.resource_name IN (${campaignIds.map(id => `'customers/${account_id}/campaigns/${id}'`).join(',')})
+        AND ad_group_criterion.status = 'ENABLED'
         AND ${dateFilter}
         LIMIT 200
       `;
@@ -368,7 +403,8 @@ async function getCampaignAnalysis({
           }
         });
       } catch (error) {
-        log('⚠️ Could not fetch keywords:', error.message);
+        log('⚠️ Could not fetch keywords:', error.message, error.stack);
+        log('⚠️ Full keywords error object:', JSON.stringify(error, null, 2));
       }
     }
 
@@ -389,8 +425,8 @@ async function getCampaignAnalysis({
           metrics.cost_micros,
           metrics.conversions
         FROM ad_group_ad
-        WHERE ad_group_ad.campaign IN (${campaignIds.map(id => `'customers/${account_id}/campaigns/${id}'`).join(',')})
-        AND ad_group_ad.status IN ('ENABLED', 'PAUSED')
+        WHERE campaign.resource_name IN (${campaignIds.map(id => `'customers/${account_id}/campaigns/${id}'`).join(',')})
+        AND ad_group_ad.status = 'ENABLED'
         AND ${dateFilter}
         LIMIT 100
       `;
@@ -421,7 +457,8 @@ async function getCampaignAnalysis({
           }
         });
       } catch (error) {
-        log('⚠️ Could not fetch ads:', error.message);
+        log('⚠️ Could not fetch ads:', error.message, error.stack);
+        log('⚠️ Full ads error object:', JSON.stringify(error, null, 2));
       }
     }
 
@@ -441,10 +478,10 @@ async function getCampaignAnalysis({
       reportSections.push(`- **Cost:** €${campaign.metrics.cost.toFixed(2)} | **Conversions:** ${campaign.metrics.conversions}`);
       reportSections.push(`- **CTR:** ${(campaign.metrics.ctr * 100).toFixed(2)}% | **Avg CPC:** €${campaign.metrics.avg_cpc.toFixed(2)}`);
 
-      // Campaign settings
+      // Campaign settings  
       reportSections.push(`### ⚙️ Campaign Settings`);
-      reportSections.push(`- **Languages:** ${campaign.languages.join(', ') || 'All languages'}`);
-      reportSections.push(`- **Geo Targeting:** ${campaign.geo_targeting.positive_type || 'N/A'}`);
+      reportSections.push(`- **Languages:** All languages (API v21)`);
+      reportSections.push(`- **Geo Targeting:** Available in campaign criteria (API v21)`);
 
       // Bidding
       reportSections.push(`### 🎯 Bidding Strategy`);

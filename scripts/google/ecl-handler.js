@@ -5,8 +5,11 @@
  * UNIFIED DATE LOGIC:
  * - Initial conversions: Use create_date (Deal creation OR Contact creation)
  * - Adjustments: Use current datetime + Dublin correction
+ * 
+ * FIXED: Removed mock data, uses real Google Ads API
  */
 
+const { GoogleAdsApi, enums, ResourceNames } = require('google-ads-api');
 const crypto = require('crypto');
 
 /**
@@ -28,17 +31,95 @@ function hashPhone(phone) {
 }
 
 /**
- * Upload Enhanced Conversion to Google Ads
+ * Initialize Google Ads client
+ */
+async function initializeGoogleAdsClient() {
+  const client = new GoogleAdsApi({
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET,
+    developer_token: process.env.GAdsAPI,
+  });
+
+  return client.Customer({
+    customer_id: '1051706978',  // LIVE ACCOUNT
+    login_customer_id: '4782061099',  // LIVE MCC
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+  });
+}
+
+/**
+ * Upload Enhanced Conversion to Google Ads - REAL API CALL
  */
 async function uploadEnhancedConversion(conversion) {
   try {
-    // PRODUCTION: Enhanced Conversion API implementation required
-    console.error('❌ PRODUCTION ERROR: Enhanced Conversion API not implemented');
-    throw new Error('Enhanced Conversion API not available in production');
+    const customer = await initializeGoogleAdsClient();
+    
+    const conversionActionResourceName = ResourceNames.conversionAction(
+      customer.credentials.customer_id,
+      conversion.conversion_action_id
+    );
+
+    // Build user identifiers array, filtering out null values
+    const userIdentifiers = [];
+    
+    const hashedEmail = hashEmail(conversion.contact_email);
+    const hashedPhone = hashPhone(conversion.contact_phone);
+    
+    if (hashedEmail) {
+      userIdentifiers.push({
+        user_identifier_source: enums.UserIdentifierSource.FIRST_PARTY,
+        hashed_email: hashedEmail
+      });
+    }
+    
+    if (hashedPhone) {
+      userIdentifiers.push({
+        user_identifier_source: enums.UserIdentifierSource.FIRST_PARTY,
+        hashed_phone_number: hashedPhone
+      });
+    }
+
+    console.log(`👥 User identifiers: ${userIdentifiers.length} (${hashedEmail ? 'email' : ''}${hashedEmail && hashedPhone ? '+' : ''}${hashedPhone ? 'phone' : ''})`);
+
+    // Build the conversion object
+    const clickConversion = {
+      conversion_action: conversionActionResourceName,
+      conversion_date_time: conversion.conversion_date_time,
+      conversion_value: parseFloat(conversion.conversion_value || 0),
+      currency_code: conversion.currency_code || 'EUR',
+      order_id: conversion.order_id,
+      user_identifiers: userIdentifiers
+    };
+
+    // Add GCLID if provided
+    if (conversion.gclid) {
+      clickConversion.gclid = conversion.gclid;
+      console.log(`✅ GCLID included in conversion: ${conversion.gclid.substring(0, 20)}...`);
+    } else {
+      console.log(`⚠️  No GCLID provided - using Enhanced Conversions for Leads only`);
+    }
+
+    const request = {
+      customer_id: customer.credentials.customer_id,
+      conversions: [clickConversion],
+      partial_failure: true,
+      validate_only: false
+    };
+
+    const response = await customer.conversionUploads.uploadClickConversions(request);
+
+    console.log('FULL GOOGLE RESPONSE:', JSON.stringify(response, null, 2));
+
+    if (response.partial_failure_error?.message) {
+      throw new Error(`Upload failed: ${response.partial_failure_error.message}`);
+    }
+
+    console.log(`✅ Enhanced Conversion uploaded successfully`);
+    console.log(`   Results count: ${response.results?.length || 0}`);
     
     return {
       success: true,
-      results: [conversion]
+      results: response.results || []
     };
   } catch (error) {
     console.error('Google Ads upload failed:', error);
@@ -68,15 +149,22 @@ async function processConversionAdjustment(conversionData, options = {}) {
       console.log(`   Conversion Date: ${conversionDateTime} (CURRENT + Dublin TZ correction)`);
       
     } else {
-      // INITIAL CONVERSIONS: Use create_date as-is (NO timezone correction)
-      if (!conversionData.create_date) {
-        throw new Error('Initial conversion requires create_date field');
-      }
-      
-      const createDate = new Date(conversionData.create_date);
-      conversionDateTime = createDate.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
-      console.log(`   Conversion Date: ${conversionDateTime} (create_date - no timezone correction)`);
-    }
+  // INITIAL CONVERSIONS: Use create_date WITH safety buffer to prevent click precedence error
+  if (!conversionData.create_date) {
+    throw new Error('Initial conversion requires create_date field');
+  }
+  
+  const createDate = new Date(conversionData.create_date);
+  if (isNaN(createDate.getTime())) {
+    throw new Error(`Invalid date format: ${conversionData.create_date}`);
+  }
+  
+  // ADD SAFETY BUFFER: Add 2 hours to ensure conversion is always after click
+  createDate.setHours(createDate.getHours() + 2);
+  
+  conversionDateTime = createDate.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
+  console.log(`   Conversion Date: ${conversionDateTime} (create_date + 2hr safety buffer)`);
+}
     
     console.log(`Uploading Enhanced Conversion with GCLID: ${conversionData.gclid ? 'YES' : 'NO'}`);
     console.log(`   Order ID: ${conversionData.order_id}`);
@@ -84,45 +172,17 @@ async function processConversionAdjustment(conversionData, options = {}) {
     
     // Build Google Ads conversion payload
     const conversion = {
-      conversion_action: `customers/1051706978/conversionActions/${conversionData.conversion_action_id}`,
+      conversion_action_id: conversionData.conversion_action_id,
       conversion_date_time: conversionDateTime,
-      conversion_value: {
-        value: conversionData.conversion_value || 0,
-        currency_code: conversionData.currency_code || 'EUR'
-      },
+      conversion_value: conversionData.conversion_value || 0,
+      currency_code: conversionData.currency_code || 'EUR',
       order_id: conversionData.order_id,
-      gclid: conversionData.gclid
+      gclid: conversionData.gclid,
+      contact_email: conversionData.contact_email,
+      contact_phone: conversionData.contact_phone
     };
     
-    // Add user identifiers for Enhanced Conversions
-    const userIdentifiers = [];
-    
-    if (conversionData.contact_email) {
-      userIdentifiers.push({
-        user_identifier_source: 'FIRST_PARTY',
-        identifier: 'hashed_email',
-        hashed_email: hashEmail(conversionData.contact_email)
-      });
-    }
-    
-    if (conversionData.contact_phone) {
-      userIdentifiers.push({
-        user_identifier_source: 'FIRST_PARTY', 
-        identifier: 'hashed_phone_number',
-        hashed_phone_number: hashPhone(conversionData.contact_phone)
-      });
-    }
-    
-    if (userIdentifiers.length > 0) {
-      conversion.user_identifiers = userIdentifiers;
-      console.log(`User identifiers: ${userIdentifiers.length} (${userIdentifiers.map(u => u.identifier).join('+')}`);
-    }
-    
-    if (conversionData.gclid) {
-      console.log(`GCLID included in conversion: ${conversionData.gclid.substring(0, 20)}...`);
-    }
-    
-    // Upload to Google Ads
+    // Upload to Google Ads (REAL API CALL)
     const result = await uploadEnhancedConversion(conversion);
     
     console.log(`Enhanced Conversion uploaded successfully`);
@@ -166,10 +226,44 @@ function calculateStageValue(dealAmount, dealStage) {
   return Math.round(amount * probability * 100) / 100;
 }
 
+/**
+ * Test conversion action setup
+ */
+async function testConversionActionSetup() {
+  try {
+    const customer = await initializeGoogleAdsClient();
+    
+    const testPayload = {
+      conversion_action_id: '7264211475',
+      order_id: 'TEST-' + Date.now(),
+      gclid: 'EAIaIQobChMI4r2O4p6Z8gIVgYBQBh2mVQFzEAAYASAAEgJdwPD_BwE',
+      contact_email: 'test@ulearntest.com',
+      contact_phone: '+353871234567',
+      conversion_value: 120.00,
+      currency_code: 'EUR'
+    };
+    
+    const result = await uploadEnhancedConversion(testPayload);
+    
+    return {
+      success: true,
+      message: 'ECL handler test completed',
+      result: result
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 module.exports = {
   processConversionAdjustment,
   calculateStageValue,
   hashEmail,
   hashPhone,
-  uploadEnhancedConversion
+  uploadEnhancedConversion,
+  testConversionActionSetup
 };

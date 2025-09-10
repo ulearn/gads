@@ -13,8 +13,8 @@ async function getRejectedContacts(hubspotClient) {
     console.log('Fetching rejected MQL contacts (Unsupported Territory)...');
     
     // Date range: 17/08/2025 to 27/08/2025 (create_date filter) - SAME AS BASELINE
-    const startDate = new Date('2025-01-01T00:00:00.000Z');
-    const endDate = new Date('2025-07-31T23:59:59.999Z');
+    const startDate = new Date('2025-08-30T00:00:00.000Z');
+    const endDate = new Date('2024-09-09T23:59:59.999Z');
     
     console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     
