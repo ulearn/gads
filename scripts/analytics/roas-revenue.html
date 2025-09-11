@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔮 Pipeline Predicted ROAS | Forward-Looking Campaign Analysis</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>📊 Campaign Revenue Report ("Cash Basis")</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -17,7 +17,7 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -27,12 +27,12 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
         }
         
         .dashboard-header {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 25px 30px;
             display: flex;
@@ -107,13 +107,17 @@
             backdrop-filter: blur(10px);
         }
         
+        .date-picker::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        
         .dashboard-content {
             padding: 30px;
         }
         
         .summary-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 40px;
         }
@@ -122,7 +126,7 @@
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             padding: 20px;
             border-radius: 12px;
-            border-left: 4px solid #1e293b;
+            border-left: 4px solid #667eea;
         }
         
         .summary-card h3 {
@@ -143,88 +147,6 @@
         .summary-card .subtitle {
             font-size: 12px;
             color: #64748b;
-        }
-        
-        .pipeline-overview {
-            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            border: 2px solid #e2e8f0;
-        }
-        
-        .pipeline-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .pipeline-stages {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stage-card {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-top: 3px solid #1e293b;
-        }
-        
-        .stage-label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .stage-count {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 5px;
-        }
-        
-        .stage-amount {
-            font-size: 12px;
-            color: #059669;
-            font-weight: 600;
-        }
-        
-        .pipeline-totals {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            text-align: center;
-        }
-        
-        .total-metric h4 {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-        
-        .total-metric .value {
-            font-size: 20px;
-            font-weight: 700;
-        }
-        
-        .predicted-roas {
-            color: #10b981;
         }
         
         .campaigns-table {
@@ -254,7 +176,7 @@
         
         .export-btn {
             padding: 8px 16px;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -281,6 +203,33 @@
             border-bottom: 1px solid #e2e8f0;
             white-space: nowrap;
             font-size: 13px;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: #e2e8f0;
+        }
+        
+        th.sortable::after {
+            content: '↕️';
+            position: absolute;
+            right: 6px;
+            opacity: 0.5;
+            font-size: 10px;
+        }
+        
+        th.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+            color: #3b82f6;
+        }
+        
+        th.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+            color: #3b82f6;
         }
         
         td {
@@ -337,31 +286,12 @@
             font-weight: 700;
         }
         
-        .stage-breakdown {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .stage-mini {
-            background: #f1f5f9;
-            padding: 4px 8px;
-            border-radius: 6px;
+        .attribution-warning {
+            color: #dc2626;
             font-size: 11px;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            min-width: 50px;
-        }
-        
-        .stage-mini-label {
-            color: #64748b;
-            font-weight: 600;
-        }
-        
-        .stage-mini-count {
-            color: #1e293b;
-            font-weight: 700;
+            gap: 4px;
         }
         
         .loading {
@@ -378,7 +308,7 @@
             width: 40px;
             height: 40px;
             border: 4px solid #e2e8f0;
-            border-top: 4px solid #1e293b;
+            border-top: 4px solid #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -400,7 +330,7 @@
         .totals-row {
             background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
             font-weight: 600;
-            border-top: 2px solid #1e293b;
+            border-top: 2px solid #667eea;
         }
         
         .totals-row td {
@@ -408,7 +338,7 @@
             color: #1e293b;
         }
         
-        .methodology-notice {
+        .data-quality-notice {
             background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
             padding: 20px;
             border-radius: 12px;
@@ -416,7 +346,7 @@
             border-left: 4px solid #3b82f6;
         }
         
-        .methodology-notice h3 {
+        .data-quality-notice h3 {
             color: #1e40af;
             margin-bottom: 10px;
             display: flex;
@@ -424,12 +354,41 @@
             gap: 8px;
         }
         
-        .methodology-notice p {
+        .data-quality-notice p {
             color: #1e40af;
             font-size: 14px;
             line-height: 1.6;
             margin-bottom: 10px;
         }
+        
+        .attribution-indicators {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .indicator-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .dot-excellent { background: #059669; }
+        .dot-good { background: #0d9488; }
+        .dot-average { background: #d97706; }
+        .dot-poor { background: #dc2626; }
+        .dot-zero { background: #991b1b; }
         
         @media (max-width: 768px) {
             .header-controls {
@@ -437,12 +396,16 @@
                 align-items: stretch;
             }
             
-            .pipeline-stages {
-                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            .date-picker-container {
+                justify-content: center;
             }
             
-            .stage-breakdown {
-                justify-content: center;
+            .campaigns-grid {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px;
             }
         }
     </style>
@@ -453,7 +416,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        function PipelinePredictedROAS() {
+        function TrueROASCampaigns() {
             const [data, setData] = useState(null);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
@@ -466,44 +429,48 @@
             const [committedStartDate, setCommittedStartDate] = useState('');
             const [committedEndDate, setCommittedEndDate] = useState('');
             
-            // Track if dates have been deliberately selected (not just navigated)
-            const [dateChangeTimeout, setDateChangeTimeout] = useState(null);
+            const [sortField, setSortField] = useState('true_roas');
+            const [sortDirection, setSortDirection] = useState('desc');
 
             const fetchData = async () => {
                 try {
                     setLoading(true);
                     setError(null);
                     
-                    // Build API parameters
-                    let params = `status=${campaignStatus}`;
+                    // Build API parameters - Cash Basis only
+                    let params = `status=${campaignStatus}&analysisMode=revenue`;
                     
                     if (dateRange === 'custom') {
                         if (committedStartDate && committedEndDate) {
                             params += `&startDate=${committedStartDate}&endDate=${committedEndDate}`;
                         } else {
-                            throw new Error('Please select both start and end dates for custom range');
+                            // Provide more specific error message
+                            const missingFields = [];
+                            if (!customStartDate) missingFields.push('start date');
+                            if (!customEndDate) missingFields.push('end date');
+                            throw new Error(`Please select ${missingFields.join(' and ')} for custom range`);
                         }
                     } else {
                         params += `&days=${dateRange}`;
                     }
                     
-                    console.log(`🔮 Fetching Pipeline Predicted ROAS data: ${params}`);
-                    const response = await fetch(`/gads/analytics/predicted-roas-campaigns?${params}`);
+                    console.log(`📊 Fetching Campaign Revenue data: ${params}`);
+                    const response = await fetch(`/gads/analytics/roas-revenue-campaigns?${params}`);
                     
                     if (!response.ok) {
-                        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                        throw new Error(`Campaign Revenue API Error: ${response.status} ${response.statusText}`);
                     }
                     
                     const result = await response.json();
-                    console.log('📊 Pipeline Predicted ROAS Response:', result);
+                    console.log('📊 Campaign Revenue Response:', result);
                     
                     if (result.success) {
                         setData(result);
                     } else {
-                        throw new Error(result.error || 'Failed to fetch pipeline prediction data');
+                        throw new Error(result.error || 'Failed to fetch campaign data');
                     }
                 } catch (err) {
-                    console.error('Pipeline Predicted ROAS API fetch failed:', err);
+                    console.error('Campaign Revenue API fetch failed:', err);
                     setError(err.message);
                     setData(null);
                 } finally {
@@ -568,6 +535,38 @@
                 }
             }, [campaignStatus, dateRange, committedStartDate, committedEndDate]);
 
+            const handleSort = (field) => {
+                if (sortField === field) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                    setSortField(field);
+                    setSortDirection('desc');
+                }
+            };
+
+            const sortCampaigns = (campaigns) => {
+                return [...campaigns].sort((a, b) => {
+                    let aVal = a[sortField];
+                    let bVal = b[sortField];
+                    
+                    // Handle null/undefined values
+                    if (aVal == null) aVal = 0;
+                    if (bVal == null) bVal = 0;
+                    
+                    // Handle string fields
+                    if (sortField === 'campaign_name' || sortField === 'campaign_type_name') {
+                        aVal = String(aVal).toLowerCase();
+                        bVal = String(bVal).toLowerCase();
+                    }
+                    
+                    if (sortDirection === 'asc') {
+                        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                    } else {
+                        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                    }
+                });
+            };
+
             const formatCurrency = (value) => {
                 if (value === null || value === undefined || isNaN(value)) return '€0';
                 return new Intl.NumberFormat('en-IE', {
@@ -608,7 +607,7 @@
             const exportToCSV = () => {
                 if (!data || !data.campaigns) return;
                 
-                const headers = ['Campaign ID', 'Campaign Name', 'Status', 'Type', 'Spend (€)', 'Contacts', 'Deals', 'Predicted Revenue (€)', 'Predicted ROAS', 'Contact Rate'];
+                const headers = ['Campaign ID', 'Campaign Name', 'Status', 'Type', 'Spend (€)', 'Contacts', 'Deals', 'WON Deals', 'Revenue (€)', 'Revenue ROAS', 'Contact Rate', 'Win Rate'];
                 const csvData = data.campaigns.map(campaign => [
                     campaign.google_campaign_id || '',
                     campaign.campaign_name || '',
@@ -617,9 +616,11 @@
                     campaign.total_spend || 0,
                     campaign.total_contacts || 0,
                     campaign.total_deals || 0,
-                    campaign.total_adjusted_amount || 0,
-                    campaign.predicted_roas || 0,
-                    campaign.contact_rate || 0
+                    campaign.won_deals || 0,
+                    campaign.total_revenue || 0,
+                    campaign.true_roas || 0,
+                    campaign.contact_rate || 0,
+                    campaign.win_rate || 0
                 ]);
 
                 const csv = [headers, ...csvData].map(row => 
@@ -630,7 +631,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `pipeline-predicted-roas-${new Date().toISOString().split('T')[0]}.csv`;
+                a.download = `campaign-revenue-report-${new Date().toISOString().split('T')[0]}.csv`;
                 a.click();
                 window.URL.revokeObjectURL(url);
             };
@@ -640,7 +641,7 @@
                     <div className="dashboard-container">
                         <div className="loading">
                             <div className="loading-spinner"></div>
-                            <div>Loading Pipeline Predicted ROAS...</div>
+                            <div>Loading Campaign Revenue Report...</div>
                         </div>
                     </div>
                 );
@@ -659,15 +660,16 @@
             }
 
             const summary = data?.summary || {};
-            const campaigns = data?.campaigns || [];
-            const pipelineStages = data?.pipeline_stages || [];
+            const campaigns = sortCampaigns(data?.campaigns || []);
 
             return (
                 <div className="dashboard-container">
                     <div className="dashboard-header">
                         <div className="header-left">
-                            <h1><i className="fas fa-crystal-ball"></i> Pipeline Predicted ROAS</h1>
-                            <div className="subtitle">Forward-Looking Campaign Analysis - Deals Created ({data?.period || 'Loading...'})</div>
+                            <h1><i className="fas fa-chart-line"></i> Campaign Revenue Report ("Cash Basis")</h1>
+                            <div className="subtitle">
+                                Revenue filtered by Deal Close Date ({data?.period || 'Loading...'})
+                            </div>
                         </div>
                         <div className="header-controls">
                             <div className="control-group">
@@ -757,48 +759,42 @@
                                 <div className="subtitle">All campaigns</div>
                             </div>
                             <div className="summary-card">
-                                <h3>Predicted Revenue</h3>
-                                <div className="value">{formatCurrency(summary.total_adjusted_amount)}</div>
-                                <div className="subtitle">{formatNumber(summary.total_deals)} active deals</div>
+                                <h3>Total Revenue</h3>
+                                <div className="value">{formatCurrency(summary.total_revenue)}</div>
+                                <div className="subtitle">{formatNumber(summary.total_won_deals)} WON deals</div>
                             </div>
                             <div className="summary-card">
-                                <h3>Predicted ROAS</h3>
-                                <div className={`value ${getROASClass(summary.predicted_roas)}`}>{formatROAS(summary.predicted_roas)}</div>
-                                <div className="subtitle">Forward-looking indicator</div>
+                                <h3>Portfolio ROAS</h3>
+                                <div className={`value ${getROASClass(summary.portfolio_roas)}`}>{formatROAS(summary.portfolio_roas)}</div>
+                                <div className="subtitle">Overall performance</div>
+                            </div>
+                            <div className="summary-card">
+                                <h3>Attribution Rate</h3>
+                                <div className="value">{formatNumber(summary.total_contacts)}</div>
+                                <div className="subtitle">Attributed contacts</div>
                             </div>
                         </div>
 
-                        <div className="pipeline-overview">
-                            <div className="pipeline-title">
-                                <i className="fas fa-funnel-dollar"></i>
-                                Pipeline Stage Breakdown
+                        <div className="attribution-indicators">
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-excellent"></div>
+                                <span>ROAS ≥ 3.0 (Excellent)</span>
                             </div>
-                            <div className="pipeline-stages">
-                                {pipelineStages.map((stage, index) => (
-                                    <div key={stage.stage || index} className="stage-card">
-                                        <div className="stage-label">{stage.label || stage.stage}</div>
-                                        <div className="stage-count">{formatNumber(stage.total_deals)}</div>
-                                        <div className="stage-amount">{formatCurrency(stage.total_adjusted_amount)}</div>
-                                    </div>
-                                ))}
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-good"></div>
+                                <span>ROAS 2.0-2.99 (Good)</span>
                             </div>
-                            <div className="pipeline-totals">
-                                <div className="total-metric">
-                                    <h4>Google Ad Spend</h4>
-                                    <div className="value">{formatCurrency(summary.total_spend)}</div>
-                                </div>
-                                <div className="total-metric">
-                                    <h4>Total Deals</h4>
-                                    <div className="value">{formatNumber(summary.total_deals)}</div>
-                                </div>
-                                <div className="total-metric">
-                                    <h4>Predicted Revenue</h4>
-                                    <div className="value">{formatCurrency(summary.total_adjusted_amount)}</div>
-                                </div>
-                                <div className="total-metric">
-                                    <h4>Predicted ROAS</h4>
-                                    <div className="value predicted-roas">{formatROAS(summary.predicted_roas)}</div>
-                                </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-average"></div>
+                                <span>ROAS 1.0-1.99 (Average)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-poor"></div>
+                                <span>ROAS 0.1-0.99 (Poor)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-zero"></div>
+                                <span>ROAS 0.0 (Zero Revenue)</span>
                             </div>
                         </div>
 
@@ -806,25 +802,82 @@
                             <div className="table-header">
                                 <div className="table-title">
                                     <i className="fas fa-table"></i>
-                                    Campaign Pipeline Predictions
+                                    Campaign Revenue Analysis
                                 </div>
                                 <button className="export-btn" onClick={exportToCSV}>
-                                    <i className="fas fa-download"></i> Export Pipeline CSV
+                                    <i className="fas fa-download"></i> Export Revenue CSV
                                 </button>
                             </div>
                             <div className="campaigns-grid">
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Campaign</th>
-                                            <th>Status</th>
-                                            <th>Type</th>
-                                            <th>Spend</th>
-                                            <th>Contacts</th>
-                                            <th>Pipeline Deals</th>
-                                            <th>Predicted Revenue</th>
-                                            <th>Predicted ROAS</th>
-                                            <th>Stage Breakdown</th>
+                                            <th 
+                                                className={`sortable ${sortField === 'campaign_name' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('campaign_name')}
+                                            >
+                                                Campaign
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'status' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('status')}
+                                            >
+                                                Status
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'campaign_type_name' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('campaign_type_name')}
+                                            >
+                                                Type
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_spend' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_spend')}
+                                            >
+                                                Spend
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_contacts' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_contacts')}
+                                            >
+                                                Contacts
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_deals')}
+                                            >
+                                                Deals
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'won_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('won_deals')}
+                                            >
+                                                WON
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_revenue' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_revenue')}
+                                            >
+                                                Revenue
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'true_roas' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('true_roas')}
+                                            >
+                                                Revenue ROAS
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'contact_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('contact_rate')}
+                                            >
+                                                Contact Rate
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'win_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('win_rate')}
+                                            >
+                                                Win Rate
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -843,20 +896,19 @@
                                                 <td>{formatCurrency(campaign.total_spend)}</td>
                                                 <td>{formatNumber(campaign.total_contacts)}</td>
                                                 <td>{formatNumber(campaign.total_deals)}</td>
-                                                <td>{formatCurrency(campaign.total_adjusted_amount)}</td>
-                                                <td className={getROASClass(campaign.predicted_roas)}>
-                                                    {formatROAS(campaign.predicted_roas)}
+                                                <td>{formatNumber(campaign.won_deals)}</td>
+                                                <td>{formatCurrency(campaign.total_revenue)}</td>
+                                                <td className={getROASClass(campaign.true_roas)}>
+                                                    {formatROAS(campaign.true_roas)}
+                                                    {campaign.attribution_issue && (
+                                                        <div className="attribution-warning">
+                                                            <i className="fas fa-exclamation-triangle"></i>
+                                                            Attribution Issue
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td>
-                                                    <div className="stage-breakdown">
-                                                        {(campaign.stages || []).map((stage, stageIndex) => (
-                                                            <div key={stage.stage || stageIndex} className="stage-mini">
-                                                                <div className="stage-mini-label">{stage.label}</div>
-                                                                <div className="stage-mini-count">{stage.deal_count}</div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </td>
+                                                <td>{(campaign.contact_rate || 0).toFixed(1)}%</td>
+                                                <td>{(campaign.win_rate || 0).toFixed(1)}%</td>
                                             </tr>
                                         ))}
                                         {campaigns.length > 0 && (
@@ -867,11 +919,13 @@
                                                 <td><strong>{formatCurrency(summary.total_spend)}</strong></td>
                                                 <td><strong>{formatNumber(summary.total_contacts)}</strong></td>
                                                 <td><strong>{formatNumber(summary.total_deals)}</strong></td>
-                                                <td><strong>{formatCurrency(summary.total_adjusted_amount)}</strong></td>
-                                                <td className={getROASClass(summary.predicted_roas)}>
-                                                    <strong>{formatROAS(summary.predicted_roas)}</strong>
+                                                <td><strong>{formatNumber(summary.total_won_deals)}</strong></td>
+                                                <td><strong>{formatCurrency(summary.total_revenue)}</strong></td>
+                                                <td className={getROASClass(summary.portfolio_roas)}>
+                                                    <strong>{formatROAS(summary.portfolio_roas)}</strong>
                                                 </td>
-                                                <td>-</td>
+                                                <td><strong>{((summary.total_contacts / Math.max(summary.total_spend, 1)) * 100).toFixed(1)}%</strong></td>
+                                                <td><strong>{((summary.total_won_deals / Math.max(summary.total_deals, 1)) * 100).toFixed(1)}%</strong></td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -879,19 +933,19 @@
                             </div>
                         </div>
 
-                        <div className="methodology-notice">
-                            <h3><i className="fas fa-info-circle"></i> Pipeline Prediction Methodology</h3>
+                        <div className="data-quality-notice">
+                            <h3><i className="fas fa-info-circle"></i> Cash Basis Revenue Method & Data Quality</h3>
                             <p>
-                                <strong>Forward-Looking Analysis:</strong> This report predicts revenue from deals created during the selected timeframe 
-                                using HubSpot's adjusted_amount field (Deal Amount × Stage Probability).
+                                <strong>Cash Basis Analysis:</strong> This report tracks revenue received during the selected timeframe from contacts 
+                                attributed to Google Ads campaigns. Revenue is calculated from deals that closed as WON during the period.
                             </p>
                             <p>
-                                <strong>Formula:</strong> [Sum of Adjusted Amounts from Deals Created] ÷ [Cash Spent on Ads] during the timeframe.
+                                <strong>Formula:</strong> [Cash Received from Paid Search Contact Deals] ÷ [Cash Spent on Ads] during the timeframe.
                             </p>
                             <p>
-                                <strong>Data Sources:</strong> Campaign spend from <code>gads_campaign_metrics</code>, 
-                                attribution from <code>hub_contacts.hs_analytics_source = 'PAID_SEARCH'</code>, 
-                                predictions from <code>hub_deals.adjusted_amount</code> filtered by deal create date.
+                                <strong>Data Sources:</strong> Campaign spend from <code>gads_campaign_metrics</code> table, 
+                                attribution from <code>hub_contacts.hs_analytics_source</code> = 'PAID_SEARCH', 
+                                revenue from <code>hub_deals</code> where <code>dealstage = 'closedwon'</code> and filtered by close date.
                             </p>
                         </div>
                     </div>
@@ -899,7 +953,7 @@
             );
         }
 
-        ReactDOM.render(<PipelinePredictedROAS />, document.getElementById('root'));
+        ReactDOM.render(<TrueROASCampaigns />, document.getElementById('root'));
     </script>
 </body>
 </html>

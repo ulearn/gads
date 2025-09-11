@@ -585,17 +585,17 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
 });
 
 // Campaign Revenue Report -  Cash Basis ROAS - Dashboard Route  
-router.get('/analytics/true-roas', (req, res) => {
+router.get('/analytics/roas-revenue', (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
-    const filePath = path.join(__dirname, 'scripts', 'analytics', 'true-roas.html');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'roas-revenue.html');
     
     if (fs.existsSync(filePath)) {
       const htmlContent = fs.readFileSync(filePath, 'utf8');
       res.send(htmlContent);
     } else {
-      res.status(404).send('<h1>File not found</h1><p>true-roas.html not found</p>');
+      res.status(404).send('<h1>File not found</h1><p>roas-revenue.html not found</p>');
     }
   } catch (error) {
     res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
@@ -603,14 +603,14 @@ router.get('/analytics/true-roas', (req, res) => {
 });
 
 // Campaign Revenue Report ("Cash Basis") API
-router.get('/analytics/true-roas-campaigns', async (req, res) => {
+router.get('/analytics/roas-revenue-campaigns', async (req, res) => {
   try {
     const { status, days, startDate, endDate } = req.query;
-    const trueROAS = require('./scripts/analytics/true-roas');
+    const roasRevenue = require('./scripts/analytics/roas-revenue');
     
     console.log(`📊 Campaign Revenue Report API: status=${status}, days=${days}`);
     
-    const result = await trueROAS.getTrueROASCampaigns(getDbConnection, {
+    const result = await roasRevenue.getTrueROASCampaigns(getDbConnection, {
       status, 
       days: parseInt(days) || 30,
       startDate,
@@ -619,7 +619,7 @@ router.get('/analytics/true-roas-campaigns', async (req, res) => {
     
     res.json(result);
   } catch (error) {
-    console.error('❌ True ROAS API failed:', error.message);
+    console.error('❌ ROAS Revenue API failed:', error.message);
     res.status(500).json({ 
       success: false,
       error: error.message,
@@ -629,17 +629,17 @@ router.get('/analytics/true-roas-campaigns', async (req, res) => {
 });
 
 // Pipeline Predicted ROAS - Dashboard Route  
-router.get('/analytics/predicted-roas', (req, res) => {
+router.get('/analytics/roas-predicted', (req, res) => {
   try {
     const fs = require('fs');
     const path = require('path');
-    const filePath = path.join(__dirname, 'scripts', 'analytics', 'predicted-roas.html');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'roas-predicted.html');
     
     if (fs.existsSync(filePath)) {
       const htmlContent = fs.readFileSync(filePath, 'utf8');
       res.send(htmlContent);
     } else {
-      res.status(404).send('<h1>File not found</h1><p>predicted-roas.html not found</p>');
+      res.status(404).send('<h1>File not found</h1><p>roas-predicted.html not found</p>');
     }
   } catch (error) {
     res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
@@ -647,14 +647,14 @@ router.get('/analytics/predicted-roas', (req, res) => {
 });
 
 // Pipeline Predicted ROAS Data API
-router.get('/analytics/predicted-roas-campaigns', async (req, res) => {
+router.get('/analytics/roas-predicted-campaigns', async (req, res) => {
   try {
     const { status, days, startDate, endDate } = req.query;
-    const predictedROAS = require('./scripts/analytics/predicted-roas');
+    const roasPredicted = require('./scripts/analytics/roas-predicted');
     
     console.log(`🔮 Pipeline Predicted ROAS API: status=${status}, days=${days}`);
     
-    const result = await predictedROAS.getPipelinePredictedROAS(getDbConnection, {
+    const result = await roasPredicted.getPipelinePredictedROAS(getDbConnection, {
       status, 
       days: parseInt(days) || 30,
       startDate,
@@ -663,7 +663,7 @@ router.get('/analytics/predicted-roas-campaigns', async (req, res) => {
     
     res.json(result);
   } catch (error) {
-    console.error('❌ Pipeline Predicted ROAS API failed:', error.message);
+    console.error('❌ ROAS Predicted API failed:', error.message);
     res.status(500).json({ 
       success: false,
       error: error.message,

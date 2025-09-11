@@ -36,3 +36,6 @@ PROJECT SPECIFIC CONTEXT
 Read these files:
 1) /home/hub/public_html/gads/claude-docs/click-to-close.txt  
 2) /home/hub/public_html/gads/claude-docs/claude-mcp-notes
+3) MySql Database Schema: /home/hub/public_html/gads/claude-docs/hub_gads_11.09.2025.sql
+- Read the schema now to save us the pain of constantly checking which fields it has & their names later during the chat
+- And obviously if you have doubts about the field names or schema during the session just refer back to the this .sql file
