@@ -93,7 +93,7 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
       let response;
       
       // 🔧 FIXED: Use lastmodifieddate for BOTH contacts and deals to capture updates
-      const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
+      const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_createdate';
       console.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
       
       if (objectType === 'contacts') {

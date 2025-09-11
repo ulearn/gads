@@ -1,7 +1,7 @@
 /**
- * Dynamic Field Mapping Module - Production Version
+ * COMPREHENSIVE FIX: Dynamic Field Mapping Module - Production Version
  * Creates every HubSpot field in MySQL with exact field names
- * Minimal logging for production use
+ * CRITICAL FIX: Properly handles ALL zero values (0, "0", 0.00) and ensures complete field sync
  */
 
 //=============================================================================//
@@ -22,6 +22,49 @@ const TABLE_CONFIGS = {
     hubspotIdField: 'hubspot_deal_id'
   }
 };
+
+//=============================================================================//
+//   UTILITY FUNCTIONS FOR PROPER VALUE HANDLING
+//=============================================================================//
+
+/**
+ * CRITICAL FUNCTION: Determines if a value should be synced to MySQL
+ * RULE: Only skip NULL and UNDEFINED - NEVER skip zeros, empty strings, false, etc.
+ */
+function shouldSyncValue(value) {
+  // ✅ SYNC these values: 0, "0", 0.00, false, "", "false", []
+  // ❌ DON'T SYNC these values: null, undefined
+  
+  if (value === null || value === undefined) {
+    return false; // Skip null/undefined
+  }
+  
+  // EVERYTHING ELSE should be synced, including:
+  // - Zero values: 0, "0", 0.00
+  // - Empty strings: ""
+  // - Boolean false: false, "false" 
+  // - Empty arrays: []
+  // - Any other actual value
+  
+  return true;
+}
+
+/**
+ * Enhanced logging for debugging value sync issues
+ */
+function logValueSync(fieldName, originalValue, transformedValue, action = 'SYNC') {
+  // Special logging for numeric fields and important fields
+  if (fieldName.includes('amount') || 
+      fieldName.includes('price') || 
+      fieldName.includes('cost') || 
+      fieldName.includes('revenue') ||
+      fieldName.includes('value') ||
+      originalValue === 0 || 
+      originalValue === "0") {
+    
+    console.log(`   💾 ${action}: ${fieldName} = "${originalValue}" (${typeof originalValue}) → "${transformedValue}" (${typeof transformedValue})`);
+  }
+}
 
 //=============================================================================//
 //   DYNAMIC FIELD HANDLER FUNCTIONS
@@ -106,14 +149,12 @@ async function ensureColumnExists(connection, tableName, hubspotFieldName, field
 }
 
 /**
- * Determine MySQL data type based on value
- */
-/**
- * Determine MySQL data type based on value - DEFAULT TO TEXT
+ * Determine MySQL data type based on value - handles ALL value types properly
  */
 function getMySQLDataType(fieldName, value) {
   // Analyze the actual value to determine type
-  if (value !== null && value !== undefined && value !== '') {
+  // Note: We now accept ANY value including 0, "", false, etc.
+  if (shouldSyncValue(value)) {
     
     // Check if it's a timestamp (HubSpot often uses milliseconds)
     if (typeof value === 'string' && /^\d{13}$/.test(value)) {
@@ -130,14 +171,16 @@ function getMySQLDataType(fieldName, value) {
       return 'BOOLEAN';
     }
     
-    // Check if it's a number
-    if (!isNaN(value) && value !== '') {
+    // Check if it's a number (including zero!)
+    if ((typeof value === 'number') || (!isNaN(value) && value !== '')) {
       const numValue = Number(value);
       
+      // Handle decimals
       if (numValue % 1 !== 0) {
         return 'DECIMAL(15,6)';
       }
       
+      // Handle large integers
       if (numValue > 2147483647 || numValue < -2147483648) {
         return 'BIGINT';
       } else {
@@ -151,10 +194,11 @@ function getMySQLDataType(fieldName, value) {
 }
 
 /**
- * Transform field values for MySQL storage
+ * Transform field values for MySQL storage - handles ALL values including zeros
  */
 function transformValue(fieldName, value) {
-  if (value === null || value === undefined || value === '') {
+  // Only return null for truly null/undefined values
+  if (!shouldSyncValue(value)) {
     return null;
   }
   
@@ -177,11 +221,12 @@ function transformValue(fieldName, value) {
     return value === 'true';
   }
   
-  // Handle numbers
-  if (!isNaN(value) && value !== '') {
+  // Handle numbers (including zero!)
+  if ((typeof value === 'number') || (!isNaN(value) && value !== '')) {
     return Number(value);
   }
   
+  // Return everything else as-is (including empty strings)
   return value;
 }
 
@@ -219,9 +264,13 @@ async function ensureTableExists(connection, objectType) {
 }
 
 //=============================================================================//
-//   DYNAMIC PROCESSING WITH MINIMAL LOGGING
+//   DYNAMIC PROCESSING WITH COMPREHENSIVE VALUE HANDLING
 //=============================================================================//
 
+/**
+ * COMPREHENSIVE FIX: Process HubSpot objects with proper handling of ALL values
+ * CRITICAL FIX: Now syncs EVERY populated field including zeros, empty strings, false, etc.
+ */
 async function processHubSpotObject(hubspotObject, connection, objectType) {
   try {
     const config = TABLE_CONFIGS[objectType];
@@ -230,7 +279,7 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
     }
     
     const { tableName, extensionTableName, hubspotIdField } = config;
-    
+
     // Separate data for main table and extension table
     const mainTableData = {};
     const extTableData = {};
@@ -238,13 +287,22 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
     extTableData[hubspotIdField] = hubspotObject.id;
     
     let processedFields = 0;
+    let zeroValueFields = 0;
     
     // Process ALL properties that have values
     if (hubspotObject.properties) {
       for (const [hubspotFieldName, fieldValue] of Object.entries(hubspotObject.properties)) {
-        // Skip empty values
-        if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+        
+        // 🚀 COMPREHENSIVE FIX: Use our shouldSyncValue function
+        // This ONLY skips null and undefined - NEVER skips zeros!
+        if (!shouldSyncValue(fieldValue)) {
           continue;
+        }
+        
+        // Track zero values for debugging
+        if (fieldValue === 0 || fieldValue === "0" || fieldValue === 0.0) {
+          zeroValueFields++;
+          console.log(`   🔢 ZERO VALUE DETECTED: ${hubspotFieldName} = ${fieldValue} (will be synced)`);
         }
         
         try {
@@ -261,6 +319,9 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
               mainTableData[columnResult.columnName] = transformedValue;
             }
             processedFields++;
+            
+            // Enhanced logging for value tracking
+            logValueSync(hubspotFieldName, fieldValue, transformedValue, 'SYNC');
           }
         } catch (error) {
           console.error(`❌ Error processing field ${hubspotFieldName}:`, error.message);
@@ -277,7 +338,12 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
     }
     
     if (processedFields > 0) {
-      console.log(`✅ Saved ${objectType} ${hubspotObject.id} (${processedFields} fields)`);
+      let logMessage = `✅ Saved ${objectType} ${hubspotObject.id} (${processedFields} fields`;
+      if (zeroValueFields > 0) {
+        logMessage += `, ${zeroValueFields} zero values`;
+      }
+      logMessage += ')';
+      console.log(logMessage);
     }
     
     return true;
@@ -321,5 +387,7 @@ module.exports = {
   saveTableData,
   getMySQLDataType,
   transformValue,
+  shouldSyncValue, // Export the new utility function
+  logValueSync,    // Export the logging function
   TABLE_CONFIGS
 };

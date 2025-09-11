@@ -584,7 +584,7 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
   }
 });
 
-// True ROAS Campaign Analysis - Dashboard Route  
+// Campaign Revenue Report -  Cash Basis ROAS - Dashboard Route  
 router.get('/analytics/true-roas', (req, res) => {
   try {
     const fs = require('fs');
@@ -620,6 +620,50 @@ router.get('/analytics/true-roas-campaigns', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('❌ True ROAS API failed:', error.message);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Pipeline Predicted ROAS - Dashboard Route  
+router.get('/analytics/predicted-roas', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'predicted-roas.html');
+    
+    if (fs.existsSync(filePath)) {
+      const htmlContent = fs.readFileSync(filePath, 'utf8');
+      res.send(htmlContent);
+    } else {
+      res.status(404).send('<h1>File not found</h1><p>predicted-roas.html not found</p>');
+    }
+  } catch (error) {
+    res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+  }
+});
+
+// Pipeline Predicted ROAS Data API
+router.get('/analytics/predicted-roas-campaigns', async (req, res) => {
+  try {
+    const { status, days, startDate, endDate } = req.query;
+    const predictedROAS = require('./scripts/analytics/predicted-roas');
+    
+    console.log(`🔮 Pipeline Predicted ROAS API: status=${status}, days=${days}`);
+    
+    const result = await predictedROAS.getPipelinePredictedROAS(getDbConnection, {
+      status, 
+      days: parseInt(days) || 30,
+      startDate,
+      endDate
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Pipeline Predicted ROAS API failed:', error.message);
     res.status(500).json({ 
       success: false,
       error: error.message,
