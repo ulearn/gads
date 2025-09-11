@@ -584,6 +584,50 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
   }
 });
 
+// True ROAS Campaign Analysis - Dashboard Route  
+router.get('/analytics/true-roas', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'true-roas.html');
+    
+    if (fs.existsSync(filePath)) {
+      const htmlContent = fs.readFileSync(filePath, 'utf8');
+      res.send(htmlContent);
+    } else {
+      res.status(404).send('<h1>File not found</h1><p>true-roas.html not found</p>');
+    }
+  } catch (error) {
+    res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+  }
+});
+
+// Campaign Revenue Report ("Cash Basis") API
+router.get('/analytics/true-roas-campaigns', async (req, res) => {
+  try {
+    const { status, days, startDate, endDate } = req.query;
+    const trueROAS = require('./scripts/analytics/true-roas');
+    
+    console.log(`📊 Campaign Revenue Report API: status=${status}, days=${days}`);
+    
+    const result = await trueROAS.getTrueROASCampaigns(getDbConnection, {
+      status, 
+      days: parseInt(days) || 30,
+      startDate,
+      endDate
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('❌ True ROAS API failed:', error.message);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 //=============================================================================//
 //   ENHANCED CONVERSIONS FOR LEADS (ECL) ROUTES - ROUTING ONLY
 //=============================================================================//

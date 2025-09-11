@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Campaign Revenue Report ("Cash Basis")</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-left .subtitle {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .control-select {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+            min-width: 150px;
+        }
+        
+        .control-select option {
+            background: #333;
+            color: white;
+        }
+        
+        .date-picker-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .date-picker {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .date-picker::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .dashboard-content {
+            padding: 30px;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .summary-card h3 {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        
+        .summary-card .subtitle {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .campaigns-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            padding: 15px 20px;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .export-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .campaigns-grid {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8fafc;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+            font-size: 13px;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        
+        th:hover {
+            background: #e2e8f0;
+        }
+        
+        th.sortable::after {
+            content: '↕️';
+            position: absolute;
+            right: 6px;
+            opacity: 0.5;
+            font-size: 10px;
+        }
+        
+        th.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+            color: #3b82f6;
+        }
+        
+        th.sort-desc::after {
+            content: '↓';
+            opacity: 1;
+            color: #3b82f6;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        
+        tr:hover {
+            background-color: #f8fafc;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-paused {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .roas-excellent {
+            color: #059669;
+            font-weight: 700;
+        }
+        
+        .roas-good {
+            color: #0d9488;
+            font-weight: 600;
+        }
+        
+        .roas-average {
+            color: #d97706;
+            font-weight: 600;
+        }
+        
+        .roas-poor {
+            color: #dc2626;
+            font-weight: 700;
+        }
+        
+        .roas-zero {
+            color: #991b1b;
+            font-weight: 700;
+        }
+        
+        .attribution-warning {
+            color: #dc2626;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #64748b;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #dc2626;
+        }
+        
+        .totals-row {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            font-weight: 600;
+            border-top: 2px solid #667eea;
+        }
+        
+        .totals-row td {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .data-quality-notice {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .data-quality-notice h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .data-quality-notice p {
+            color: #1e40af;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .attribution-indicators {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .indicator-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .dot-excellent { background: #059669; }
+        .dot-good { background: #0d9488; }
+        .dot-average { background: #d97706; }
+        .dot-poor { background: #dc2626; }
+        .dot-zero { background: #991b1b; }
+        
+        @media (max-width: 768px) {
+            .header-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .date-picker-container {
+                justify-content: center;
+            }
+            
+            .campaigns-grid {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function TrueROASCampaigns() {
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [campaignStatus, setCampaignStatus] = useState('active');
+            const [dateRange, setDateRange] = useState('30');
+            const [customStartDate, setCustomStartDate] = useState('');
+            const [customEndDate, setCustomEndDate] = useState('');
+            const [sortField, setSortField] = useState('true_roas');
+            const [sortDirection, setSortDirection] = useState('desc');
+
+            const fetchData = async () => {
+                try {
+                    setLoading(true);
+                    setError(null);
+                    
+                    // Build API parameters - Cash Basis only
+                    let params = `status=${campaignStatus}&analysisMode=revenue`;
+                    
+                    if (dateRange === 'custom') {
+                        if (customStartDate && customEndDate) {
+                            params += `&startDate=${customStartDate}&endDate=${customEndDate}`;
+                        } else {
+                            // Provide more specific error message
+                            const missingFields = [];
+                            if (!customStartDate) missingFields.push('start date');
+                            if (!customEndDate) missingFields.push('end date');
+                            throw new Error(`Please select ${missingFields.join(' and ')} for custom range`);
+                        }
+                    } else {
+                        params += `&days=${dateRange}`;
+                    }
+                    
+                    console.log(`📊 Fetching Campaign Revenue data: ${params}`);
+                    const response = await fetch(`/gads/analytics/true-roas-campaigns?${params}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Campaign Revenue API Error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('📊 Campaign Revenue Response:', result);
+                    
+                    if (result.success) {
+                        setData(result);
+                    } else {
+                        throw new Error(result.error || 'Failed to fetch campaign data');
+                    }
+                } catch (err) {
+                    console.error('Campaign Revenue API fetch failed:', err);
+                    setError(err.message);
+                    setData(null);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchData();
+            }, [campaignStatus, dateRange, customStartDate, customEndDate]);
+
+            const handleSort = (field) => {
+                if (sortField === field) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                    setSortField(field);
+                    setSortDirection('desc');
+                }
+            };
+
+            const sortCampaigns = (campaigns) => {
+                return [...campaigns].sort((a, b) => {
+                    let aVal = a[sortField];
+                    let bVal = b[sortField];
+                    
+                    // Handle null/undefined values
+                    if (aVal == null) aVal = 0;
+                    if (bVal == null) bVal = 0;
+                    
+                    // Handle string fields
+                    if (sortField === 'campaign_name' || sortField === 'campaign_type_name') {
+                        aVal = String(aVal).toLowerCase();
+                        bVal = String(bVal).toLowerCase();
+                    }
+                    
+                    if (sortDirection === 'asc') {
+                        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                    } else {
+                        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                    }
+                });
+            };
+
+            const formatCurrency = (value) => {
+                if (value === null || value === undefined || isNaN(value)) return '€0';
+                return new Intl.NumberFormat('en-IE', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                }).format(value);
+            };
+
+            const formatNumber = (value) => {
+                if (value === null || value === undefined || isNaN(value)) return '0';
+                return new Intl.NumberFormat().format(value);
+            };
+
+            const formatROAS = (value) => {
+                if (value === null || value === undefined || isNaN(value)) return '0.00:1';
+                return `${parseFloat(value).toFixed(2)}:1`;
+            };
+
+            const getROASClass = (roas) => {
+                if (!roas || roas === 0) return 'roas-zero';
+                if (roas >= 3.0) return 'roas-excellent';
+                if (roas >= 2.0) return 'roas-good';
+                if (roas >= 1.0) return 'roas-average';
+                return 'roas-poor';
+            };
+
+            const getStatusBadge = (status) => {
+                if (status === 2 || status === 'active') {
+                    return <span className="status-badge status-active">Active</span>;
+                } else if (status === 3 || status === 'paused') {
+                    return <span className="status-badge status-paused">Paused</span>;
+                }
+                return <span className="status-badge">{status}</span>;
+            };
+
+            const exportToCSV = () => {
+                if (!data || !data.campaigns) return;
+                
+                const headers = ['Campaign ID', 'Campaign Name', 'Status', 'Type', 'Spend (€)', 'Contacts', 'Deals', 'WON Deals', 'Revenue (€)', 'Revenue ROAS', 'Contact Rate', 'Win Rate'];
+                const csvData = data.campaigns.map(campaign => [
+                    campaign.google_campaign_id || '',
+                    campaign.campaign_name || '',
+                    campaign.status === 2 ? 'Active' : 'Paused',
+                    campaign.campaign_type_name || '',
+                    campaign.total_spend || 0,
+                    campaign.total_contacts || 0,
+                    campaign.total_deals || 0,
+                    campaign.won_deals || 0,
+                    campaign.total_revenue || 0,
+                    campaign.true_roas || 0,
+                    campaign.contact_rate || 0,
+                    campaign.win_rate || 0
+                ]);
+
+                const csv = [headers, ...csvData].map(row => 
+                    row.map(field => `"${field}"`).join(',')
+                ).join('\\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `campaign-revenue-report-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            };
+
+            if (loading) {
+                return (
+                    <div className="dashboard-container">
+                        <div className="loading">
+                            <div className="loading-spinner"></div>
+                            <div>Loading Campaign Revenue Report...</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (error && !data) {
+                return (
+                    <div className="dashboard-container">
+                        <div className="error">
+                            <strong>Error:</strong> {error}
+                            <br /><br />
+                            <button onClick={fetchData}>Retry</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            const summary = data?.summary || {};
+            const campaigns = sortCampaigns(data?.campaigns || []);
+
+            return (
+                <div className="dashboard-container">
+                    <div className="dashboard-header">
+                        <div className="header-left">
+                            <h1><i className="fas fa-chart-line"></i> Campaign Revenue Report ("Cash Basis")</h1>
+                            <div className="subtitle">
+                                Revenue filtered by Deal Close Date ({data?.period || 'Loading...'})
+                            </div>
+                        </div>
+                        <div className="header-controls">
+                            <div className="control-group">
+                                <label>Campaign Status</label>
+                                <select 
+                                    className="control-select" 
+                                    value={campaignStatus} 
+                                    onChange={(e) => setCampaignStatus(e.target.value)}
+                                >
+                                    <option value="active">Active Only</option>
+                                    <option value="paused">Paused Only</option>
+                                    <option value="all">Active & Paused</option>
+                                </select>
+                            </div>
+                            <div className="control-group">
+                                <label>Date Range</label>
+                                <select 
+                                    className="control-select" 
+                                    value={dateRange} 
+                                    onChange={(e) => {
+                                        const newRange = e.target.value;
+                                        setDateRange(newRange);
+                                        
+                                        // Auto-populate custom dates when switching to custom
+                                        if (newRange === 'custom' && (!customStartDate || !customEndDate)) {
+                                            const today = new Date();
+                                            const thirtyDaysAgo = new Date();
+                                            thirtyDaysAgo.setDate(today.getDate() - 30);
+                                            
+                                            if (!customStartDate) {
+                                                setCustomStartDate(thirtyDaysAgo.toISOString().split('T')[0]);
+                                            }
+                                            if (!customEndDate) {
+                                                setCustomEndDate(today.toISOString().split('T')[0]);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <option value="7">Last 7 days</option>
+                                    <option value="14">Last 14 days</option>
+                                    <option value="30">Last 30 days</option>
+                                    <option value="60">Last 60 days</option>
+                                    <option value="90">Last 90 days</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            {dateRange === 'custom' && (
+                                <div className="control-group">
+                                    <label>Custom Dates</label>
+                                    <div className="date-picker-container">
+                                        <input 
+                                            type="date" 
+                                            className="date-picker"
+                                            value={customStartDate}
+                                            onChange={(e) => setCustomStartDate(e.target.value)}
+                                            placeholder="Start Date"
+                                        />
+                                        <span style={{color: 'white'}}>to</span>
+                                        <input 
+                                            type="date" 
+                                            className="date-picker"
+                                            value={customEndDate}
+                                            onChange={(e) => setCustomEndDate(e.target.value)}
+                                            placeholder="End Date"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="dashboard-content">
+                        <div className="summary-cards">
+                            <div className="summary-card">
+                                <h3>Total Campaigns</h3>
+                                <div className="value">{formatNumber(campaigns.length)}</div>
+                                <div className="subtitle">{campaignStatus === 'all' ? 'Active & Paused' : campaignStatus}</div>
+                            </div>
+                            <div className="summary-card">
+                                <h3>Total Spend</h3>
+                                <div className="value">{formatCurrency(summary.total_spend)}</div>
+                                <div className="subtitle">All campaigns</div>
+                            </div>
+                            <div className="summary-card">
+                                <h3>Total Revenue</h3>
+                                <div className="value">{formatCurrency(summary.total_revenue)}</div>
+                                <div className="subtitle">{formatNumber(summary.total_won_deals)} WON deals</div>
+                            </div>
+                            <div className="summary-card">
+                                <h3>Portfolio ROAS</h3>
+                                <div className={`value ${getROASClass(summary.portfolio_roas)}`}>{formatROAS(summary.portfolio_roas)}</div>
+                                <div className="subtitle">Overall performance</div>
+                            </div>
+                            <div className="summary-card">
+                                <h3>Attribution Rate</h3>
+                                <div className="value">{formatNumber(summary.total_contacts)}</div>
+                                <div className="subtitle">Attributed contacts</div>
+                            </div>
+                        </div>
+
+                        <div className="attribution-indicators">
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-excellent"></div>
+                                <span>ROAS ≥ 3.0 (Excellent)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-good"></div>
+                                <span>ROAS 2.0-2.99 (Good)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-average"></div>
+                                <span>ROAS 1.0-1.99 (Average)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-poor"></div>
+                                <span>ROAS 0.1-0.99 (Poor)</span>
+                            </div>
+                            <div className="indicator-item">
+                                <div className="indicator-dot dot-zero"></div>
+                                <span>ROAS 0.0 (Zero Revenue)</span>
+                            </div>
+                        </div>
+
+                        <div className="campaigns-table">
+                            <div className="table-header">
+                                <div className="table-title">
+                                    <i className="fas fa-table"></i>
+                                    Campaign Revenue Analysis
+                                </div>
+                                <button className="export-btn" onClick={exportToCSV}>
+                                    <i className="fas fa-download"></i> Export Revenue CSV
+                                </button>
+                            </div>
+                            <div className="campaigns-grid">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th 
+                                                className={`sortable ${sortField === 'campaign_name' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('campaign_name')}
+                                            >
+                                                Campaign
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'status' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('status')}
+                                            >
+                                                Status
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'campaign_type_name' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('campaign_type_name')}
+                                            >
+                                                Type
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_spend' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_spend')}
+                                            >
+                                                Spend
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_contacts' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_contacts')}
+                                            >
+                                                Contacts
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_deals')}
+                                            >
+                                                Deals
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'won_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('won_deals')}
+                                            >
+                                                WON
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'total_revenue' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('total_revenue')}
+                                            >
+                                                Revenue
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'true_roas' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('true_roas')}
+                                            >
+                                                Revenue ROAS
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'contact_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('contact_rate')}
+                                            >
+                                                Contact Rate
+                                            </th>
+                                            <th 
+                                                className={`sortable ${sortField === 'win_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('win_rate')}
+                                            >
+                                                Win Rate
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {campaigns.map((campaign, index) => (
+                                            <tr key={campaign.google_campaign_id || index}>
+                                                <td>
+                                                    <div style={{fontWeight: '600', marginBottom: '4px'}}>
+                                                        {campaign.campaign_name || 'Unknown Campaign'}
+                                                    </div>
+                                                    <div style={{fontSize: '11px', color: '#64748b'}}>
+                                                        ID: {campaign.google_campaign_id || 'N/A'}
+                                                    </div>
+                                                </td>
+                                                <td>{getStatusBadge(campaign.status)}</td>
+                                                <td>{campaign.campaign_type_name || 'Unknown'}</td>
+                                                <td>{formatCurrency(campaign.total_spend)}</td>
+                                                <td>{formatNumber(campaign.total_contacts)}</td>
+                                                <td>{formatNumber(campaign.total_deals)}</td>
+                                                <td>{formatNumber(campaign.won_deals)}</td>
+                                                <td>{formatCurrency(campaign.total_revenue)}</td>
+                                                <td className={getROASClass(campaign.true_roas)}>
+                                                    {formatROAS(campaign.true_roas)}
+                                                    {campaign.attribution_issue && (
+                                                        <div className="attribution-warning">
+                                                            <i className="fas fa-exclamation-triangle"></i>
+                                                            Attribution Issue
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td>{(campaign.contact_rate || 0).toFixed(1)}%</td>
+                                                <td>{(campaign.win_rate || 0).toFixed(1)}%</td>
+                                            </tr>
+                                        ))}
+                                        {campaigns.length > 0 && (
+                                            <tr className="totals-row">
+                                                <td><strong>TOTAL</strong></td>
+                                                <td>-</td>
+                                                <td>-</td>
+                                                <td><strong>{formatCurrency(summary.total_spend)}</strong></td>
+                                                <td><strong>{formatNumber(summary.total_contacts)}</strong></td>
+                                                <td><strong>{formatNumber(summary.total_deals)}</strong></td>
+                                                <td><strong>{formatNumber(summary.total_won_deals)}</strong></td>
+                                                <td><strong>{formatCurrency(summary.total_revenue)}</strong></td>
+                                                <td className={getROASClass(summary.portfolio_roas)}>
+                                                    <strong>{formatROAS(summary.portfolio_roas)}</strong>
+                                                </td>
+                                                <td><strong>{((summary.total_contacts / Math.max(summary.total_spend, 1)) * 100).toFixed(1)}%</strong></td>
+                                                <td><strong>{((summary.total_won_deals / Math.max(summary.total_deals, 1)) * 100).toFixed(1)}%</strong></td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="data-quality-notice">
+                            <h3><i className="fas fa-info-circle"></i> Cash Basis Revenue Method & Data Quality</h3>
+                            <p>
+                                <strong>Cash Basis Analysis:</strong> This report tracks revenue received during the selected timeframe from contacts 
+                                attributed to Google Ads campaigns. Revenue is calculated from deals that closed as WON during the period.
+                            </p>
+                            <p>
+                                <strong>Formula:</strong> [Cash Received from Paid Search Contact Deals] ÷ [Cash Spent on Ads] during the timeframe.
+                            </p>
+                            <p>
+                                <strong>Data Sources:</strong> Campaign spend from <code>gads_campaign_metrics</code> table, 
+                                attribution from <code>hub_contacts.hs_analytics_source</code> = 'PAID_SEARCH', 
+                                revenue from <code>hub_deals</code> where <code>dealstage = 'closedwon'</code> and filtered by close date.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TrueROASCampaigns />, document.getElementById('root'));
+    </script>
+</body>
+</html>
