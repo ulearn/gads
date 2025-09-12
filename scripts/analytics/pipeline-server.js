@@ -1,9 +1,15 @@
 /**
- * ORACLE-ALIGNED: Pipeline Server using hubspot-data.js Logic + Stage Mapping
+ * ENHANCED: Pipeline Server with Attribution Fix - Using Enhanced hubspot-data.js Logic + Stage Mapping
  * /scripts/analytics/pipeline-server.js
  * 
- * CHANGES:
- * - Uses EXACT same SQL filtering logic as hubspot-data.js (the oracle)
+ * ATTRIBUTION ENHANCEMENTS:
+ * - Enhanced Google Ads attribution query handles {campaign} tracking template issue
+ * - Uses custom 'google_ads_campaign' field for correct attribution
+ * - Multi-layered attribution logic consistent with enhanced hubspot-data.js
+ * - Comprehensive attribution quality reporting
+ * 
+ * ORACLE-ALIGNED FEATURES:
+ * - Uses EXACT same SQL filtering logic as enhanced hubspot-data.js (the oracle)
  * - Loads stage mapping from stage-map.json
  * - Consistent date handling, territory filtering, and partner exclusion
  * - Immutable ID-based stage mapping
@@ -13,6 +19,51 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * Enhanced Google Ads attribution query - handles {campaign} issue
+ */
+function buildEnhancedAttributionQuery() {
+  return `
+    (
+      hc.hs_analytics_source = 'PAID_SEARCH'
+      AND (
+        -- Standard attribution: Normal campaign data
+        (
+          hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+        )
+        OR
+        -- FIX: Use custom 'Google Ads Campaign' field for broken tracking template
+        (
+          hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+        )
+      )
+    )
+  `;
+}
+
+/**
+ * Get effective campaign identifier for attribution
+ */
+function getCampaignAttributionLogic() {
+  return `
+    CASE 
+      WHEN hc.hs_analytics_source_data_1 != '{campaign}'
+           AND hc.hs_analytics_source_data_1 IS NOT NULL
+           AND hc.hs_analytics_source_data_1 != ''
+      THEN hc.hs_analytics_source_data_1
+      WHEN hc.hs_analytics_source_data_1 = '{campaign}'
+           AND hc.google_ads_campaign IS NOT NULL
+           AND hc.google_ads_campaign != ''
+      THEN hc.google_ads_campaign
+      ELSE 'attribution-unknown'
+    END
+  `;
+}
 
 // Load stage mapping from JSON file
 function loadStageMapping() {
@@ -60,7 +111,7 @@ function loadStageMapping() {
   }
 }
 
-// Load country classifications - SAME AS hubspot-data.js
+// Load country classifications - SAME AS enhanced hubspot-data.js
 function loadCountryClassifications() {
   try {
     const countriesFile = path.join(__dirname, '../country/country-codes.json');
@@ -72,7 +123,7 @@ function loadCountryClassifications() {
     
     const countriesData = JSON.parse(fs.readFileSync(countriesFile, 'utf8'));
     
-    // Handle different file formats - EXACT SAME AS hubspot-data.js
+    // Handle different file formats - EXACT SAME AS enhanced hubspot-data.js
     let countryArray = [];
     if (Array.isArray(countriesData)) {
       countryArray = countriesData;
@@ -99,9 +150,9 @@ function loadCountryClassifications() {
   }
 }
 
-// ORACLE: Use same Google Ads attribution as hubspot-data.js
+// ENHANCED: Use enhanced Google Ads attribution same as enhanced hubspot-data.js
 function buildGoogleAdsAttributionQuery() {
-  return `hs_analytics_source = 'PAID_SEARCH'`;
+  return buildEnhancedAttributionQuery();
 }
 
 /**
@@ -109,6 +160,7 @@ function buildGoogleAdsAttributionQuery() {
  */
 function servePipelineDashboard(req, res) {
   try {
+    console.log('🔄 Serving pipeline dashboard with attribution enhancements...');
     const htmlFilePath = path.join(__dirname, 'pipeline-analysis.html');
     
     if (!fs.existsSync(htmlFilePath)) {
@@ -117,11 +169,13 @@ function servePipelineDashboard(req, res) {
         <h1>Pipeline Analysis Dashboard</h1>
         <p>❌ pipeline-analysis.html file not found</p>
         <p>Expected location: ${htmlFilePath}</p>
+        <p><strong>Attribution Enhancement:</strong> Active</p>
         <p><a href="/gads/">← Back to Main Dashboard</a></p>
       `);
     }
     
     const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+    console.log('✅ Pipeline dashboard served with attribution enhancement support');
     res.send(htmlContent);
     
   } catch (error) {
@@ -129,23 +183,27 @@ function servePipelineDashboard(req, res) {
     res.status(500).send(`
       <h1>Pipeline Analysis Dashboard - Error</h1>
       <p>❌ Error: ${error.message}</p>
+      <p><strong>Attribution Enhancement:</strong> Active (Error in serving)</p>
       <p><a href="/gads/">← Back to Main Dashboard</a></p>
     `);
   }
 }
 
+/**
+ * ENHANCED: Get pipeline data with attribution fixes applied
+ */
 async function getFastPipelineData(getDbConnection, options = {}) {
   try {
     const { days = 30, campaign = 'all' } = options;
     const connection = await getDbConnection();
     
     try {
-      console.log(`⚡ Getting ORACLE-ALIGNED pipeline data: ${days} days, campaign: ${campaign}`);
+      console.log(`⚡ Getting ENHANCED ATTRIBUTION pipeline data: ${days} days, campaign: ${campaign}`);
       
       // Load stage mapping
       const stageMapping = loadStageMapping();
       
-      // ORACLE: Better date range calculation - EXACT SAME AS hubspot-data.js
+      // ORACLE: Better date range calculation - EXACT SAME AS enhanced hubspot-data.js
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999); // End of today
       
@@ -158,7 +216,36 @@ async function getFastPipelineData(getDbConnection, options = {}) {
       
       console.log(`📅 Date range: ${startDateStr} to ${endDateStr} (${days} days including today)`);
       
-      // ORACLE: Get Google Ads metrics with proper date format - SAME AS hubspot-data.js approach
+      // ENHANCED: Get attribution quality metrics first
+      const [attributionBreakdown] = await connection.execute(`
+        SELECT 
+          'Standard PAID_SEARCH' as attribution_type,
+          COUNT(*) as contact_count
+        FROM hub_contacts hc
+        WHERE hc.hs_analytics_source = 'PAID_SEARCH' 
+          AND hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+          AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
+        
+        UNION ALL
+        
+        SELECT 
+          'Fixed Template (Custom Field)' as attribution_type,
+          COUNT(*) as contact_count
+        FROM hub_contacts hc
+        WHERE hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+          AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
+      `, [startDateStr, endDateStr, startDateStr, endDateStr]);
+      
+      console.log(`🔧 Attribution breakdown:`, attributionBreakdown);
+      
+      // ORACLE: Get Google Ads metrics with proper date format - SAME AS enhanced hubspot-data.js approach
       const [googleAdsMetrics] = await connection.execute(`
         SELECT 
           SUM(impressions) as total_impressions,
@@ -171,9 +258,9 @@ async function getFastPipelineData(getDbConnection, options = {}) {
       `, [startDateStr, endDateStr]);
       
       const googleMetrics = googleAdsMetrics[0] || {};
-      console.log(`📊 Google Ads metrics (ORACLE):`, googleMetrics);
+      console.log(`📊 Google Ads metrics (ENHANCED):`, googleMetrics);
       
-      // ORACLE: Get campaign names with proper date format
+      // ENHANCED: Get campaign names with proper date format and attribution
       const [campaignNames] = await connection.execute(`
         SELECT DISTINCT 
           c.google_campaign_id,
@@ -192,41 +279,48 @@ async function getFastPipelineData(getDbConnection, options = {}) {
       
       console.log(`🎯 Found ${campaignNames.length} active campaigns with data`);
       
-      // ORACLE: Get HubSpot contacts using EXACT same logic as hubspot-data.js
+      // ENHANCED: Get HubSpot contacts using enhanced attribution logic
       const [contactMetrics] = await connection.execute(`
         SELECT 
           COUNT(*) as total_contacts,
-          COUNT(CASE WHEN num_associated_deals > 0 THEN 1 END) as contacts_with_deals,
-          COUNT(CASE WHEN territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts
-        FROM hub_contacts 
-        WHERE hs_analytics_source = 'PAID_SEARCH'
+          COUNT(CASE WHEN hc.num_associated_deals > 0 THEN 1 END) as contacts_with_deals,
+          COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
+          COUNT(CASE WHEN hc.hs_analytics_source_data_1 = '{campaign}' THEN 1 END) as broken_template_contacts,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            AND hc.google_ads_campaign IS NOT NULL 
+            AND hc.google_ads_campaign != '' 
+            THEN 1 
+          END) as fixed_template_contacts
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                hubspot_owner_id != 10017927
-                OR hubspot_owner_id IS NULL
-                OR hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND DATE(createdate) >= ?
-          AND DATE(createdate) <= ?
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
       
       const contactData = contactMetrics[0] || {};
-      console.log(`👥 Contact metrics (ORACLE):`, contactData);
+      console.log(`👥 Contact metrics (ENHANCED ATTRIBUTION):`, contactData);
       
-      // ORACLE: Get deal stage progression using EXACT same logic as hubspot-data.js
+      // ENHANCED: Get deal stage progression using enhanced attribution logic
       const [sqlStagesRaw] = await connection.execute(`
         SELECT 
           d.dealstage,
           COUNT(*) as count,
           SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as total_value
         FROM hub_contact_deal_associations a
-        JOIN hub_contacts c ON a.contact_hubspot_id = c.hubspot_id
+        JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
         JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-        WHERE c.hubspot_owner_id != 10017927
-          AND c.hs_analytics_source = 'PAID_SEARCH'
-          AND c.territory != 'Unsupported Territory'
-          AND c.num_associated_deals > 0
-          AND DATE(c.createdate) >= ?
-          AND DATE(c.createdate) <= ?
+        WHERE hc.hubspot_owner_id != 10017927
+          AND ${buildEnhancedAttributionQuery()}
+          AND hc.territory != 'Unsupported Territory'
+          AND hc.num_associated_deals > 0
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
           AND d.pipeline = 'default'
         GROUP BY d.dealstage
       `, [startDateStr, endDateStr]);
@@ -244,21 +338,21 @@ async function getFastPipelineData(getDbConnection, options = {}) {
         };
       }).sort((a, b) => a.displayOrder - b.displayOrder);
       
-      console.log(`📋 SQL stages mapped (ORACLE):`, sqlStages.map(s => `${s.friendlyName}: ${s.count}`));
+      console.log(`📋 SQL stages mapped (ENHANCED ATTRIBUTION):`, sqlStages.map(s => `${s.friendlyName}: ${s.count}`));
       
-      // ORACLE: Calculate totals properly - SAME AS hubspot-data.js
+      // ENHANCED: Calculate totals properly with attribution insights
       const totalDeals = sqlStages.reduce((sum, stage) => sum + parseInt(stage.count), 0);
       const wonDeals = sqlStages.filter(s => s.dealstage === 'closedwon').reduce((sum, s) => sum + parseInt(s.count), 0);
       const lostDeals = sqlStages.filter(s => s.dealstage === 'closedlost').reduce((sum, s) => sum + parseInt(s.count), 0);
       const activeDeals = totalDeals - wonDeals - lostDeals;
       const totalRevenue = sqlStages.reduce((sum, stage) => sum + parseFloat(stage.total_value || 0), 0);
       
-      console.log(`📊 Deal summary (ORACLE): ${totalDeals} total, ${activeDeals} active, ${wonDeals} won, ${lostDeals} lost`);
+      console.log(`📊 Deal summary (ENHANCED ATTRIBUTION): ${totalDeals} total, ${activeDeals} active, ${wonDeals} won, ${lostDeals} lost`);
       
       // Build SQL stages object using friendly names from JSON mapping
       const sqlStagesObject = {};
       sqlStages.forEach(stage => {
-        const key = stage.friendlyName.toLowerCase().replace(/\s+/g, '_').replace(/&/g, 'and');
+        const key = stage.friendlyName.toLowerCase().replace(/\\s+/g, '_').replace(/&/g, 'and');
         sqlStagesObject[key] = {
           count: parseInt(stage.count),
           percentage: totalDeals > 0 ? ((parseInt(stage.count) / totalDeals) * 100).toFixed(1) : 0,
@@ -271,7 +365,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
       
       // Ensure all expected stages exist (even with 0 counts) using JSON mapping
       Object.entries(stageMapping).forEach(([stageId, stageInfo]) => {
-        const key = stageInfo.label.toLowerCase().replace(/\s+/g, '_').replace(/&/g, 'and');
+        const key = stageInfo.label.toLowerCase().replace(/\\s+/g, '_').replace(/&/g, 'and');
         if (!sqlStagesObject[key]) {
           sqlStagesObject[key] = {
             count: 0,
@@ -284,7 +378,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
         }
       });
 
-      // Build response structure - CONSISTENT WITH hubspot-data.js
+      // Build enhanced response structure with attribution metadata
       const result = {
         success: true,
         summary: {
@@ -292,7 +386,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
           totalContacts: parseInt(contactData.total_contacts) || 0,
           contactsWithDeals: parseInt(contactData.contacts_with_deals) || 0,
           period: `Last ${days} days`,
-          audience: "Google Ads B2C Contacts (ORACLE)",
+          audience: "Google Ads B2C Contacts (ENHANCED ATTRIBUTION)",
           totalCost: parseFloat(googleMetrics.total_cost) || 0,
           costPerContact: contactData.total_contacts > 0 ? 
             (parseFloat(googleMetrics.total_cost) / parseInt(contactData.total_contacts)) : 0,
@@ -309,7 +403,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
           dataQuality: {
             googleAdsRecords: "26,440+ metrics",
             hubspotContacts: parseInt(contactData.total_contacts) || 0,
-            dataSource: "MySQL Oracle-Aligned ⚡"
+            dataSource: "MySQL Enhanced Attribution ⚡🔧"
           }
         },
         mqlStages: {
@@ -330,7 +424,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
             cost: parseFloat(googleMetrics.total_cost) || 0,
             conversionRate: googleMetrics.total_clicks > 0 ? 
               ((parseInt(contactData.total_contacts) / parseInt(googleMetrics.total_clicks)) * 100).toFixed(2) : 0,
-            source: "MySQL HubSpot (ORACLE)"
+            source: "MySQL HubSpot (ENHANCED ATTRIBUTION)"
           },
           territoryValidation: {
             accepted: Math.max(0, parseInt(contactData.total_contacts) - parseInt(contactData.unsupported_contacts)),
@@ -338,7 +432,7 @@ async function getFastPipelineData(getDbConnection, options = {}) {
             rejectionRate: contactData.total_contacts > 0 ? 
               ((parseInt(contactData.unsupported_contacts) / parseInt(contactData.total_contacts)) * 100).toFixed(1) : 0,
             cost: parseFloat(googleMetrics.total_cost) || 0,
-            source: "MySQL HubSpot + country_rules (ORACLE)"
+            source: "MySQL HubSpot + country_rules (ENHANCED ATTRIBUTION)"
           }
         },
         sqlStages: sqlStagesObject,
@@ -348,10 +442,31 @@ async function getFastPipelineData(getDbConnection, options = {}) {
           cost: parseFloat(c.total_cost) || 0,
           metrics_count: parseInt(c.metrics_count) || 0
         })),
+        
+        // ENHANCED: Attribution enhancement metadata
+        attributionEnhancement: {
+          status: 'ACTIVE',
+          features: [
+            'Campaign tracking template fix',
+            'Custom Google Ads Campaign field integration', 
+            'Multi-layered attribution logic',
+            'Enhanced contact recovery'
+          ],
+          metrics: {
+            broken_template_contacts: parseInt(contactData.broken_template_contacts) || 0,
+            fixed_template_contacts: parseInt(contactData.fixed_template_contacts) || 0,
+            enhancement_coverage: contactData.broken_template_contacts > 0 ? 
+              ((contactData.fixed_template_contacts / contactData.broken_template_contacts) * 100).toFixed(1) + '%' : '100%',
+            total_enhanced_contacts: parseInt(contactData.total_contacts) || 0
+          },
+          breakdown: attributionBreakdown
+        },
+        
         timestamp: new Date().toISOString()
       };
       
-      console.log(`✅ ORACLE-ALIGNED Pipeline data: ${result.summary.totalContacts} contacts, ${activeDeals} active deals`);
+      console.log(`✅ ENHANCED ATTRIBUTION Pipeline data: ${result.summary.totalContacts} contacts, ${activeDeals} active deals`);
+      console.log(`🔧 Attribution Enhancement: ${result.attributionEnhancement.metrics.broken_template_contacts} broken templates, ${result.attributionEnhancement.metrics.fixed_template_contacts} fixed`);
       return result;
       
     } finally {
@@ -359,10 +474,14 @@ async function getFastPipelineData(getDbConnection, options = {}) {
     }
     
   } catch (error) {
-    console.error('❌ Oracle-aligned pipeline data failed:', error.message);
+    console.error('❌ Enhanced attribution pipeline data failed:', error.message);
     return {
       success: false,
       error: error.message,
+      attributionEnhancement: {
+        status: 'ERROR',
+        error: error.message
+      },
       timestamp: new Date().toISOString()
     };
   }
@@ -370,5 +489,10 @@ async function getFastPipelineData(getDbConnection, options = {}) {
 
 module.exports = {
   getFastPipelineData,
-  servePipelineDashboard  // ADDED for index.js compatibility
+  servePipelineDashboard,  // ADDED for index.js compatibility
+  
+  // NEW: Export enhanced attribution functions
+  buildEnhancedAttributionQuery,
+  getCampaignAttributionLogic,
+  buildGoogleAdsAttributionQuery  // Enhanced version
 };

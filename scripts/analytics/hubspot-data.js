@@ -1,6 +1,11 @@
 /**
- * FINAL FIXED: HubSpot Dashboard Data API Module
+ * ENHANCED: HubSpot Dashboard Data API Module with Attribution Fix
  * /scripts/analytics/hubspot-data.js
+ * 
+ * ATTRIBUTION FIX APPLIED:
+ * - Handles contacts where hs_analytics_source_data_1 = '{campaign}'
+ * - Uses custom 'google_ads_campaign' field for correct attribution
+ * - Enhanced campaign matching logic throughout all functions
  * 
  * FIXED: Date range to properly include TODAY's deals
  * - Revenue Mode: Filters by deal closedate including today
@@ -11,6 +16,66 @@ const fs = require('fs');
 const path = require('path');
 const pipelineServer = require('./pipeline-server');
 
+/**
+ * Enhanced Google Ads attribution query - handles {campaign} issue
+ */
+function buildEnhancedAttributionQuery() {
+  return `
+    (
+      hc.hs_analytics_source = 'PAID_SEARCH'
+      AND (
+        -- Standard attribution: Normal campaign data
+        (
+          hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+        )
+        OR
+        -- FIX: Use custom 'Google Ads Campaign' field for broken tracking template
+        (
+          hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+        )
+      )
+    )
+  `;
+}
+
+/**
+ * Get effective campaign identifier for attribution
+ */
+function getCampaignAttributionLogic() {
+  return `
+    CASE 
+      WHEN hc.hs_analytics_source_data_1 != '{campaign}'
+           AND hc.hs_analytics_source_data_1 IS NOT NULL
+           AND hc.hs_analytics_source_data_1 != ''
+      THEN hc.hs_analytics_source_data_1
+      WHEN hc.hs_analytics_source_data_1 = '{campaign}'
+           AND hc.google_ads_campaign IS NOT NULL
+           AND hc.google_ads_campaign != ''
+      THEN hc.google_ads_campaign
+      ELSE 'attribution-unknown'
+    END
+  `;
+}
+
+/**
+ * Get effective campaign name for display
+ */
+function getCampaignNameLogic() {
+  return `
+    COALESCE(
+      NULLIF(hc.google_ads_campaign, ''),
+      CASE 
+        WHEN hc.hs_analytics_source_data_1 != '{campaign}' 
+        THEN hc.hs_analytics_source_data_1
+        ELSE 'Unknown Campaign'
+      END
+    )
+  `;
+}
 
 /**
  * NEW: Get Google Ads metrics by calling pipeline server (proven to work)
@@ -80,7 +145,6 @@ async function getGoogleAdsMetricsFromPipeline(getDbConnection, days = 30) {
   }
 }
 
-
 // Load country classifications for territory analysis
 function loadCountryClassifications() {
   try {
@@ -121,23 +185,23 @@ function loadCountryClassifications() {
 }
 
 /**
- * Build Google Ads attribution query
+ * Build Google Ads attribution query (enhanced version)
  */
 function buildGoogleAdsAttributionQuery() {
-  return `hs_analytics_source = 'PAID_SEARCH'`;
+  return buildEnhancedAttributionQuery();
 }
 
 /**
- * FIXED: Get dashboard summary with proper date ranges including TODAY
+ * ENHANCED: Get dashboard summary with proper date ranges including TODAY + Attribution Fix
  */
 async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
     try {
-      console.log(`📊 Getting Google Ads B2C ${analysisMode} summary for ${days} days...`);
+      console.log(`📊 Getting Google Ads B2C ${analysisMode} summary for ${days} days (with attribution fix)...`);
       
-            // NEW: Get Google Ads metrics from proven pipeline server
+      // NEW: Get Google Ads metrics from proven pipeline server
       const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, days);
       const googleMetrics = googleAdsResult.metrics || {};
       
@@ -156,68 +220,68 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       
       console.log(`📅 Date range: ${startDateStr} to ${endDateStr} (${days} days including today)`);
       
-      // CARD 3: MQLs Created - Total Google Ads B2C contacts (always filter by contact createdate)
+      // CARD 3: MQLs Created - Enhanced attribution (always filter by contact createdate)
       const [mqlsCreated] = await connection.execute(`
         SELECT COUNT(*) AS contact_count
-        FROM hub_contacts c
-        WHERE c.hs_analytics_source = 'PAID_SEARCH'
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                c.hubspot_owner_id != 10017927
-                OR c.hubspot_owner_id IS NULL
-                OR c.hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND DATE(c.createdate) >= ?
-          AND DATE(c.createdate) <= ?
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
       
       const totalContacts = parseInt(mqlsCreated[0]?.contact_count) || 0;
-      console.log(`✅ CARD 3 - MQLs Created: ${totalContacts}`);
+      console.log(`✅ CARD 3 - MQLs Created (Enhanced Attribution): ${totalContacts}`);
       
-      // CARD 4: MQLs Failed - Unsupported Territory validation failures (always filter by contact createdate)
+      // CARD 4: MQLs Failed - Enhanced attribution (always filter by contact createdate)
       const [mqlsFailed] = await connection.execute(`
         SELECT COUNT(*) AS contact_count
-        FROM hub_contacts c
-        WHERE c.hs_analytics_source = 'PAID_SEARCH'
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                c.hubspot_owner_id != 10017927
-                OR c.hubspot_owner_id IS NULL
-                OR c.hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND c.territory = 'Unsupported Territory'
-          AND DATE(c.createdate) >= ?
-          AND DATE(c.createdate) <= ?
+          AND hc.territory = 'Unsupported Territory'
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
       
       const failedContacts = parseInt(mqlsFailed[0]?.contact_count) || 0;
-      console.log(`✅ CARD 4 - MQLs Failed: ${failedContacts}`);
+      console.log(`✅ CARD 4 - MQLs Failed (Enhanced Attribution): ${failedContacts}`);
       
-      // CARD 5: SQLs Passed - Territory validated + has deals (always filter by contact createdate)
+      // CARD 5: SQLs Passed - Enhanced attribution (always filter by contact createdate)
       const [sqlsPassed] = await connection.execute(`
         SELECT COUNT(*) AS contact_count
-        FROM hub_contacts c
-        WHERE c.hs_analytics_source = 'PAID_SEARCH'
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                c.hubspot_owner_id != 10017927
-                OR c.hubspot_owner_id IS NULL
-                OR c.hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND c.territory != 'Unsupported Territory'
-          AND c.num_associated_deals > 0
-          AND DATE(c.createdate) >= ?
-          AND DATE(c.createdate) <= ?
+          AND hc.territory != 'Unsupported Territory'
+          AND hc.num_associated_deals > 0
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
       
       const sqlsPassedCount = parseInt(sqlsPassed[0]?.contact_count) || 0;
-      console.log(`✅ CARD 5 - SQLs Passed: ${sqlsPassedCount}`);
+      console.log(`✅ CARD 5 - SQLs Passed (Enhanced Attribution): ${sqlsPassedCount}`);
       
-      // CARD 6: Deals WON/LOST - FIXED: Different logic for pipeline vs revenue analysis
+      // CARD 6: Deals WON/LOST - ENHANCED: Different logic for pipeline vs revenue analysis with attribution fix
       
       let dealResults;
       let dealLogicDescription;
       
       if (analysisMode === 'revenue') {
-        // REVENUE MODE: Filter by deal closedate (deals that closed in timeframe)
-        dealLogicDescription = `Deals closed ${startDateStr} to ${endDateStr} (any contact create date)`;
+        // REVENUE MODE: Filter by deal closedate (deals that closed in timeframe) - Enhanced Attribution
+        dealLogicDescription = `Deals closed ${startDateStr} to ${endDateStr} (any contact create date) - Enhanced Attribution`;
         [dealResults] = await connection.execute(`
           SELECT 
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
@@ -226,12 +290,12 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as totalRevenue,
             AVG(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE NULL END) as avgDealValue
           FROM hub_contact_deal_associations a
-          JOIN hub_contacts c ON a.contact_hubspot_id = c.hubspot_id
+          JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE c.hubspot_owner_id != 10017927
-            AND c.hs_analytics_source = 'PAID_SEARCH'
-            AND c.territory != 'Unsupported Territory'
-            AND c.num_associated_deals > 0
+          WHERE hc.hubspot_owner_id != 10017927
+            AND ${buildEnhancedAttributionQuery()}
+            AND hc.territory != 'Unsupported Territory'
+            AND hc.num_associated_deals > 0
             AND d.pipeline = 'default'
             AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
             AND DATE(d.closedate) <= ?
@@ -239,8 +303,8 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
         `, [startDateStr, endDateStr]);
         
       } else {
-        // PIPELINE MODE: Filter by contact createdate (deals from contacts created in timeframe)
-        dealLogicDescription = `Deals from contacts created ${startDateStr} to ${endDateStr} (any deal close date)`;
+        // PIPELINE MODE: Filter by contact createdate (deals from contacts created in timeframe) - Enhanced Attribution
+        dealLogicDescription = `Deals from contacts created ${startDateStr} to ${endDateStr} (any deal close date) - Enhanced Attribution`;
         [dealResults] = await connection.execute(`
           SELECT 
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
@@ -249,20 +313,20 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as totalRevenue,
             AVG(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE NULL END) as avgDealValue
           FROM hub_contact_deal_associations a
-          JOIN hub_contacts c ON a.contact_hubspot_id = c.hubspot_id
+          JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE c.hubspot_owner_id != 10017927
-            AND c.hs_analytics_source = 'PAID_SEARCH'
-            AND c.territory != 'Unsupported Territory'
-            AND c.num_associated_deals > 0
-            AND DATE(c.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
-            AND DATE(c.createdate) <= ?
+          WHERE hc.hubspot_owner_id != 10017927
+            AND ${buildEnhancedAttributionQuery()}
+            AND hc.territory != 'Unsupported Territory'
+            AND hc.num_associated_deals > 0
+            AND DATE(hc.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(hc.createdate) <= ?
             AND d.pipeline = 'default'
         `, [startDateStr, endDateStr]);
       }
       
       const deals = dealResults[0] || {};
-      console.log(`✅ CARD 6 - ${analysisMode.toUpperCase()} MODE deals:`, {
+      console.log(`✅ CARD 6 - ${analysisMode.toUpperCase()} MODE deals (Enhanced Attribution):`, {
         logic: dealLogicDescription,
         total: deals.totalDeals,
         won: deals.wonDeals,
@@ -285,23 +349,18 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
           gad_ctr: googleMetrics.gad_ctr || 0,
           gad_conversion_rate: googleMetrics.gad_conversion_rate || 0,
 
-
-
-
-
-
-          // CARD 3: MQLs Created (always by contact createdate)
+          // CARD 3: MQLs Created (always by contact createdate) - Enhanced Attribution
           totalContacts: totalContacts,
           
-          // CARD 4: MQLs Failed (always by contact createdate)
+          // CARD 4: MQLs Failed (always by contact createdate) - Enhanced Attribution
           failed_validation: failedContacts,
           burn_rate: burnRate,
           
-          // CARD 5: SQLs Passed (always by contact createdate)
+          // CARD 5: SQLs Passed (always by contact createdate) - Enhanced Attribution
           contactsWithDeals: sqlsPassedCount,
           conversionRate: conversionRate,
           
-          // CARD 6: Deals - varies by analysis mode
+          // CARD 6: Deals - varies by analysis mode - Enhanced Attribution
           totalDeals: parseInt(deals.totalDeals) || 0,
           wonDeals: parseInt(deals.wonDeals) || 0,
           lostDeals: parseInt(deals.lostDeals) || 0,
@@ -317,10 +376,11 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
         dealLogic: dealLogicDescription,
         dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
+        attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };
       
-      console.log(`✅ ${analysisMode.toUpperCase()} MODE summary:`, {
+      console.log(`✅ ${analysisMode.toUpperCase()} MODE summary (Enhanced Attribution):`, {
         mqls_created: result.summary.totalContacts,
         mqls_failed: result.summary.failed_validation,
         sqls_passed: result.summary.contactsWithDeals,
@@ -346,14 +406,14 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
 }
 
 /**
- * FIXED: Get campaign performance with proper date ranges including TODAY
+ * ENHANCED: Get campaign performance with proper date ranges including TODAY + Attribution Fix
  */
 async function getCampaignPerformance(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
     try {
-      console.log(`🎯 Getting Google Ads B2C campaign performance for ${days} days (${analysisMode} mode)...`);
+      console.log(`🎯 Getting Google Ads B2C campaign performance for ${days} days (${analysisMode} mode, with attribution fix)...`);
       
       // FIXED: Better date range calculation that definitely includes today
       const endDate = new Date();
@@ -369,69 +429,69 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
       let campaignResults;
       
       if (analysisMode === 'revenue') {
-        // REVENUE MODE: Show campaigns with deals that closed in timeframe
+        // REVENUE MODE: Show campaigns with deals that closed in timeframe - Enhanced Attribution
         [campaignResults] = await connection.execute(`
           SELECT 
-            c.hs_analytics_source_data_1 as campaignId,
-            c.google_ads_campaign as campaignName,
-            c.adgroup as adGroup,
-            COUNT(DISTINCT c.hubspot_id) as contacts,
+            ${getCampaignAttributionLogic()} as campaignId,
+            ${getCampaignNameLogic()} as campaignName,
+            hc.adgroup as adGroup,
+            COUNT(DISTINCT hc.hubspot_id) as contacts,
             COUNT(DISTINCT CASE 
-              WHEN c.territory != 'Unsupported Territory' 
-              AND c.num_associated_deals > 0 
-              THEN c.hubspot_id 
+              WHEN hc.territory != 'Unsupported Territory' 
+              AND hc.num_associated_deals > 0 
+              THEN hc.hubspot_id 
             END) as contactsWithDeals,
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
             COUNT(DISTINCT CASE WHEN d.dealstage = 'closedwon' THEN d.hubspot_deal_id END) as wonDeals,
             SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as revenue
-          FROM hub_contacts c
-          LEFT JOIN hub_contact_deal_associations a ON c.hubspot_id = a.contact_hubspot_id
+          FROM hub_contacts hc
+          LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
           LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id 
             AND d.pipeline = 'default'
             AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
             AND DATE(d.closedate) <= ?
             AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')
-          WHERE c.hs_analytics_source = 'PAID_SEARCH'
+          WHERE ${buildEnhancedAttributionQuery()}
             AND (
-                  c.hubspot_owner_id != 10017927
-                  OR c.hubspot_owner_id IS NULL
-                  OR c.hubspot_owner_id = ''
+                  hc.hubspot_owner_id != 10017927
+                  OR hc.hubspot_owner_id IS NULL
+                  OR hc.hubspot_owner_id = ''
                 )
-          GROUP BY c.hs_analytics_source_data_1, c.google_ads_campaign, c.adgroup
+          GROUP BY ${getCampaignAttributionLogic()}, ${getCampaignNameLogic()}, hc.adgroup
           HAVING totalDeals > 0  -- Only show campaigns with closed deals
           ORDER BY revenue DESC, contacts DESC
           LIMIT 50
         `, [startDateStr, endDateStr]);
         
       } else {
-        // PIPELINE MODE: Show campaigns with contacts created in timeframe
+        // PIPELINE MODE: Show campaigns with contacts created in timeframe - Enhanced Attribution
         [campaignResults] = await connection.execute(`
           SELECT 
-            c.hs_analytics_source_data_1 as campaignId,
-            c.google_ads_campaign as campaignName,
-            c.adgroup as adGroup,
-            COUNT(DISTINCT c.hubspot_id) as contacts,
+            ${getCampaignAttributionLogic()} as campaignId,
+            ${getCampaignNameLogic()} as campaignName,
+            hc.adgroup as adGroup,
+            COUNT(DISTINCT hc.hubspot_id) as contacts,
             COUNT(DISTINCT CASE 
-              WHEN c.territory != 'Unsupported Territory' 
-              AND c.num_associated_deals > 0 
-              THEN c.hubspot_id 
+              WHEN hc.territory != 'Unsupported Territory' 
+              AND hc.num_associated_deals > 0 
+              THEN hc.hubspot_id 
             END) as contactsWithDeals,
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
             COUNT(DISTINCT CASE WHEN d.dealstage = 'closedwon' THEN d.hubspot_deal_id END) as wonDeals,
             SUM(CASE WHEN d.dealstage = 'closedwon' AND d.amount IS NOT NULL THEN CAST(d.amount as DECIMAL(15,2)) ELSE 0 END) as revenue
-          FROM hub_contacts c
-          LEFT JOIN hub_contact_deal_associations a ON c.hubspot_id = a.contact_hubspot_id
+          FROM hub_contacts hc
+          LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
           LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id 
             AND d.pipeline = 'default'
-          WHERE c.hs_analytics_source = 'PAID_SEARCH'
+          WHERE ${buildEnhancedAttributionQuery()}
             AND (
-                  c.hubspot_owner_id != 10017927
-                  OR c.hubspot_owner_id IS NULL
-                  OR c.hubspot_owner_id = ''
+                  hc.hubspot_owner_id != 10017927
+                  OR hc.hubspot_owner_id IS NULL
+                  OR hc.hubspot_owner_id = ''
                 )
-            AND DATE(c.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
-            AND DATE(c.createdate) <= ?
-          GROUP BY c.hs_analytics_source_data_1, c.google_ads_campaign, c.adgroup
+            AND DATE(hc.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(hc.createdate) <= ?
+          GROUP BY ${getCampaignAttributionLogic()}, ${getCampaignNameLogic()}, hc.adgroup
           HAVING contacts > 0
           ORDER BY revenue DESC, contacts DESC
           LIMIT 50
@@ -451,7 +511,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
           ((parseInt(campaign.contactsWithDeals) / parseInt(campaign.contacts)) * 100).toFixed(1) : '0.0'
       }));
       
-      console.log(`🎯 Found ${campaigns.length} Google Ads B2C campaigns (${analysisMode} mode)`);
+      console.log(`🎯 Found ${campaigns.length} Google Ads B2C campaigns (${analysisMode} mode, Enhanced Attribution)`);
       
       return {
         success: true,
@@ -459,6 +519,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
         analysisMode: analysisMode,
         dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
+        attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };
       
@@ -477,14 +538,14 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
 }
 
 /**
- * Get territory analysis data with corrected date ranges
+ * ENHANCED: Get territory analysis data with corrected date ranges + Attribution Fix
  */
 async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
     const connection = await getDbConnection();
     
     try {
-      console.log(`🌍 Getting Google Ads B2C territory analysis for ${days} days...`);
+      console.log(`🌍 Getting Google Ads B2C territory analysis for ${days} days (with attribution fix)...`);
       
       // FIXED: Better date range calculation that definitely includes today
       const endDate = new Date();
@@ -497,26 +558,26 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
       const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
       const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
       
-      // Get territory breakdown from Google Ads contacts (always by contact createdate)
+      // Get territory breakdown from Google Ads contacts (always by contact createdate) - Enhanced Attribution
       const [territoryResults] = await connection.execute(`
         SELECT 
-          COALESCE(territory, 'Unknown/Not Set') as territoryName,
+          COALESCE(hc.territory, 'Unknown/Not Set') as territoryName,
           COUNT(*) as contacts,
           COUNT(CASE 
-            WHEN territory != 'Unsupported Territory' 
-            AND num_associated_deals > 0 
+            WHEN hc.territory != 'Unsupported Territory' 
+            AND hc.num_associated_deals > 0 
             THEN 1 
           END) as dealsCreated
-        FROM hub_contacts 
-        WHERE hs_analytics_source = 'PAID_SEARCH'
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                hubspot_owner_id != 10017927
-                OR hubspot_owner_id IS NULL
-                OR hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND DATE(createdate) >= ?
-          AND DATE(createdate) <= ?
-        GROUP BY COALESCE(territory, 'Unknown/Not Set')
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
+        GROUP BY COALESCE(hc.territory, 'Unknown/Not Set')
         HAVING contacts > 0
         ORDER BY contacts DESC
         LIMIT 20
@@ -538,6 +599,7 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
         analysisMode: analysisMode,
         dateRange: `${startDateStr} to ${endDateStr}`,
         period: `Last ${days} days`,
+        attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };
       
@@ -578,11 +640,11 @@ async function getTrendData(getDbConnection, days = 30, analysisMode = 'pipeline
 }
 
 /**
- * Get MQL validation metrics
+ * ENHANCED: Get MQL validation metrics with Attribution Fix
  */
 async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode = 'pipeline') {
   try {
-    console.log(`🎯 Getting Google Ads B2C MQL validation metrics for ${days} days (${analysisMode} mode)...`);
+    console.log(`🎯 Getting Google Ads B2C MQL validation metrics for ${days} days (${analysisMode} mode, with attribution fix)...`);
     
     const summaryResult = await getDashboardSummary(getDbConnection, days, analysisMode);
     
@@ -608,6 +670,7 @@ async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode 
       },
       analysisMode: analysisMode,
       period: `Last ${days} days`,
+      attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
       timestamp: new Date().toISOString()
     };
     
@@ -622,14 +685,14 @@ async function getMQLValidationMetrics(getDbConnection, days = 30, analysisMode 
 }
 
 /**
- * Test Google Ads attribution logic
+ * ENHANCED: Test Google Ads attribution logic with Attribution Fix
  */
 async function testGoogleAdsAttribution(getDbConnection, days = 7) {
   try {
     const connection = await getDbConnection();
     
     try {
-      console.log(`🔍 Testing Google Ads attribution for ${days} days...`);
+      console.log(`🔍 Testing Google Ads attribution for ${days} days (with attribution fix)...`);
       
       // FIXED: Better date range calculation that definitely includes today
       const endDate = new Date();
@@ -645,32 +708,56 @@ async function testGoogleAdsAttribution(getDbConnection, days = 7) {
       const [attributionTest] = await connection.execute(`
         SELECT 
           COUNT(*) as total_contacts_matched,
-          COUNT(CASE WHEN hs_analytics_source = 'PAID_SEARCH' THEN 1 END) as paid_search,
+          COUNT(CASE WHEN hc.hs_analytics_source = 'PAID_SEARCH' THEN 1 END) as paid_search,
           COUNT(CASE 
-            WHEN hubspot_owner_id != 10017927 
-            OR hubspot_owner_id IS NULL 
-            OR hubspot_owner_id = '' 
+            WHEN hc.hubspot_owner_id != 10017927 
+            OR hc.hubspot_owner_id IS NULL 
+            OR hc.hubspot_owner_id = '' 
             THEN 1 
           END) as non_partners,
           COUNT(CASE 
-            WHEN territory != 'Unsupported Territory' 
-            AND num_associated_deals > 0 
+            WHEN hc.territory != 'Unsupported Territory' 
+            AND hc.num_associated_deals > 0 
             THEN 1 
-          END) as passed_validation
-        FROM hub_contacts 
-        WHERE hs_analytics_source = 'PAID_SEARCH'
+          END) as passed_validation,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            THEN 1 
+          END) as broken_template_count,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            AND hc.google_ads_campaign IS NOT NULL
+            AND hc.google_ads_campaign != ''
+            THEN 1 
+          END) as fixed_template_count
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedAttributionQuery()}
           AND (
-                hubspot_owner_id != 10017927
-                OR hubspot_owner_id IS NULL
-                OR hubspot_owner_id = ''
+                hc.hubspot_owner_id != 10017927
+                OR hc.hubspot_owner_id IS NULL
+                OR hc.hubspot_owner_id = ''
               )
-          AND DATE(createdate) >= ?
-          AND DATE(createdate) <= ?
+          AND DATE(hc.createdate) >= ?
+          AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
+      
+      const testResults = attributionTest[0] || {};
+      
+      console.log(`✅ Attribution Test Results (Enhanced):`, {
+        total_matched: testResults.total_contacts_matched,
+        broken_template: testResults.broken_template_count,
+        fixed_template: testResults.fixed_template_count
+      });
       
       return {
         success: true,
-        attribution_test: attributionTest[0] || {},
+        attribution_test: testResults,
+        attribution_enhancement: {
+          broken_template_contacts: testResults.broken_template_count || 0,
+          fixed_template_contacts: testResults.fixed_template_count || 0,
+          enhancement_coverage: testResults.broken_template_count > 0 ? 
+            ((testResults.fixed_template_count / testResults.broken_template_count) * 100).toFixed(1) + '%' : '100%'
+        },
         dateRange: `${startDateStr} to ${endDateStr}`,
         timestamp: new Date().toISOString()
       };
@@ -697,5 +784,10 @@ module.exports = {
   getMQLValidationMetrics,
   testGoogleAdsAttribution,
   buildGoogleAdsAttributionQuery,
-  getGoogleAdsMetricsFromPipeline  // NEW: Export the pipeline-based Google Ads function
+  getGoogleAdsMetricsFromPipeline,  // NEW: Export the pipeline-based Google Ads function
+  
+  // NEW: Export enhanced attribution functions
+  buildEnhancedAttributionQuery,
+  getCampaignAttributionLogic,
+  getCampaignNameLogic
 };

@@ -1,13 +1,19 @@
 /**
- * Pipeline Predicted ROAS Analysis
- * /scripts/analytics/predicted-roas.js
+ * ENHANCED: Pipeline Predicted ROAS Analysis with Attribution Fix
+ * /scripts/analytics/roas-predicted.js
+ * 
+ * ATTRIBUTION ENHANCEMENTS:
+ * - Enhanced attribution logic handles {campaign} tracking template issue
+ * - Uses custom 'google_ads_campaign' field for correct attribution
+ * - Multi-layered attribution matching consistent with other enhanced files
+ * - Comprehensive attribution quality reporting
  * 
  * Provides forward-looking ROAS prediction based on deal creation and adjusted amounts.
  * Formula: [Sum of Adjusted Amounts from Deals Created] ÷ [Cash Spent on Ads]
  * 
  * PIPELINE PREDICTION METHOD:
  * - Campaign Spend: FROM gads_campaign_metrics (cost_eur) during timeframe
- * - Attribution: VIA hub_contacts.hs_analytics_source = 'PAID_SEARCH'
+ * - Attribution: VIA enhanced Google Ads attribution (handles {campaign} issue)
  * - Revenue Prediction: FROM hub_deals.adjusted_amount WHERE createdate in timeframe
  * - Pipeline Breakdown: Group by dealstage with stage labels and probabilities
  */
@@ -15,6 +21,52 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * Enhanced attribution logic for campaign matching
+ */
+function buildEnhancedCampaignAttributionJoin(campaignAlias = 'c') {
+  return `
+    (
+      hc.hs_analytics_source = 'PAID_SEARCH' 
+      AND (
+        -- Standard attribution: Match by campaign ID when not broken
+        (
+          hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          AND hc.hs_analytics_source_data_1 = ${campaignAlias}.google_campaign_id
+        )
+        OR
+        -- Enhanced attribution: Match by campaign name when tracking template broken
+        (
+          hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          AND hc.google_ads_campaign = ${campaignAlias}.campaign_name
+        )
+        OR
+        -- Fallback attribution: Match by campaign name when available
+        (
+          hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          AND hc.google_ads_campaign = ${campaignAlias}.campaign_name
+          AND (
+            hc.hs_analytics_source_data_1 IS NULL
+            OR hc.hs_analytics_source_data_1 = ''
+            OR hc.hs_analytics_source_data_1 = '{campaign}'
+          )
+        )
+      )
+      AND (
+        hc.hubspot_owner_id != 10017927 
+        OR hc.hubspot_owner_id IS NULL 
+        OR hc.hubspot_owner_id = ''
+      )
+      AND hc.territory != 'Unsupported Territory'
+    )
+  `;
+}
 
 // Load stage mapping from JSON file (same as pipeline-server.js)
 function loadStageMapping() {
@@ -63,14 +115,14 @@ function loadStageMapping() {
 }
 
 /**
- * Get Pipeline Predicted ROAS Report
+ * ENHANCED: Get Pipeline Predicted ROAS Report with Attribution Fix
  * @param {Function} getDbConnection - Database connection function
  * @param {Object} options - Query options
- * @returns {Object} Pipeline prediction analysis with stage breakdown
+ * @returns {Object} Pipeline prediction analysis with stage breakdown and attribution enhancement
  */
 async function getPipelinePredictedROAS(getDbConnection, options = {}) {
   try {
-    console.log('🔮 Starting Pipeline Predicted ROAS Analysis...');
+    console.log('🔮 Starting Enhanced Attribution Pipeline Predicted ROAS Analysis...');
     
     const {
       status = 'active',           // 'active', 'paused', 'all'
@@ -124,12 +176,51 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
       }
       
       console.log(`🎯 Campaign status filter: ${statusFilter}`);
-      console.log(`📊 Analysis mode: Pipeline Predicted (Deal Create Date)`);
+      console.log(`📊 Analysis mode: Enhanced Attribution Pipeline Predicted (Deal Create Date)`);
       
       // Load stage mapping for labels and probabilities
       const stageMapping = loadStageMapping();
       
-      // MAIN PIPELINE PREDICTION QUERY - Deals filtered by create date
+      // ENHANCED: First get attribution quality metrics
+      const [attributionQuality] = await connection.execute(`
+        SELECT 
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 != '{campaign}' 
+            AND hc.hs_analytics_source_data_1 IS NOT NULL 
+            AND hc.hs_analytics_source_data_1 != '' 
+            THEN 1 
+          END) as standard_attribution,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            AND hc.google_ads_campaign IS NOT NULL 
+            AND hc.google_ads_campaign != '' 
+            THEN 1 
+          END) as enhanced_attribution,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            THEN 1 
+          END) as broken_template_count,
+          COUNT(*) as total_contacts
+        FROM hub_contacts hc
+        WHERE hc.hs_analytics_source = 'PAID_SEARCH'
+          AND (
+            hc.hubspot_owner_id != 10017927 
+            OR hc.hubspot_owner_id IS NULL 
+            OR hc.hubspot_owner_id = ''
+          )
+          AND hc.territory != 'Unsupported Territory'
+          AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
+      `, [startDateStr, endDateStr]);
+      
+      const attrQuality = attributionQuality[0] || {};
+      console.log(`🔧 Attribution Quality:`, {
+        standard: attrQuality.standard_attribution,
+        enhanced: attrQuality.enhanced_attribution,
+        broken: attrQuality.broken_template_count,
+        total: attrQuality.total_contacts
+      });
+      
+      // ENHANCED: Main pipeline prediction query with enhanced attribution
       const [results] = await connection.execute(`
         SELECT 
           c.google_campaign_id,
@@ -143,8 +234,22 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
            WHERE m2.google_campaign_id = c.google_campaign_id 
            AND m2.date >= ? AND m2.date <= ?) as total_spend,
           
-          -- ATTRIBUTION: Count contacts attributed to this campaign
+          -- ENHANCED ATTRIBUTION: Count contacts attributed to this campaign
           COUNT(DISTINCT hc.hubspot_id) as total_contacts,
+          
+          -- Attribution quality breakdown per campaign
+          COUNT(DISTINCT CASE 
+            WHEN hc.hs_analytics_source_data_1 != '{campaign}' 
+            AND hc.hs_analytics_source_data_1 IS NOT NULL 
+            AND hc.hs_analytics_source_data_1 != '' 
+            THEN hc.hubspot_id 
+          END) as standard_contacts,
+          COUNT(DISTINCT CASE 
+            WHEN hc.hs_analytics_source_data_1 = '{campaign}' 
+            AND hc.google_ads_campaign IS NOT NULL 
+            AND hc.google_ads_campaign != '' 
+            THEN hc.hubspot_id 
+          END) as enhanced_contacts,
           
           -- PIPELINE BREAKDOWN: Group by deal stage
           hd.dealstage,
@@ -159,19 +264,9 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
           
         FROM gads_campaigns c
         
-        -- Join contacts from Original Traffic Source = Paid Search
+        -- ENHANCED: Join contacts using enhanced attribution logic
         LEFT JOIN hub_contacts hc ON (
-          hc.hs_analytics_source = 'PAID_SEARCH' 
-          AND (
-            hc.hs_analytics_source_data_1 = c.google_campaign_id 
-            OR hc.google_ads_campaign = c.campaign_name
-          )
-          AND (
-            hc.hubspot_owner_id != 10017927 
-            OR hc.hubspot_owner_id IS NULL 
-            OR hc.hubspot_owner_id = ''
-          )
-          AND hc.territory != 'Unsupported Territory'
+          ${buildEnhancedCampaignAttributionJoin('c')}
         )
         
         -- Join deals from contacts (filtered by CREATE date for Pipeline analysis)
@@ -187,7 +282,7 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
         ORDER BY total_spend DESC, stage_adjusted_amount DESC
       `, [startDateStr, endDateStr, startDateStr, endDateStr]);
       
-      console.log(`📊 Found ${results.length} campaign-stage combinations`);
+      console.log(`📊 Found ${results.length} enhanced attribution campaign-stage combinations`);
       
       // Process results to create campaign summaries and pipeline breakdown
       const campaignMap = new Map();
@@ -208,11 +303,28 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
             total_contacts: parseInt(row.total_contacts) || 0,
             total_deals: 0,
             total_adjusted_amount: 0,
-            stages: new Map()
+            stages: new Map(),
+            // Enhanced attribution breakdown per campaign
+            attribution_breakdown: {
+              standard_contacts: parseInt(row.standard_contacts) || 0,
+              enhanced_contacts: parseInt(row.enhanced_contacts) || 0,
+              enhancement_active: (parseInt(row.enhanced_contacts) || 0) > 0
+            }
           });
         }
         
         const campaign = campaignMap.get(campaignId);
+        
+        // Update campaign totals (avoid double counting)
+        campaign.total_contacts = Math.max(campaign.total_contacts, parseInt(row.total_contacts) || 0);
+        campaign.attribution_breakdown.standard_contacts = Math.max(
+          campaign.attribution_breakdown.standard_contacts, 
+          parseInt(row.standard_contacts) || 0
+        );
+        campaign.attribution_breakdown.enhanced_contacts = Math.max(
+          campaign.attribution_breakdown.enhanced_contacts, 
+          parseInt(row.enhanced_contacts) || 0
+        );
         
         // Add stage data if stage exists
         if (stage && row.stage_deal_count > 0) {
@@ -265,6 +377,12 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
         campaign.contact_rate = campaign.total_spend > 0 ? 
           parseFloat(((campaign.total_contacts / campaign.total_spend) * 100).toFixed(2)) : 0;
         
+        // Calculate attribution enhancement coverage for this campaign
+        const totalAttributed = campaign.attribution_breakdown.standard_contacts + campaign.attribution_breakdown.enhanced_contacts;
+        campaign.attribution_breakdown.total_attributed = totalAttributed;
+        campaign.attribution_breakdown.enhancement_percentage = totalAttributed > 0 ? 
+          ((campaign.attribution_breakdown.enhanced_contacts / totalAttributed) * 100).toFixed(1) : '0';
+        
         return campaign;
       });
       
@@ -298,13 +416,15 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
       const averageCampaigns = campaigns.filter(c => c.predicted_roas >= 1.0 && c.predicted_roas < 2.0).length;
       const poorCampaigns = campaigns.filter(c => c.predicted_roas > 0 && c.predicted_roas < 1.0).length;
       const zeroCampaigns = campaigns.filter(c => c.predicted_roas === 0).length;
+      const enhancedCampaigns = campaigns.filter(c => c.attribution_breakdown.enhancement_active).length;
       
-      console.log(`📈 Pipeline Prediction Distribution:`);
+      console.log(`📈 Enhanced Attribution Pipeline Prediction Distribution:`);
       console.log(`   🟢 Excellent (≥3.0): ${excellentCampaigns} campaigns`);
       console.log(`   🔵 Good (2.0-2.99): ${goodCampaigns} campaigns`);
       console.log(`   🟡 Average (1.0-1.99): ${averageCampaigns} campaigns`);
       console.log(`   🔴 Poor (0.1-0.99): ${poorCampaigns} campaigns`);
       console.log(`   ⚫ Zero Prediction: ${zeroCampaigns} campaigns`);
+      console.log(`   🔧 Attribution Enhanced: ${enhancedCampaigns} campaigns`);
       
       const result = {
         success: true,
@@ -316,31 +436,58 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
           good: goodCampaigns, 
           average: averageCampaigns,
           poor: poorCampaigns,
-          zero: zeroCampaigns
+          zero: zeroCampaigns,
+          enhanced_campaigns: enhancedCampaigns
+        },
+        // Enhanced attribution metadata
+        attribution_enhancement: {
+          status: 'ACTIVE',
+          features: [
+            'Campaign tracking template fix',
+            'Custom Google Ads Campaign field integration',
+            'Multi-layered campaign matching',
+            'Pipeline prediction enhancement'
+          ],
+          quality_metrics: {
+            standard_attribution: parseInt(attrQuality.standard_attribution) || 0,
+            enhanced_attribution: parseInt(attrQuality.enhanced_attribution) || 0,
+            broken_template_count: parseInt(attrQuality.broken_template_count) || 0,
+            total_contacts: parseInt(attrQuality.total_contacts) || 0,
+            enhancement_coverage: attrQuality.broken_template_count > 0 ? 
+              ((attrQuality.enhanced_attribution / attrQuality.broken_template_count) * 100).toFixed(1) + '%' : '100%'
+          },
+          campaigns_with_enhancement: enhancedCampaigns
         },
         metadata: {
           status_filter: status,
           period: periodDescription,
           start_date: startDateStr,
           end_date: endDateStr,
-          analysis_description: 'Pipeline Predicted (Deal Create Date)',
-          attribution_method: 'paid_search_pipeline_prediction',
+          analysis_description: 'Enhanced Attribution Pipeline Predicted (Deal Create Date)',
+          attribution_method: 'enhanced_multi_layered_campaign_matching',
           data_sources: {
             spend: 'gads_campaign_metrics.cost_eur (filtered by date)',
-            attribution: 'hub_contacts.hs_analytics_source = PAID_SEARCH',
+            attribution: 'Enhanced Google Ads attribution with {campaign} fix',
             deals: 'hub_deals (filtered by createdate)',
-            prediction: 'hub_deals.adjusted_amount (all active stages)'
-          }
+            prediction: 'hub_deals.adjusted_amount (all active stages) - Enhanced Attribution'
+          },
+          enhancement_notes: [
+            'Includes contacts with broken {campaign} tracking template',
+            'Uses custom google_ads_campaign field for attribution recovery',
+            'Multi-layered campaign matching logic applied',
+            'Attribution quality metrics included per campaign'
+          ]
         },
         timestamp: new Date().toISOString()
       };
       
-      console.log(`✅ Pipeline Predicted ROAS Analysis Complete:`);
+      console.log(`✅ Enhanced Attribution Pipeline Predicted ROAS Analysis Complete:`);
       console.log(`   🔮 Predicted ROAS: ${portfolio.predicted_roas.toFixed(2)}:1`);
       console.log(`   📊 Total Spend: €${portfolio.total_spend.toLocaleString()}`);
       console.log(`   💎 Predicted Revenue: €${portfolio.total_adjusted_amount.toLocaleString()}`);
       console.log(`   🎯 Active Campaigns: ${campaigns.length}`);
       console.log(`   📈 Pipeline Stages: ${overallPipeline.length}`);
+      console.log(`   🔧 Attribution Enhanced: ${enhancedCampaigns} campaigns with fixes applied`);
       
       return result;
       
@@ -349,7 +496,7 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
     }
     
   } catch (error) {
-    console.error('❌ Pipeline Predicted ROAS Analysis failed:', error.message);
+    console.error('❌ Enhanced Attribution Pipeline Predicted ROAS Analysis failed:', error.message);
     return {
       success: false,
       error: error.message,
@@ -361,11 +508,17 @@ async function getPipelinePredictedROAS(getDbConnection, options = {}) {
         total_adjusted_amount: 0,
         predicted_roas: 0
       },
+      attribution_enhancement: {
+        status: 'ERROR',
+        error: error.message
+      },
       timestamp: new Date().toISOString()
     };
   }
 }
 
 module.exports = {
-  getPipelinePredictedROAS
+  getPipelinePredictedROAS,
+  // Export enhanced attribution functions for consistency
+  buildEnhancedCampaignAttributionJoin
 };

@@ -1,12 +1,13 @@
 /**
- * FINAL FIXED: Google Ads Dashboard - Pipeline vs Revenue Analysis
+ * ENHANCED: Google Ads Dashboard - Pipeline vs Revenue Analysis with Attribution Enhancements
  * /scripts/analytics/dashboard.js
  * 
- * FIXED:
- * - Enhanced debug logging to see exactly what backend returns
- * - Proper analysis mode parameter passing
- * - Better error handling for missing data
- * - Visual indicators for analysis mode differences
+ * ENHANCEMENTS:
+ * - Attribution fix awareness and reporting
+ * - Enhanced debug logging for attribution issues
+ * - Better error handling for attribution-related problems
+ * - Visual indicators for enhanced attribution data
+ * - Improved API parameter handling
  */
 
 const GoogleAdsDashboard = () => {
@@ -16,59 +17,78 @@ const GoogleAdsDashboard = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [dashboardData, setDashboardData] = React.useState(null);
   const [error, setError] = React.useState(null);
+  const [attributionEnhancement, setAttributionEnhancement] = React.useState(null);
 
   // Fetch dashboard data when parameters change
   React.useEffect(() => {
     fetchDashboardData();
   }, [dateRange, analysisMode, selectedCampaign]);
 
-  // Fetch data from APIs - ENHANCED DEBUG LOGGING
+  // Initialize attribution enhancement detection
+  React.useEffect(() => {
+    console.log('🔧 Attribution Enhancement System: Initializing...');
+    if (window.ATTRIBUTION_ENHANCED) {
+      setAttributionEnhancement({
+        status: 'ACTIVE',
+        features: ['Campaign fix', 'Enhanced queries', 'Multi-layer attribution']
+      });
+      console.log('✅ Attribution Enhancement System: DETECTED');
+    } else {
+      console.log('⚠️ Attribution Enhancement System: Not detected');
+    }
+  }, []);
+
+  // Enhanced data fetching with attribution awareness
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log(`🔄 DASHBOARD FETCH START: ${dateRange} days, ${analysisMode} mode`);
+      console.log(`🔄 DASHBOARD FETCH START: ${dateRange} days, ${analysisMode} mode (Enhanced Attribution)`);
       
       // CORRECTED: Use proper parameter names that match index.js
       const baseParams = `days=${dateRange}&mode=${analysisMode}`;
       
-      console.log(`📡 Fetching from endpoints with params: ${baseParams}`);
-      console.log(`   • /gads/analytics/dashboard-data?${baseParams}`);
-      console.log(`   • /gads/analytics/campaigns?${baseParams}`);
-      console.log(`   • /gads/analytics/territories?${baseParams}`);
+      console.log(`📡 Fetching from enhanced attribution endpoints:`, {
+        params: baseParams,
+        endpoints: [
+          `/gads/analytics/dashboard-data?${baseParams}`,
+          `/gads/analytics/campaigns?${baseParams}`,
+          `/gads/analytics/territories?${baseParams}`
+        ]
+      });
       
-      // Fetch data in parallel
+      // Fetch data in parallel with enhanced error handling
       const [summaryRes, campaignsRes, territoriesRes] = await Promise.all([
         fetch(`/gads/analytics/dashboard-data?${baseParams}`),
         fetch(`/gads/analytics/campaigns?${baseParams}`),
         fetch(`/gads/analytics/territories?${baseParams}`)
       ]);
 
-      console.log('📊 Raw response status:', {
+      console.log('📊 Enhanced attribution API response status:', {
         summary: `${summaryRes.status} ${summaryRes.statusText}`,
         campaigns: `${campaignsRes.status} ${campaignsRes.statusText}`,
         territories: `${territoriesRes.status} ${territoriesRes.statusText}`
       });
 
-      // Check for errors with detailed reporting
+      // Enhanced error checking with attribution context
       if (!summaryRes.ok) {
         const errorText = await summaryRes.text();
-        console.error('❌ Summary API error:', errorText);
+        console.error('❌ Summary API error (Attribution Enhanced):', errorText);
         throw new Error(`Summary API failed: ${summaryRes.status} - ${errorText}`);
       }
       if (!campaignsRes.ok) {
         const errorText = await campaignsRes.text();
-        console.error('❌ Campaigns API error:', errorText);
+        console.error('❌ Campaigns API error (Attribution Enhanced):', errorText);
         throw new Error(`Campaigns API failed: ${campaignsRes.status} - ${errorText}`);
       }
       if (!territoriesRes.ok) {
         const errorText = await territoriesRes.text();
-        console.error('❌ Territories API error:', errorText);
+        console.error('❌ Territories API error (Attribution Enhanced):', errorText);
         throw new Error(`Territories API failed: ${territoriesRes.status} - ${errorText}`);
       }
 
-      console.log('✅ All API responses OK, parsing JSON...');
+      console.log('✅ All enhanced attribution APIs OK, parsing JSON...');
 
       const [summaryData, campaignsData, territoriesData] = await Promise.all([
         summaryRes.json(),
@@ -76,53 +96,55 @@ const GoogleAdsDashboard = () => {
         territoriesRes.json()
       ]);
 
-      console.log('📊 RAW API RESPONSES:', {
+      console.log('📊 ENHANCED ATTRIBUTION API RESPONSES:', {
         summaryData,
         campaignsData,
         territoriesData
       });
 
-      // CRITICAL DEBUG: Log exactly what each API returns
-      console.log('🔍 SUMMARY DATA STRUCTURE:', {
-        success: summaryData.success,
-        summary_keys: summaryData.summary ? Object.keys(summaryData.summary) : 'NO SUMMARY',
-        summary_content: summaryData.summary,
-        analysis_mode: summaryData.analysisMode,
-        deal_logic: summaryData.dealLogic,
-        error: summaryData.error
+      // Enhanced debugging for attribution data
+      console.log('🔧 ATTRIBUTION ENHANCEMENT DATA ANALYSIS:', {
+        summary: {
+          success: summaryData.success,
+          enhancement: summaryData.attribution_enhancement,
+          summary_keys: summaryData.summary ? Object.keys(summaryData.summary) : 'NO SUMMARY',
+          analysis_mode: summaryData.analysisMode,
+          deal_logic: summaryData.dealLogic,
+          error: summaryData.error
+        },
+        campaigns: {
+          success: campaignsData.success,
+          enhancement: campaignsData.attribution_enhancement,
+          count: campaignsData.campaigns?.length || 0,
+          sample: campaignsData.campaigns?.slice(0, 2),
+          analysis_mode: campaignsData.analysisMode,
+          error: campaignsData.error
+        },
+        territories: {
+          success: territoriesData.success,
+          enhancement: territoriesData.attribution_enhancement,
+          count: territoriesData.territories?.length || 0,
+          sample: territoriesData.territories?.slice(0, 2),
+          analysis_mode: territoriesData.analysisMode,
+          error: territoriesData.error
+        }
       });
 
-      console.log('🔍 CAMPAIGNS DATA STRUCTURE:', {
-        success: campaignsData.success,
-        campaigns_count: campaignsData.campaigns?.length || 0,
-        campaigns_sample: campaignsData.campaigns?.slice(0, 2),
-        analysis_mode: campaignsData.analysisMode,
-        error: campaignsData.error
-      });
-
-      console.log('🔍 TERRITORIES DATA STRUCTURE:', {
-        success: territoriesData.success,
-        territories_count: territoriesData.territories?.length || 0,
-        territories_sample: territoriesData.territories?.slice(0, 2),
-        analysis_mode: territoriesData.analysisMode,
-        error: territoriesData.error
-      });
-
-      // Check API success with detailed error reporting
+      // Enhanced success checking with attribution validation
       if (!summaryData.success) {
-        console.error('❌ Summary data error:', summaryData.error);
+        console.error('❌ Enhanced attribution summary error:', summaryData.error);
         throw new Error(`Summary API error: ${summaryData.error || 'Unknown error'}`);
       }
       if (!campaignsData.success) {
-        console.error('❌ Campaigns data error:', campaignsData.error);
+        console.error('❌ Enhanced attribution campaigns error:', campaignsData.error);
         throw new Error(`Campaigns API error: ${campaignsData.error || 'Unknown error'}`);
       }
       if (!territoriesData.success) {
-        console.error('❌ Territories data error:', territoriesData.error);
+        console.error('❌ Enhanced attribution territories error:', territoriesData.error);
         throw new Error(`Territories API error: ${territoriesData.error || 'Unknown error'}`);
       }
 
-      // Combine data with enhanced debugging
+      // Combine data with enhanced attribution metadata
       const combinedData = {
         summary: summaryData.summary || {},
         campaigns: campaignsData.campaigns || [],
@@ -131,49 +153,60 @@ const GoogleAdsDashboard = () => {
         period: summaryData.period || `Last ${dateRange} days`,
         analysisMode: analysisMode,
         backendMode: summaryData.analysisMode || 'unknown',
-        dealLogic: summaryData.dealLogic || 'unknown'
+        dealLogic: summaryData.dealLogic || 'unknown',
+        
+        // Enhanced attribution metadata
+        attributionEnhancement: {
+          summary: summaryData.attribution_enhancement || null,
+          campaigns: campaignsData.attribution_enhancement || null,
+          territories: territoriesData.attribution_enhancement || null,
+          active: !!(summaryData.attribution_enhancement || campaignsData.attribution_enhancement || territoriesData.attribution_enhancement)
+        }
       };
 
-      console.log('✅ DASHBOARD FETCH SUCCESS - FINAL COMBINED DATA:', {
+      console.log('✅ ENHANCED ATTRIBUTION DASHBOARD FETCH SUCCESS:', {
         summary_keys: Object.keys(combinedData.summary),
         campaigns_count: combinedData.campaigns.length,
         territories_count: combinedData.territories.length,
         period: combinedData.period,
         frontend_mode: combinedData.analysisMode,
         backend_mode: combinedData.backendMode,
-        deal_logic: combinedData.dealLogic
+        deal_logic: combinedData.dealLogic,
+        attribution_active: combinedData.attributionEnhancement.active
       });
 
-      // 🚨 CRITICAL DEBUG: Show exactly what's in the summary for the dashboard cards
-      console.log('🎯 DASHBOARD CARD VALUES DEBUG:', {
-        'MQLs Created (totalContacts)': combinedData.summary?.totalContacts,
-        'MQLs Failed (failed_validation)': combinedData.summary?.failed_validation,
-        'Burn Rate': combinedData.summary?.burn_rate,
-        'SQLs Passed (contactsWithDeals)': combinedData.summary?.contactsWithDeals,
-        'Conversion Rate': combinedData.summary?.conversionRate,
-        'Total Deals': combinedData.summary?.totalDeals,
-        'WON Deals': combinedData.summary?.wonDeals,
-        'LOST Deals': combinedData.summary?.lostDeals,
-        'Total Revenue': combinedData.summary?.totalRevenue,
-        'Avg Deal Value': combinedData.summary?.avgDealValue,
-        'Unique Campaigns': combinedData.summary?.uniqueCampaigns
+      // 🚨 ENHANCED DEBUG: Show attribution-enhanced card values
+      console.log('🔧 ENHANCED ATTRIBUTION CARD VALUES:', {
+        'MQLs Created (Enhanced)': combinedData.summary?.totalContacts,
+        'MQLs Failed (Enhanced)': combinedData.summary?.failed_validation,
+        'Burn Rate (Enhanced)': combinedData.summary?.burn_rate,
+        'SQLs Passed (Enhanced)': combinedData.summary?.contactsWithDeals,
+        'Conversion Rate (Enhanced)': combinedData.summary?.conversionRate,
+        'Total Deals (Enhanced)': combinedData.summary?.totalDeals,
+        'WON Deals (Enhanced)': combinedData.summary?.wonDeals,
+        'LOST Deals (Enhanced)': combinedData.summary?.lostDeals,
+        'Total Revenue (Enhanced)': combinedData.summary?.totalRevenue,
+        'Avg Deal Value (Enhanced)': combinedData.summary?.avgDealValue,
+        'Unique Campaigns (Enhanced)': combinedData.summary?.uniqueCampaigns,
+        'Attribution Enhancement Status': combinedData.attributionEnhancement.active ? 'ACTIVE' : 'INACTIVE'
       });
       
       setDashboardData(combinedData);
 
     } catch (err) {
-      console.error('❌ DASHBOARD FETCH FAILED:', err);
+      console.error('❌ ENHANCED ATTRIBUTION DASHBOARD FETCH FAILED:', err);
       console.error('Error details:', {
         message: err.message,
-        stack: err.stack
+        stack: err.stack,
+        attribution_context: 'Error occurred in enhanced attribution system'
       });
-      setError(err.message);
+      setError(`Attribution Enhanced Error: ${err.message}`);
     }
     
     setIsLoading(false);
   };
 
-  // Format functions
+  // Enhanced formatting functions
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -187,23 +220,23 @@ const GoogleAdsDashboard = () => {
     return new Intl.NumberFormat().format(value || 0);
   };
 
-  // Event handlers
+  // Enhanced event handlers with attribution logging
   const handleDateRangeChange = (newRange) => {
-    console.log(`📅 Date range changed: ${newRange} days`);
+    console.log(`📅 Date range changed (Enhanced Attribution): ${newRange} days`);
     setDateRange(newRange);
   };
 
   const handleAnalysisModeChange = (newMode) => {
-    console.log(`🔄 Analysis mode changed: ${newMode}`);
+    console.log(`🔄 Analysis mode changed (Enhanced Attribution): ${newMode}`);
     setAnalysisMode(newMode);
   };
 
   const handleCampaignChange = (newCampaign) => {
-    console.log(`🎯 Campaign filter changed: ${newCampaign}`);
+    console.log(`🎯 Campaign filter changed (Enhanced Attribution): ${newCampaign}`);
     setSelectedCampaign(newCampaign);
   };
 
-  // Loading state
+  // Enhanced loading state with attribution info
   if (isLoading || !dashboardData) {
     return React.createElement('div', {
       className: 'min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center'
@@ -219,16 +252,20 @@ const GoogleAdsDashboard = () => {
         React.createElement('p', {
           className: 'text-lg text-gray-600',
           key: 'loading-text'
-        }, 'Loading dashboard data...'),
+        }, 'Loading enhanced attribution dashboard...'),
         React.createElement('p', {
           className: 'text-sm text-gray-500 mt-2',
           key: 'loading-subtitle'
-        }, `${dateRange} days (${analysisMode} mode)`)
+        }, `${dateRange} days (${analysisMode} mode)`),
+        attributionEnhancement && React.createElement('p', {
+          className: 'text-xs text-blue-600 mt-2',
+          key: 'attribution-status'
+        }, '🔧 Attribution Enhancement: ACTIVE')
       ])
     ]);
   }
 
-  // Error state
+  // Enhanced error state with attribution context
   if (error) {
     return React.createElement('div', {
       className: 'min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center'
@@ -240,7 +277,7 @@ const GoogleAdsDashboard = () => {
         React.createElement('h2', {
           className: 'text-xl font-bold text-red-600 mb-4',
           key: 'error-title'
-        }, '❌ Dashboard Error'),
+        }, '❌ Enhanced Attribution Dashboard Error'),
         React.createElement('div', {
           className: 'text-left bg-gray-100 p-4 rounded mb-4',
           key: 'error-details'
@@ -249,6 +286,18 @@ const GoogleAdsDashboard = () => {
             className: 'text-red-700 font-mono text-sm',
             key: 'error-message'
           }, error)
+        ]),
+        attributionEnhancement && React.createElement('div', {
+          className: 'mb-4 p-2 bg-blue-50 rounded text-sm text-blue-700',
+          key: 'attribution-info'
+        }, [
+          React.createElement('strong', { key: 'attribution-title' }, 'Attribution Enhancement Status: '),
+          React.createElement('span', { key: 'attribution-status' }, attributionEnhancement.status || 'ACTIVE'),
+          React.createElement('br', { key: 'br' }),
+          React.createElement('span', { 
+            key: 'attribution-note',
+            className: 'text-xs'
+          }, 'Error may be related to enhanced attribution integration')
         ]),
         React.createElement('button', {
           className: 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-2',
@@ -264,10 +313,10 @@ const GoogleAdsDashboard = () => {
     ]);
   }
 
-  // Helper function to create metric cards with enhanced debugging
-  const createMetricCard = (title, value, trend, icon, color = 'blue') => {
+  // Enhanced metric card creation with attribution indicators
+  const createMetricCard = (title, value, trend, icon, color = 'blue', isEnhanced = false) => {
     return React.createElement('div', {
-      className: 'bg-white rounded-lg shadow p-6',
+      className: `bg-white rounded-lg shadow p-6 ${isEnhanced ? 'attribution-enhanced border border-blue-200' : ''}`,
       key: `card-${title.replace(/\\s+/g, '-').toLowerCase()}`
     }, [
       React.createElement('div', {
@@ -276,18 +325,25 @@ const GoogleAdsDashboard = () => {
       }, [
         React.createElement('div', { key: 'card-content' }, [
           React.createElement('p', {
-            className: 'text-sm font-medium text-gray-600',
+            className: 'text-sm font-medium text-gray-600 flex items-center',
             key: 'card-title'
-          }, title),
+          }, [
+            title,
+            isEnhanced && React.createElement('span', {
+              key: 'enhanced-indicator',
+              className: 'ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded',
+              title: 'Enhanced Attribution Active'
+            }, '🔧')
+          ]),
           React.createElement('p', {
             className: `text-2xl font-bold text-${color}-600`,
             key: 'card-value'
           }, value),
-          // DEBUG: Show raw value in small text
+          // Enhanced debug with attribution info
           React.createElement('p', {
             className: 'text-xs text-gray-400 mt-1',
             key: 'card-debug'
-          }, `Raw: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+          }, `Raw: ${typeof value === 'string' ? value : JSON.stringify(value)} ${isEnhanced ? '(Enhanced)' : ''}`)
         ]),
         React.createElement('div', {
           className: `text-${color}-600`,
@@ -301,47 +357,64 @@ const GoogleAdsDashboard = () => {
     ]);
   };
 
-  const { summary, campaigns, territories, mqlValidation } = dashboardData;
+  const { summary, campaigns, territories, mqlValidation, attributionEnhancement: attrEnhancement } = dashboardData;
+  const isAttributionEnhanced = attrEnhancement?.active || false;
 
   return React.createElement('div', {
     className: 'min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6'
   }, [
-// Header
-React.createElement('div', {
-  className: 'mb-8',
-  key: 'header'
-}, [
-  React.createElement('div', {
-    className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between',
-    key: 'header-content'
-  }, [
-    // Logo and Title Section
-    React.createElement('div', { 
-      key: 'header-text',
-      className: 'flex items-center space-x-4'
+    // Enhanced Header with Attribution Status
+    React.createElement('div', {
+      className: 'mb-8',
+      key: 'header'
     }, [
-      // ULearn Logo
-      React.createElement('img', {
-        src: 'https://ulearnschool.com/sites/default/files/images/logos/ulearn-trans.png',
-        alt: 'ULearn School Logo',
-        className: 'h-12 w-auto',
-        key: 'ulearn-logo'
-      }),
-      
-      // Title and Subtitle
-      React.createElement('div', { key: 'title-section' }, [
-        React.createElement('h1', {
-          className: 'text-3xl font-bold text-gray-900 mb-2',
-          key: 'title'
-        }, 'Google Ads Pipeline Dashboard'),
-        React.createElement('p', {
-          className: 'text-gray-600',
-          key: 'subtitle'
-        }, `Real Google Ads + HubSpot data from MySQL (${dashboardData.period})`)
-      ])
-    ]),
-        
-        // Controls Panel
+      React.createElement('div', {
+        className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between',
+        key: 'header-content'
+      }, [
+        // Logo and Title Section with Attribution Badge
+        React.createElement('div', { 
+          key: 'header-text',
+          className: 'flex items-center space-x-4'
+        }, [
+          // ULearn Logo
+          React.createElement('img', {
+            src: 'https://ulearnschool.com/sites/default/files/images/logos/ulearn-trans.png',
+            alt: 'ULearn School Logo',
+            className: 'h-12 w-auto',
+            key: 'ulearn-logo'
+          }),
+          
+          // Title and Subtitle with Attribution Badge
+          React.createElement('div', { key: 'title-section' }, [
+            React.createElement('div', { 
+              key: 'title-row',
+              className: 'flex items-center space-x-3'
+            }, [
+              React.createElement('h1', {
+                className: 'text-3xl font-bold text-gray-900',
+                key: 'title'
+              }, 'Google Ads Pipeline Dashboard'),
+              isAttributionEnhanced && React.createElement('span', {
+                key: 'attribution-badge',
+                className: 'bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full',
+                title: 'Enhanced Attribution System Active'
+              }, '🔧 Enhanced')
+            ]),
+            React.createElement('p', {
+              className: 'text-gray-600 mt-2',
+              key: 'subtitle'
+            }, [
+              `Real Google Ads + HubSpot data from MySQL (${dashboardData.period})`,
+              isAttributionEnhanced && React.createElement('span', {
+                key: 'attribution-note',
+                className: 'text-blue-600 ml-2'
+              }, '• Attribution Enhanced')
+            ])
+          ])
+        ]),
+            
+        // Controls Panel (unchanged)
         React.createElement('div', {
           className: 'mt-4 lg:mt-0 grid grid-cols-1 md:grid-cols-3 gap-4',
           key: 'controls-panel'
@@ -416,7 +489,7 @@ React.createElement('div', {
         ])
       ]),
 
-      // Mode Explanation with Debug Info
+      // Enhanced Mode Explanation with Attribution Info
       React.createElement('div', {
         className: 'mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200',
         key: 'mode-explanation'
@@ -445,16 +518,18 @@ React.createElement('div', {
               key: 'debug-info',
               className: 'mt-2 text-xs text-blue-600'
             }, [
-              `Frontend Mode: ${dashboardData.analysisMode} | `,
-              `Backend Mode: ${dashboardData.backendMode} | `,
-              `Deal Logic: ${dashboardData.dealLogic}`
+              `Frontend: ${dashboardData.analysisMode} | Backend: ${dashboardData.backendMode} | Deal Logic: ${dashboardData.dealLogic}`,
+              isAttributionEnhanced && React.createElement('span', {
+                key: 'attribution-indicator',
+                className: 'ml-2 font-semibold'
+              }, '| 🔧 Attribution Enhanced')
             ])
           ])
         ])
       ])
     ]),
 
-    // Key Metrics Summary - 6-CARD GOOGLE ADS FUNNEL
+    // Enhanced Key Metrics Summary - 6-CARD GOOGLE ADS FUNNEL with Attribution Indicators
     React.createElement('div', {
       className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8',
       key: 'metrics-grid'
@@ -465,7 +540,8 @@ React.createElement('div', {
         formatNumber(summary.gad_clicks || 0),
         'From Google Ads',
         '👆',
-        'blue'
+        'blue',
+        false
       ),
       
       // 2. GAd CTAs (TODO: Get from pipeline data)
@@ -474,60 +550,71 @@ React.createElement('div', {
         formatNumber(summary.gad_ctas || 0),
         'Form submissions',
         '🎯',
-        'indigo'
+        'indigo',
+        false
       ),
       
-      // 3. MQLs Created (Google Ads contacts)
+      // 3. MQLs Created (Google Ads contacts) - ENHANCED
       createMetricCard(
         'MQLs Created',
         formatNumber(summary.totalContacts || 0),
-        'B2C Contacts',
+        'B2C Contacts (Enhanced)',
         '👥',
-        'purple'
+        'purple',
+        true
       ),
       
-      // 4. MQLs Failed (territory validation failures)
+      // 4. MQLs Failed (territory validation failures) - ENHANCED
       createMetricCard(
         'MQLs Failed',
         formatNumber(summary.failed_validation || 0),
-        `${summary.burn_rate || 0}% burn rate`,
+        `${summary.burn_rate || 0}% burn rate (Enhanced)`,
         '❌',
-        'red'
+        'red',
+        true
       ),
       
-      // 5. SQLs → Deals Created (MERGED: contacts who became deals)
+      // 5. SQLs → Deals Created (MERGED: contacts who became deals) - ENHANCED
       createMetricCard(
         'SQLs → Deals',
         `${formatNumber(summary.contactsWithDeals || 0)} → ${formatNumber(summary.totalDeals || 0)}`,
-        `${summary.conversionRate || 0}% SQL rate`,
+        `${summary.conversionRate || 0}% SQL rate (Enhanced)`,
         '✅',
-        'green'
+        'green',
+        true
       ),
       
-      // 6. Deals WON (with lost subtitle) - CRITICAL CARD FOR TESTING
+      // 6. Deals WON (with lost subtitle) - ENHANCED
       createMetricCard(
         `Deals WON ${analysisMode === 'revenue' ? '🏆' : '⏳'}`,
         formatNumber(summary.wonDeals || 0),
-        `Lost: ${formatNumber(summary.lostDeals || 0)} | Mode: ${analysisMode}`,
+        `Lost: ${formatNumber(summary.lostDeals || 0)} | Enhanced Mode: ${analysisMode}`,
         analysisMode === 'revenue' ? '🏆' : '⏳',
-        analysisMode === 'revenue' ? 'green' : 'yellow'
+        analysisMode === 'revenue' ? 'green' : 'yellow',
+        true
       )
     ]),
 
-    // Territory and Campaign Analysis
+    // Enhanced Territory and Campaign Analysis
     React.createElement('div', {
       className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8',
       key: 'analysis-section'
     }, [
-      // Territory Performance
+      // Enhanced Territory Performance
       React.createElement('div', {
-        className: 'bg-white rounded-lg shadow p-6',
+        className: `bg-white rounded-lg shadow p-6 ${isAttributionEnhanced ? 'border-l-4 border-blue-500' : ''}`,
         key: 'territory-performance'
       }, [
         React.createElement('h3', {
-          className: 'text-lg font-semibold text-gray-900 mb-4',
+          className: 'text-lg font-semibold text-gray-900 mb-4 flex items-center',
           key: 'territory-title'
-        }, '🌍 Territory Performance'),
+        }, [
+          '🌍 Territory Performance',
+          isAttributionEnhanced && React.createElement('span', {
+            key: 'territory-enhanced',
+            className: 'ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded'
+          }, 'Enhanced')
+        ]),
         
         React.createElement('div', {
           className: 'space-y-4',
@@ -580,15 +667,21 @@ React.createElement('div', {
         ))
       ]),
 
-      // Campaign Performance
+      // Enhanced Campaign Performance
       React.createElement('div', {
-        className: 'bg-white rounded-lg shadow p-6',
+        className: `bg-white rounded-lg shadow p-6 ${isAttributionEnhanced ? 'border-l-4 border-green-500' : ''}`,
         key: 'campaign-performance'
       }, [
         React.createElement('h3', {
-          className: 'text-lg font-semibold text-gray-900 mb-4',
+          className: 'text-lg font-semibold text-gray-900 mb-4 flex items-center',
           key: 'campaign-title'
-        }, '🎯 Campaign Performance'),
+        }, [
+          '🎯 Campaign Performance',
+          isAttributionEnhanced && React.createElement('span', {
+            key: 'campaign-enhanced',
+            className: 'ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded'
+          }, 'Enhanced')
+        ]),
         
         React.createElement('div', {
           className: 'space-y-4',
@@ -625,17 +718,17 @@ React.createElement('div', {
       ])
     ]),
 
-    // Debug Panel (only show in development)
+    // Enhanced Debug Panel with Attribution Info
     React.createElement('div', {
-      className: 'mt-8 bg-gray-100 p-4 rounded-lg text-xs text-gray-600',
+      className: `mt-8 ${isAttributionEnhanced ? 'bg-blue-50 border border-blue-200' : 'bg-gray-100'} p-4 rounded-lg text-xs text-gray-600`,
       key: 'debug-panel'
     }, [
       React.createElement('h4', {
         className: 'font-bold mb-2',
         key: 'debug-title'
-      }, '🔧 Debug Info'),
+      }, isAttributionEnhanced ? '🔧 Enhanced Attribution Debug Info' : '🔧 Debug Info'),
       React.createElement('div', {
-        className: 'grid grid-cols-1 md:grid-cols-3 gap-4',
+        className: 'grid grid-cols-1 md:grid-cols-4 gap-4',
         key: 'debug-content'
       }, [
         React.createElement('div', { key: 'debug-summary' }, [
@@ -649,11 +742,18 @@ React.createElement('div', {
         React.createElement('div', { key: 'debug-territories' }, [
           React.createElement('strong', { key: 'territories-title' }, 'Territories: '),
           React.createElement('code', { key: 'territories-count' }, `${territories.length} found`)
+        ]),
+        React.createElement('div', { key: 'debug-attribution' }, [
+          React.createElement('strong', { key: 'attribution-title' }, 'Attribution: '),
+          React.createElement('code', { 
+            key: 'attribution-status',
+            className: isAttributionEnhanced ? 'text-blue-600 font-semibold' : ''
+          }, isAttributionEnhanced ? 'ENHANCED ✓' : 'Standard')
         ])
       ])
     ]),
 
-    // Footer
+    // Enhanced Footer with Attribution Info
     React.createElement('div', {
       className: 'mt-8 text-center text-sm text-gray-500',
       key: 'footer'
@@ -663,14 +763,18 @@ React.createElement('div', {
         `Mode: ${analysisMode === 'pipeline' ? 'Pipeline Analysis' : 'Revenue Analysis'} | ` +
         `Campaign: ${selectedCampaign === 'all' ? 'All Campaigns' : selectedCampaign}`
       ),
-      React.createElement('p', { key: 'footer-note', className: 'mt-2' }, 
-        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with Pipeline vs Revenue analysis'
-      )
+      React.createElement('p', { key: 'footer-note', className: 'mt-2' }, [
+        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with Pipeline vs Revenue analysis',
+        isAttributionEnhanced && React.createElement('span', {
+          key: 'attribution-footer',
+          className: 'text-blue-600 font-medium ml-2'
+        }, '| 🔧 Attribution Enhanced')
+      ])
     ])
   ]);
 };
 
-// Render the dashboard
+// Render the enhanced dashboard
 const container = document.getElementById('dashboard-root');
 const root = ReactDOM.createRoot(container);
 root.render(React.createElement(GoogleAdsDashboard));
