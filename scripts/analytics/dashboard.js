@@ -8,6 +8,7 @@
  * - Auto-population of custom dates
  * - Better date range handling
  * - Enhanced error handling for date validation
+ * - CUSTOM TERRITORY ORDERING: Unsupported Territory first, then Non-EU VBD, Non-EU VOA, EU, Unknown/Not Set
  */
 
 const GoogleAdsDashboard = () => {
@@ -39,6 +40,29 @@ const GoogleAdsDashboard = () => {
       console.log('⚠️ Attribution Enhancement System: Not detected');
     }
   }, []);
+
+  // CUSTOM TERRITORY ORDERING FUNCTION
+  const sortTerritoriesCustomOrder = (territories) => {
+    const territoryOrder = {
+      'Unsupported Territory': 1,
+      'Non-EU(VisaBeforeDeparture)': 2, 
+      'Non-EU(Visa on Arrival)': 3,
+      'EU': 4,
+      'Unknown/Not Set': 5
+    };
+
+    return territories.sort((a, b) => {
+      const orderA = territoryOrder[a.name] || 999; // Put unknown territories at the end
+      const orderB = territoryOrder[b.name] || 999;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // If same priority or both unknown, sort by contact count DESC (original behavior)
+      return (parseInt(b.contacts) || 0) - (parseInt(a.contacts) || 0);
+    });
+  };
 
   // Handle start date change with smart validation (from roas-revenue.html)
   const handleStartDateChange = (newDate) => {
@@ -178,11 +202,15 @@ const GoogleAdsDashboard = () => {
         periodDescription = summaryData.period || `Last ${dateRange} days`;
       }
 
+      // CUSTOM TERRITORY SORTING: Apply custom order to territories
+      const sortedTerritories = sortTerritoriesCustomOrder(territoriesData.territories || []);
+      console.log('✅ Applied custom territory ordering:', sortedTerritories.map(t => t.name));
+
       // Combine data with enhanced attribution metadata
       const combinedData = {
         summary: summaryData.summary || {},
         campaigns: campaignsData.campaigns || [],
-        territories: territoriesData.territories || [],
+        territories: sortedTerritories,  // Use custom sorted territories
         mqlValidation: summaryData.mql_validation_details || null,
         period: periodDescription,
         analysisMode: analysisMode,
@@ -202,7 +230,8 @@ const GoogleAdsDashboard = () => {
         period: combinedData.period,
         frontend_mode: combinedData.analysisMode,
         backend_mode: combinedData.backendMode,
-        attribution_active: combinedData.attributionEnhancement.active
+        attribution_active: combinedData.attributionEnhancement.active,
+        territory_order: combinedData.territories.map(t => t.name)
       });
       
       setDashboardData(combinedData);
@@ -359,7 +388,7 @@ const GoogleAdsDashboard = () => {
   const createMetricCard = (title, value, trend, icon, color = 'blue', isEnhanced = false) => {
     return React.createElement('div', {
       className: `bg-white rounded-lg shadow p-6 ${isEnhanced ? 'attribution-enhanced border border-blue-200' : ''}`,
-      key: `card-${title.replace(/\\s+/g, '-').toLowerCase()}`
+      key: `card-${title.replace(/\s+/g, '-').toLowerCase()}`
     }, [
       React.createElement('div', {
         className: 'flex items-center justify-between',
@@ -683,7 +712,7 @@ const GoogleAdsDashboard = () => {
       className: 'grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8',
       key: 'analysis-section'
     }, [
-      // Enhanced Territory Performance
+      // Enhanced Territory Performance with CUSTOM ORDERING
       React.createElement('div', {
         className: `bg-white rounded-lg shadow p-6 ${isAttributionEnhanced ? 'border-l-4 border-blue-500' : ''}`,
         key: 'territory-performance'
@@ -824,7 +853,7 @@ const GoogleAdsDashboard = () => {
         ]),
         React.createElement('div', { key: 'debug-territories' }, [
           React.createElement('strong', { key: 'territories-title' }, 'Territories: '),
-          React.createElement('code', { key: 'territories-count' }, `${territories.length} found`)
+          React.createElement('code', { key: 'territories-count' }, `${territories.length} found (Custom Order: ${territories.map(t => t.name.substr(0,3)).join(',')})`)
         ]),
         React.createElement('div', { key: 'debug-date' }, [
           React.createElement('strong', { key: 'date-title' }, 'Date Mode: '),
@@ -859,7 +888,7 @@ const GoogleAdsDashboard = () => {
         `Campaign: ${selectedCampaign === 'all' ? 'All Campaigns' : selectedCampaign}`
       ),
       React.createElement('p', { key: 'footer-note', className: 'mt-2' }, [
-        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with Pipeline vs Revenue analysis',
+        'Data source: Real HubSpot CRM data synchronized to MySQL | Enhanced with Pipeline vs Revenue analysis | Custom Territory Ordering Applied',
         isAttributionEnhanced && React.createElement('span', {
           key: 'attribution-footer',
           className: 'text-blue-600 font-medium ml-2'

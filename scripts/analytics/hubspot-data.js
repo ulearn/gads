@@ -10,6 +10,8 @@
  * FIXED: Date range to properly include TODAY's deals
  * - Revenue Mode: Filters by deal closedate including today
  * - Pipeline Mode: Filters by contact createdate including today
+ * 
+ * FIXED: Google Ads metrics pipeline call to handle custom dates properly
  */
 
 const fs = require('fs');
@@ -78,15 +80,34 @@ function getCampaignNameLogic() {
 }
 
 /**
- * NEW: Get Google Ads metrics by calling pipeline server (proven to work)
+ * FIXED: Get Google Ads metrics by calling pipeline server with proper date parameters
  */
-async function getGoogleAdsMetricsFromPipeline(getDbConnection, days = 30) {
+async function getGoogleAdsMetricsFromPipeline(getDbConnection, options = {}) {
   try {
-    console.log(`📊 Getting Google Ads metrics from pipeline server for ${days} days...`);
+    const { days = 30, startDate = null, endDate = null } = options;
     
-    // Import and call the proven pipeline server
+    console.log(`📊 Getting Google Ads metrics from pipeline server...`, {
+      days,
+      customDates: !!(startDate && endDate),
+      dateRange: startDate && endDate ? `${startDate} to ${endDate}` : `${days} days`
+    });
+    
+    // Import and call the proven pipeline server with PROPER parameters
     const pipelineServer = require('./pipeline-server');
-    const pipelineResult = await pipelineServer.getFastPipelineData(getDbConnection, { days, campaign: 'all' });
+    
+    // FIXED: Pass all parameters correctly to pipeline server
+    const pipelineOptions = {
+      days: days,
+      campaign: 'all'
+    };
+    
+    // FIXED: If custom dates are provided, pass them too (though pipeline server might not use them yet)
+    if (startDate && endDate) {
+      pipelineOptions.startDate = startDate;
+      pipelineOptions.endDate = endDate;
+    }
+    
+    const pipelineResult = await pipelineServer.getFastPipelineData(getDbConnection, pipelineOptions);
     
     if (!pipelineResult.success) {
       throw new Error(`Pipeline server failed: ${pipelineResult.error}`);
@@ -120,7 +141,9 @@ async function getGoogleAdsMetricsFromPipeline(getDbConnection, days = 30) {
         cost_per_cta: mqlStages.ctaComplete?.count > 0 ? 
           (parseFloat(summary.totalCost) / parseInt(mqlStages.ctaComplete.count)) : 0
       },
-      period: summary.period || `Last ${days} days`,
+      period: summary.period || (startDate && endDate ? 
+        `${startDate} to ${endDate}` : 
+        `Last ${days} days`),
       timestamp: new Date().toISOString()
     };
     
@@ -231,8 +254,12 @@ async function getDashboardSummary(getDbConnection, options = {}) {
       
       console.log(`📅 Analysis period: ${periodDescription}`);
       
-      // NEW: Get Google Ads metrics from proven pipeline server
-      const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, { days });
+      // FIXED: Get Google Ads metrics from proven pipeline server with PROPER date parameters
+      const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, {
+        days: days,
+        startDate: startDateStr,
+        endDate: endDateStr
+      });
       const googleMetrics = googleAdsResult.metrics || {};
       
       console.log(`📊 Google Ads metrics from pipeline:`, googleMetrics);
@@ -404,7 +431,9 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         sqls_passed: result.summary.contactsWithDeals,
         total_deals: result.summary.totalDeals,
         won_deals: result.summary.wonDeals,
-        total_revenue: result.summary.totalRevenue
+        total_revenue: result.summary.totalRevenue,
+        gad_clicks: result.summary.gad_clicks,
+        gad_ctas: result.summary.gad_ctas
       });
       
       return result;
