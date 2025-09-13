@@ -34,8 +34,8 @@ async function getLostDeals(hubspotClient) {
     const stageMapping = loadStageMapping();
     
     // LIMITED DATE RANGE - 1 week for testing
-    const startDate = new Date('2025-08-30T00:00:00.000Z');
-    const endDate = new Date('2025-09-09T16:00:00.000Z');
+    const startDate = new Date('2025-09-09T16:00:00.000Z');
+    const endDate = new Date('2025-09-13T14:32:00.000Z');
     
     console.log(`📅 Limited date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     

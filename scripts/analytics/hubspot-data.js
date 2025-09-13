@@ -194,31 +194,48 @@ function buildGoogleAdsAttributionQuery() {
 /**
  * ENHANCED: Get dashboard summary with proper date ranges including TODAY + Attribution Fix
  */
-async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'pipeline') {
+async function getDashboardSummary(getDbConnection, options = {}) {
   try {
+    console.log('📊 Starting Enhanced Dashboard Summary (Attribution Fixes Applied)...');
+    
+    const {
+      mode: analysisMode = 'pipeline',
+      days = 30,
+      startDate = null,
+      endDate = null
+    } = options;
+    
     const connection = await getDbConnection();
     
     try {
-      console.log(`📊 Getting Google Ads B2C ${analysisMode} summary for ${days} days (with attribution fix)...`);
+      // COPIED FROM ROAS-REVENUE.JS: Calculate date range
+      let startDateStr, endDateStr, periodDescription;
+      
+      if (startDate && endDate) {
+        startDateStr = startDate;
+        endDateStr = endDate;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        periodDescription = `${startDate} to ${endDate} (${daysDiff} days)`;
+      } else {
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - (days - 1));
+        startDate.setHours(0, 0, 0, 0);
+        startDateStr = startDate.toISOString().slice(0, 10);
+        endDateStr = endDate.toISOString().slice(0, 10);
+        periodDescription = `Last ${days} days (${startDateStr} to ${endDateStr})`;
+      }
+      
+      console.log(`📅 Analysis period: ${periodDescription}`);
       
       // NEW: Get Google Ads metrics from proven pipeline server
-      const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, days);
+      const googleAdsResult = await getGoogleAdsMetricsFromPipeline(getDbConnection, { days });
       const googleMetrics = googleAdsResult.metrics || {};
       
       console.log(`📊 Google Ads metrics from pipeline:`, googleMetrics);
-
-      // FIXED: Better date range calculation that definitely includes today
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999); // End of today
-      
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
-      startDate.setHours(0, 0, 0, 0); // Start of start day
-      
-      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
-      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
-      
-      console.log(`📅 Date range: ${startDateStr} to ${endDateStr} (${days} days including today)`);
       
       // CARD 3: MQLs Created - Enhanced attribution (always filter by contact createdate)
       const [mqlsCreated] = await connection.execute(`
@@ -274,13 +291,13 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
       const sqlsPassedCount = parseInt(sqlsPassed[0]?.contact_count) || 0;
       console.log(`✅ CARD 5 - SQLs Passed (Enhanced Attribution): ${sqlsPassedCount}`);
       
-      // CARD 6: Deals WON/LOST - ENHANCED: Different logic for pipeline vs revenue analysis with attribution fix
+      // CARD 6: Deals WON/LOST - ENHANCED: Different logic for pipeline vs revenue analysis
       
       let dealResults;
       let dealLogicDescription;
       
       if (analysisMode === 'revenue') {
-        // REVENUE MODE: Filter by deal closedate (deals that closed in timeframe) - Enhanced Attribution
+        // REVENUE MODE: Filter by deal closedate (deals that closed in timeframe)
         dealLogicDescription = `Deals closed ${startDateStr} to ${endDateStr} (any contact create date) - Enhanced Attribution`;
         [dealResults] = await connection.execute(`
           SELECT 
@@ -297,13 +314,13 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
             AND d.pipeline = 'default'
-            AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
+            AND DATE(d.closedate) >= ?
             AND DATE(d.closedate) <= ?
-            AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')  -- Only closed deals
+            AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')
         `, [startDateStr, endDateStr]);
         
       } else {
-        // PIPELINE MODE: Filter by contact createdate (deals from contacts created in timeframe) - Enhanced Attribution
+        // PIPELINE MODE: Filter by contact createdate (deals from contacts created in timeframe)
         dealLogicDescription = `Deals from contacts created ${startDateStr} to ${endDateStr} (any deal close date) - Enhanced Attribution`;
         [dealResults] = await connection.execute(`
           SELECT 
@@ -319,7 +336,7 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
             AND ${buildEnhancedAttributionQuery()}
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
-            AND DATE(hc.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(hc.createdate) >= ?
             AND DATE(hc.createdate) <= ?
             AND d.pipeline = 'default'
         `, [startDateStr, endDateStr]);
@@ -349,18 +366,18 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
           gad_ctr: googleMetrics.gad_ctr || 0,
           gad_conversion_rate: googleMetrics.gad_conversion_rate || 0,
 
-          // CARD 3: MQLs Created (always by contact createdate) - Enhanced Attribution
+          // CARD 3: MQLs Created (always by contact createdate)
           totalContacts: totalContacts,
           
-          // CARD 4: MQLs Failed (always by contact createdate) - Enhanced Attribution
+          // CARD 4: MQLs Failed (always by contact createdate) 
           failed_validation: failedContacts,
           burn_rate: burnRate,
           
-          // CARD 5: SQLs Passed (always by contact createdate) - Enhanced Attribution
+          // CARD 5: SQLs Passed (always by contact createdate)
           contactsWithDeals: sqlsPassedCount,
           conversionRate: conversionRate,
           
-          // CARD 6: Deals - varies by analysis mode - Enhanced Attribution
+          // CARD 6: Deals - varies by analysis mode
           totalDeals: parseInt(deals.totalDeals) || 0,
           wonDeals: parseInt(deals.wonDeals) || 0,
           lostDeals: parseInt(deals.lostDeals) || 0,
@@ -375,12 +392,13 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
         analysisMode: analysisMode,
         dealLogic: dealLogicDescription,
         dateRange: `${startDateStr} to ${endDateStr}`,
-        period: `Last ${days} days`,
+        period: periodDescription,
         attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };
       
       console.log(`✅ ${analysisMode.toUpperCase()} MODE summary (Enhanced Attribution):`, {
+        period: periodDescription,
         mqls_created: result.summary.totalContacts,
         mqls_failed: result.summary.failed_validation,
         sqls_passed: result.summary.contactsWithDeals,
@@ -405,31 +423,51 @@ async function getDashboardSummary(getDbConnection, days = 30, analysisMode = 'p
   }
 }
 
+
 /**
  * ENHANCED: Get campaign performance with proper date ranges including TODAY + Attribution Fix
  */
-async function getCampaignPerformance(getDbConnection, days = 30, analysisMode = 'pipeline') {
+async function getCampaignPerformance(getDbConnection, options = {}) {
   try {
+    console.log('🎯 Starting Enhanced Campaign Performance (Attribution Fixes Applied)...');
+    
+    const {
+      mode: analysisMode = 'pipeline',
+      days = 30,
+      startDate = null,
+      endDate = null
+    } = options;
+    
     const connection = await getDbConnection();
     
     try {
-      console.log(`🎯 Getting Google Ads B2C campaign performance for ${days} days (${analysisMode} mode, with attribution fix)...`);
+      // COPIED FROM ROAS-REVENUE.JS: Calculate date range
+      let startDateStr, endDateStr, periodDescription;
       
-      // FIXED: Better date range calculation that definitely includes today
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999); // End of today
+      if (startDate && endDate) {
+        startDateStr = startDate;
+        endDateStr = endDate;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        periodDescription = `${startDate} to ${endDate} (${daysDiff} days)`;
+      } else {
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - (days - 1));
+        startDate.setHours(0, 0, 0, 0);
+        startDateStr = startDate.toISOString().slice(0, 10);
+        endDateStr = endDate.toISOString().slice(0, 10);
+        periodDescription = `Last ${days} days (${startDateStr} to ${endDateStr})`;
+      }
       
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
-      startDate.setHours(0, 0, 0, 0); // Start of start day
-      
-      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
-      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
+      console.log(`📅 Analysis period: ${periodDescription}`);
       
       let campaignResults;
       
       if (analysisMode === 'revenue') {
-        // REVENUE MODE: Show campaigns with deals that closed in timeframe - Enhanced Attribution
+        // REVENUE MODE: Show campaigns with deals that closed in timeframe
         [campaignResults] = await connection.execute(`
           SELECT 
             ${getCampaignAttributionLogic()} as campaignId,
@@ -448,7 +486,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
           LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
           LEFT JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id 
             AND d.pipeline = 'default'
-            AND DATE(d.closedate) >= ?  -- FIXED: Filter by close date using DATE() function
+            AND DATE(d.closedate) >= ?
             AND DATE(d.closedate) <= ?
             AND (d.dealstage = 'closedwon' OR d.dealstage = 'closedlost')
           WHERE ${buildEnhancedAttributionQuery()}
@@ -458,13 +496,13 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
                   OR hc.hubspot_owner_id = ''
                 )
           GROUP BY ${getCampaignAttributionLogic()}, ${getCampaignNameLogic()}, hc.adgroup
-          HAVING totalDeals > 0  -- Only show campaigns with closed deals
+          HAVING totalDeals > 0
           ORDER BY revenue DESC, contacts DESC
           LIMIT 50
         `, [startDateStr, endDateStr]);
         
       } else {
-        // PIPELINE MODE: Show campaigns with contacts created in timeframe - Enhanced Attribution
+        // PIPELINE MODE: Show campaigns with contacts created in timeframe
         [campaignResults] = await connection.execute(`
           SELECT 
             ${getCampaignAttributionLogic()} as campaignId,
@@ -489,7 +527,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
                   OR hc.hubspot_owner_id IS NULL
                   OR hc.hubspot_owner_id = ''
                 )
-            AND DATE(hc.createdate) >= ?  -- FIXED: Filter by contact create date using DATE() function
+            AND DATE(hc.createdate) >= ?
             AND DATE(hc.createdate) <= ?
           GROUP BY ${getCampaignAttributionLogic()}, ${getCampaignNameLogic()}, hc.adgroup
           HAVING contacts > 0
@@ -518,7 +556,7 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
         campaigns: campaigns,
         analysisMode: analysisMode,
         dateRange: `${startDateStr} to ${endDateStr}`,
-        period: `Last ${days} days`,
+        period: periodDescription,
         attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };
@@ -540,25 +578,44 @@ async function getCampaignPerformance(getDbConnection, days = 30, analysisMode =
 /**
  * ENHANCED: Get territory analysis data with corrected date ranges + Attribution Fix
  */
-async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = 'pipeline') {
+async function getTerritoryAnalysis(getDbConnection, options = {}) {
   try {
+    console.log('🌍 Starting Enhanced Territory Analysis (Attribution Fixes Applied)...');
+    
+    const {
+      mode: analysisMode = 'pipeline',
+      days = 30,
+      startDate = null,
+      endDate = null
+    } = options;
+    
     const connection = await getDbConnection();
     
     try {
-      console.log(`🌍 Getting Google Ads B2C territory analysis for ${days} days (with attribution fix)...`);
+      // COPIED FROM ROAS-REVENUE.JS: Calculate date range
+      let startDateStr, endDateStr, periodDescription;
       
-      // FIXED: Better date range calculation that definitely includes today
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999); // End of today
+      if (startDate && endDate) {
+        startDateStr = startDate;
+        endDateStr = endDate;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        periodDescription = `${startDate} to ${endDate} (${daysDiff} days)`;
+      } else {
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - (days - 1));
+        startDate.setHours(0, 0, 0, 0);
+        startDateStr = startDate.toISOString().slice(0, 10);
+        endDateStr = endDate.toISOString().slice(0, 10);
+        periodDescription = `Last ${days} days (${startDateStr} to ${endDateStr})`;
+      }
       
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - (days - 1)); // Include today in count
-      startDate.setHours(0, 0, 0, 0); // Start of start day
+      console.log(`📅 Analysis period: ${periodDescription}`);
       
-      const startDateStr = startDate.toISOString().slice(0, 10); // YYYY-MM-DD format
-      const endDateStr = endDate.toISOString().slice(0, 10);     // YYYY-MM-DD format
-      
-      // Get territory breakdown from Google Ads contacts (always by contact createdate) - Enhanced Attribution
+      // Get territory breakdown from Google Ads contacts (always by contact createdate)
       const [territoryResults] = await connection.execute(`
         SELECT 
           COALESCE(hc.territory, 'Unknown/Not Set') as territoryName,
@@ -598,7 +655,7 @@ async function getTerritoryAnalysis(getDbConnection, days = 30, analysisMode = '
         territories: territories,
         analysisMode: analysisMode,
         dateRange: `${startDateStr} to ${endDateStr}`,
-        period: `Last ${days} days`,
+        period: periodDescription,
         attribution_enhancement: 'Applied attribution fix for {campaign} tracking template issue',
         timestamp: new Date().toISOString()
       };

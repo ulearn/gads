@@ -11,8 +11,8 @@ async function getBaselinePipelineDeals(hubspotClient, getDbConnection, customSt
     console.log('🎯 Fetching baseline pipeline deals for ECL initial upload...');
     
     // Use custom dates if provided, otherwise default to Aug 17-27
-    const startDate = customStartDate || new Date('2025-08-30T16:00:00.000Z');
-    const endDate = customEndDate || new Date('2025-09-09T16:00:00.000Z');
+    const startDate = customStartDate || new Date('2025-09-09T16:00:00.000Z');
+    const endDate = customEndDate || new Date('2025-09-13T14:32:00.000Z');
     
     console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     

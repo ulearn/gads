@@ -1,28 +1,30 @@
 /**
- * ENHANCED: Google Ads Dashboard - Pipeline vs Revenue Analysis with Attribution Enhancements
- * /scripts/analytics/dashboard.js
+ * ENHANCED: Google Ads Dashboard - Pipeline vs Revenue Analysis with Advanced Date Controls
+ * Enhanced with sophisticated date controls from roas-revenue.html
  * 
- * ENHANCEMENTS:
- * - Attribution fix awareness and reporting
- * - Enhanced debug logging for attribution issues
- * - Better error handling for attribution-related problems
- * - Visual indicators for enhanced attribution data
- * - Improved API parameter handling
+ * NEW FEATURES:
+ * - Custom date picker with smart validation
+ * - Committed date tracking (prevents premature API calls during navigation)
+ * - Auto-population of custom dates
+ * - Better date range handling
+ * - Enhanced error handling for date validation
  */
 
 const GoogleAdsDashboard = () => {
   const [dateRange, setDateRange] = React.useState('7');
+  const [customStartDate, setCustomStartDate] = React.useState('');
+  const [customEndDate, setCustomEndDate] = React.useState('');
+  
+  // Track committed dates (only change when user actually selects a day)
+  const [committedStartDate, setCommittedStartDate] = React.useState('');
+  const [committedEndDate, setCommittedEndDate] = React.useState('');
+  
   const [analysisMode, setAnalysisMode] = React.useState('pipeline');
   const [selectedCampaign, setSelectedCampaign] = React.useState('all');
   const [isLoading, setIsLoading] = React.useState(true);
   const [dashboardData, setDashboardData] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [attributionEnhancement, setAttributionEnhancement] = React.useState(null);
-
-  // Fetch dashboard data when parameters change
-  React.useEffect(() => {
-    fetchDashboardData();
-  }, [dateRange, analysisMode, selectedCampaign]);
 
   // Initialize attribution enhancement detection
   React.useEffect(() => {
@@ -38,25 +40,80 @@ const GoogleAdsDashboard = () => {
     }
   }, []);
 
-  // Enhanced data fetching with attribution awareness
+  // Handle start date change with smart validation (from roas-revenue.html)
+  const handleStartDateChange = (newDate) => {
+    setCustomStartDate(newDate);
+    
+    // Only commit if it's a valid date and different from current committed date
+    if (newDate && newDate.length === 10 && newDate !== committedStartDate) {
+      // Check if this is just month navigation (same day, different month)
+      const oldDateObj = committedStartDate ? new Date(committedStartDate) : null;
+      const newDateObj = new Date(newDate);
+      
+      // If we have an old date and only the month/year changed (same day), don't commit yet
+      if (oldDateObj && oldDateObj.getDate() === newDateObj.getDate() && 
+          (oldDateObj.getMonth() !== newDateObj.getMonth() || oldDateObj.getFullYear() !== newDateObj.getFullYear())) {
+        // This is likely navigation - don't commit
+        return;
+      }
+      
+      // This appears to be an actual date selection
+      setCommittedStartDate(newDate);
+    }
+  };
+  
+  // Handle end date change with smart validation (from roas-revenue.html)
+  const handleEndDateChange = (newDate) => {
+    setCustomEndDate(newDate);
+    
+    // Only commit if it's a valid date and different from current committed date
+    if (newDate && newDate.length === 10 && newDate !== committedEndDate) {
+      // Check if this is just month navigation (same day, different month)
+      const oldDateObj = committedEndDate ? new Date(committedEndDate) : null;
+      const newDateObj = new Date(newDate);
+      
+      // If we have an old date and only the month/year changed (same day), don't commit yet
+      if (oldDateObj && oldDateObj.getDate() === newDateObj.getDate() && 
+          (oldDateObj.getMonth() !== newDateObj.getMonth() || oldDateObj.getFullYear() !== newDateObj.getFullYear())) {
+        // This is likely navigation - don't commit
+        return;
+      }
+      
+      // This appears to be an actual date selection
+      setCommittedEndDate(newDate);
+    }
+  };
+
+  // Enhanced data fetching with smart date handling
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log(`🔄 DASHBOARD FETCH START: ${dateRange} days, ${analysisMode} mode (Enhanced Attribution)`);
+      console.log(`🔄 DASHBOARD FETCH START: ${dateRange} range, ${analysisMode} mode (Enhanced Attribution)`);
       
-      // CORRECTED: Use proper parameter names that match index.js
-      const baseParams = `days=${dateRange}&mode=${analysisMode}`;
+      // Build parameters with enhanced date handling
+      let baseParams = `mode=${analysisMode}`;
       
-      console.log(`📡 Fetching from enhanced attribution endpoints:`, {
-        params: baseParams,
-        endpoints: [
-          `/gads/analytics/dashboard-data?${baseParams}`,
-          `/gads/analytics/campaigns?${baseParams}`,
-          `/gads/analytics/territories?${baseParams}`
-        ]
-      });
+      if (dateRange === 'custom') {
+        if (committedStartDate && committedEndDate) {
+          // Use custom dates
+          baseParams += `&startDate=${committedStartDate}&endDate=${committedEndDate}`;
+          console.log(`📅 Using custom date range: ${committedStartDate} to ${committedEndDate}`);
+        } else {
+          // Provide more specific error message
+          const missingFields = [];
+          if (!customStartDate) missingFields.push('start date');
+          if (!customEndDate) missingFields.push('end date');
+          throw new Error(`Please select ${missingFields.join(' and ')} for custom range`);
+        }
+      } else {
+        // Use preset days
+        baseParams += `&days=${dateRange}`;
+        console.log(`📅 Using preset range: ${dateRange} days`);
+      }
+      
+      console.log(`📡 Fetching from enhanced attribution endpoints with params: ${baseParams}`);
       
       // Fetch data in parallel with enhanced error handling
       const [summaryRes, campaignsRes, territoriesRes] = await Promise.all([
@@ -96,40 +153,6 @@ const GoogleAdsDashboard = () => {
         territoriesRes.json()
       ]);
 
-      console.log('📊 ENHANCED ATTRIBUTION API RESPONSES:', {
-        summaryData,
-        campaignsData,
-        territoriesData
-      });
-
-      // Enhanced debugging for attribution data
-      console.log('🔧 ATTRIBUTION ENHANCEMENT DATA ANALYSIS:', {
-        summary: {
-          success: summaryData.success,
-          enhancement: summaryData.attribution_enhancement,
-          summary_keys: summaryData.summary ? Object.keys(summaryData.summary) : 'NO SUMMARY',
-          analysis_mode: summaryData.analysisMode,
-          deal_logic: summaryData.dealLogic,
-          error: summaryData.error
-        },
-        campaigns: {
-          success: campaignsData.success,
-          enhancement: campaignsData.attribution_enhancement,
-          count: campaignsData.campaigns?.length || 0,
-          sample: campaignsData.campaigns?.slice(0, 2),
-          analysis_mode: campaignsData.analysisMode,
-          error: campaignsData.error
-        },
-        territories: {
-          success: territoriesData.success,
-          enhancement: territoriesData.attribution_enhancement,
-          count: territoriesData.territories?.length || 0,
-          sample: territoriesData.territories?.slice(0, 2),
-          analysis_mode: territoriesData.analysisMode,
-          error: territoriesData.error
-        }
-      });
-
       // Enhanced success checking with attribution validation
       if (!summaryData.success) {
         console.error('❌ Enhanced attribution summary error:', summaryData.error);
@@ -144,13 +167,24 @@ const GoogleAdsDashboard = () => {
         throw new Error(`Territories API error: ${territoriesData.error || 'Unknown error'}`);
       }
 
+      // Calculate period description for display
+      let periodDescription;
+      if (dateRange === 'custom' && committedStartDate && committedEndDate) {
+        const start = new Date(committedStartDate);
+        const end = new Date(committedEndDate);
+        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        periodDescription = `${committedStartDate} to ${committedEndDate} (${daysDiff} days)`;
+      } else {
+        periodDescription = summaryData.period || `Last ${dateRange} days`;
+      }
+
       // Combine data with enhanced attribution metadata
       const combinedData = {
         summary: summaryData.summary || {},
         campaigns: campaignsData.campaigns || [],
         territories: territoriesData.territories || [],
         mqlValidation: summaryData.mql_validation_details || null,
-        period: summaryData.period || `Last ${dateRange} days`,
+        period: periodDescription,
         analysisMode: analysisMode,
         backendMode: summaryData.analysisMode || 'unknown',
         dealLogic: summaryData.dealLogic || 'unknown',
@@ -165,46 +199,35 @@ const GoogleAdsDashboard = () => {
       };
 
       console.log('✅ ENHANCED ATTRIBUTION DASHBOARD FETCH SUCCESS:', {
-        summary_keys: Object.keys(combinedData.summary),
-        campaigns_count: combinedData.campaigns.length,
-        territories_count: combinedData.territories.length,
         period: combinedData.period,
         frontend_mode: combinedData.analysisMode,
         backend_mode: combinedData.backendMode,
-        deal_logic: combinedData.dealLogic,
         attribution_active: combinedData.attributionEnhancement.active
-      });
-
-      // 🚨 ENHANCED DEBUG: Show attribution-enhanced card values
-      console.log('🔧 ENHANCED ATTRIBUTION CARD VALUES:', {
-        'MQLs Created (Enhanced)': combinedData.summary?.totalContacts,
-        'MQLs Failed (Enhanced)': combinedData.summary?.failed_validation,
-        'Burn Rate (Enhanced)': combinedData.summary?.burn_rate,
-        'SQLs Passed (Enhanced)': combinedData.summary?.contactsWithDeals,
-        'Conversion Rate (Enhanced)': combinedData.summary?.conversionRate,
-        'Total Deals (Enhanced)': combinedData.summary?.totalDeals,
-        'WON Deals (Enhanced)': combinedData.summary?.wonDeals,
-        'LOST Deals (Enhanced)': combinedData.summary?.lostDeals,
-        'Total Revenue (Enhanced)': combinedData.summary?.totalRevenue,
-        'Avg Deal Value (Enhanced)': combinedData.summary?.avgDealValue,
-        'Unique Campaigns (Enhanced)': combinedData.summary?.uniqueCampaigns,
-        'Attribution Enhancement Status': combinedData.attributionEnhancement.active ? 'ACTIVE' : 'INACTIVE'
       });
       
       setDashboardData(combinedData);
 
     } catch (err) {
       console.error('❌ ENHANCED ATTRIBUTION DASHBOARD FETCH FAILED:', err);
-      console.error('Error details:', {
-        message: err.message,
-        stack: err.stack,
-        attribution_context: 'Error occurred in enhanced attribution system'
-      });
       setError(`Attribution Enhanced Error: ${err.message}`);
     }
     
     setIsLoading(false);
   };
+
+  // Enhanced useEffect with smart date handling
+  React.useEffect(() => {
+    if (dateRange !== 'custom') {
+      // For preset ranges, fetch immediately
+      fetchDashboardData();
+    } else {
+      // For custom dates, only fetch when both committed dates are set
+      if (committedStartDate && committedEndDate && 
+          committedStartDate.length === 10 && committedEndDate.length === 10) {
+        fetchDashboardData();
+      }
+    }
+  }, [analysisMode, selectedCampaign, dateRange, committedStartDate, committedEndDate]);
 
   // Enhanced formatting functions
   const formatCurrency = (value) => {
@@ -222,8 +245,27 @@ const GoogleAdsDashboard = () => {
 
   // Enhanced event handlers with attribution logging
   const handleDateRangeChange = (newRange) => {
-    console.log(`📅 Date range changed (Enhanced Attribution): ${newRange} days`);
+    console.log(`📅 Date range changed (Enhanced Attribution): ${newRange}`);
     setDateRange(newRange);
+    
+    // Auto-populate custom dates when switching to custom (from roas-revenue.html)
+    if (newRange === 'custom' && (!customStartDate || !customEndDate)) {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      const startDateStr = thirtyDaysAgo.toISOString().split('T')[0];
+      const endDateStr = today.toISOString().split('T')[0];
+      
+      if (!customStartDate) {
+        setCustomStartDate(startDateStr);
+        setCommittedStartDate(startDateStr);
+      }
+      if (!customEndDate) {
+        setCustomEndDate(endDateStr);
+        setCommittedEndDate(endDateStr);
+      }
+    }
   };
 
   const handleAnalysisModeChange = (newMode) => {
@@ -256,7 +298,7 @@ const GoogleAdsDashboard = () => {
         React.createElement('p', {
           className: 'text-sm text-gray-500 mt-2',
           key: 'loading-subtitle'
-        }, `${dateRange} days (${analysisMode} mode)`),
+        }, `${dateRange === 'custom' ? 'Custom range' : dateRange + ' days'} (${analysisMode} mode)`),
         attributionEnhancement && React.createElement('p', {
           className: 'text-xs text-blue-600 mt-2',
           key: 'attribution-status'
@@ -363,7 +405,7 @@ const GoogleAdsDashboard = () => {
   return React.createElement('div', {
     className: 'min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6'
   }, [
-    // Enhanced Header with Attribution Status
+    // Enhanced Header with Attribution Status and Advanced Date Controls
     React.createElement('div', {
       className: 'mb-8',
       key: 'header'
@@ -414,12 +456,12 @@ const GoogleAdsDashboard = () => {
           ])
         ]),
             
-        // Controls Panel (unchanged)
+        // Enhanced Controls Panel with Advanced Date Controls
         React.createElement('div', {
-          className: 'mt-4 lg:mt-0 grid grid-cols-1 md:grid-cols-3 gap-4',
+          className: 'mt-4 lg:mt-0 grid grid-cols-1 md:grid-cols-4 gap-4',
           key: 'controls-panel'
         }, [
-          // Date Range
+          // Date Range with Custom Option
           React.createElement('div', {
             className: 'flex flex-col',
             key: 'date-selector'
@@ -438,7 +480,44 @@ const GoogleAdsDashboard = () => {
               React.createElement('option', { value: '14', key: '14' }, 'Last 14 days'),
               React.createElement('option', { value: '30', key: '30' }, 'Last 30 days'),
               React.createElement('option', { value: '60', key: '60' }, 'Last 60 days'),
-              React.createElement('option', { value: '90', key: '90' }, 'Last 90 days')
+              React.createElement('option', { value: '90', key: '90' }, 'Last 90 days'),
+              React.createElement('option', { value: 'custom', key: 'custom' }, 'Custom Range')
+            ])
+          ]),
+
+          // Custom Date Pickers (shown when custom is selected)
+          dateRange === 'custom' && React.createElement('div', {
+            className: 'flex flex-col',
+            key: 'custom-dates'
+          }, [
+            React.createElement('label', {
+              className: 'text-sm font-medium text-gray-700 mb-1',
+              key: 'custom-label'
+            }, 'Custom Dates'),
+            React.createElement('div', {
+              className: 'flex gap-2',
+              key: 'date-inputs'
+            }, [
+              React.createElement('input', {
+                type: 'date',
+                className: 'bg-white border border-gray-300 rounded px-2 py-1 text-sm',
+                value: customStartDate,
+                onChange: (e) => handleStartDateChange(e.target.value),
+                placeholder: 'Start Date',
+                key: 'start-date'
+              }),
+              React.createElement('span', {
+                className: 'text-gray-500 text-sm self-center',
+                key: 'to-label'
+              }, 'to'),
+              React.createElement('input', {
+                type: 'date',
+                className: 'bg-white border border-gray-300 rounded px-2 py-1 text-sm',
+                value: customEndDate,
+                onChange: (e) => handleEndDateChange(e.target.value),
+                placeholder: 'End Date',
+                key: 'end-date'
+              })
             ])
           ]),
 
@@ -489,7 +568,7 @@ const GoogleAdsDashboard = () => {
         ])
       ]),
 
-      // Enhanced Mode Explanation with Attribution Info
+      // Enhanced Mode Explanation with Attribution Info and Date Status
       React.createElement('div', {
         className: 'mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200',
         key: 'mode-explanation'
@@ -518,6 +597,10 @@ const GoogleAdsDashboard = () => {
               key: 'debug-info',
               className: 'mt-2 text-xs text-blue-600'
             }, [
+              `Date Range: ${dateRange === 'custom' ? 
+                (committedStartDate && committedEndDate ? 
+                  `${committedStartDate} to ${committedEndDate}` : 'Selecting...') :
+                dateRange + ' days'} | ` +
               `Frontend: ${dashboardData.analysisMode} | Backend: ${dashboardData.backendMode} | Deal Logic: ${dashboardData.dealLogic}`,
               isAttributionEnhanced && React.createElement('span', {
                 key: 'attribution-indicator',
@@ -718,7 +801,7 @@ const GoogleAdsDashboard = () => {
       ])
     ]),
 
-    // Enhanced Debug Panel with Attribution Info
+    // Enhanced Debug Panel with Attribution and Date Info
     React.createElement('div', {
       className: `mt-8 ${isAttributionEnhanced ? 'bg-blue-50 border border-blue-200' : 'bg-gray-100'} p-4 rounded-lg text-xs text-gray-600`,
       key: 'debug-panel'
@@ -728,7 +811,7 @@ const GoogleAdsDashboard = () => {
         key: 'debug-title'
       }, isAttributionEnhanced ? '🔧 Enhanced Attribution Debug Info' : '🔧 Debug Info'),
       React.createElement('div', {
-        className: 'grid grid-cols-1 md:grid-cols-4 gap-4',
+        className: 'grid grid-cols-1 md:grid-cols-5 gap-4',
         key: 'debug-content'
       }, [
         React.createElement('div', { key: 'debug-summary' }, [
@@ -743,6 +826,13 @@ const GoogleAdsDashboard = () => {
           React.createElement('strong', { key: 'territories-title' }, 'Territories: '),
           React.createElement('code', { key: 'territories-count' }, `${territories.length} found`)
         ]),
+        React.createElement('div', { key: 'debug-date' }, [
+          React.createElement('strong', { key: 'date-title' }, 'Date Mode: '),
+          React.createElement('code', { 
+            key: 'date-mode',
+            className: dateRange === 'custom' ? 'text-orange-600' : ''
+          }, dateRange === 'custom' ? 'Custom Range' : `${dateRange} Days`)
+        ]),
         React.createElement('div', { key: 'debug-attribution' }, [
           React.createElement('strong', { key: 'attribution-title' }, 'Attribution: '),
           React.createElement('code', { 
@@ -753,7 +843,7 @@ const GoogleAdsDashboard = () => {
       ])
     ]),
 
-    // Enhanced Footer with Attribution Info
+    // Enhanced Footer with Attribution and Date Info
     React.createElement('div', {
       className: 'mt-8 text-center text-sm text-gray-500',
       key: 'footer'
@@ -761,6 +851,11 @@ const GoogleAdsDashboard = () => {
       React.createElement('p', { key: 'footer-text' }, 
         `Dashboard updated: ${new Date().toLocaleString()} | ` +
         `Mode: ${analysisMode === 'pipeline' ? 'Pipeline Analysis' : 'Revenue Analysis'} | ` +
+        `Date Range: ${dateRange === 'custom' ? 
+          (committedStartDate && committedEndDate ? 
+            `${committedStartDate} to ${committedEndDate}` : 
+            'Custom (selecting...)') : 
+          `${dateRange} days`} | ` +
         `Campaign: ${selectedCampaign === 'all' ? 'All Campaigns' : selectedCampaign}`
       ),
       React.createElement('p', { key: 'footer-note', className: 'mt-2' }, [

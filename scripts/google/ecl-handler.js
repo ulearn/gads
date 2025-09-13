@@ -35,8 +35,7 @@ function hashPhone(phone) {
 }
 
 /**
- * CORRECTED parseAndAdjustCreateDate function
- * Replace the existing function with this version
+ * CORRECTED parseAndAdjustCreateDate function - FIXED VERSION
  */
 function parseAndAdjustCreateDate(dateValue) {
   if (!dateValue) return null;
@@ -65,24 +64,39 @@ function parseAndAdjustCreateDate(dateValue) {
     }
     console.log(`   ⏰ Time: ${timeString}`);
     
-    // Build ISO format date string - CAREFUL WITH MONTH (JavaScript months are 0-based, but we want 1-based)
-    const isoDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timeString}.000Z`;
-    console.log(`   🔗 Built ISO string: ${isoDateString}`);
+    // FIXED: Create the Date object properly for UK format (DD/MM/YYYY)
+    // JavaScript Date constructor expects (year, month-1, day, hour, minute, second)
+    const parsedYear = parseInt(year);
+    const parsedMonth = parseInt(month) - 1; // JavaScript months are 0-based
+    const parsedDay = parseInt(day);
     
-    baseDate = new Date(isoDateString);
+    // Parse time components
+    const timeParts = timeString.split(':');
+    const hours = parseInt(timeParts[0]) || 0;
+    const minutes = parseInt(timeParts[1]) || 0;
+    const seconds = parseInt(timeParts[2]) || 0;
+    
+    console.log(`   📋 Creating Date with: ${parsedYear}, ${parsedMonth}, ${parsedDay}, ${hours}, ${minutes}, ${seconds}`);
+    
+    // Create Date object - this creates local time initially
+    baseDate = new Date(parsedYear, parsedMonth, parsedDay, hours, minutes, seconds);
+    
     console.log(`   📋 Created Date object: ${baseDate.toString()}`);
     console.log(`   ✅ Valid date check: ${!isNaN(baseDate.getTime())}`);
     
     if (isNaN(baseDate.getTime())) {
-      throw new Error(`Failed to create valid date from ISO string: ${isoDateString}`);
+      throw new Error(`Failed to create valid date from: ${dateValue}`);
     }
     
     // Handle timezone conversion if IST (Dublin time = GMT+1)
+    // Convert to UTC by adjusting for local timezone offset and then adjusting for IST
     if (timezonePart === 'IST' || timezonePart === 'GMT+1') {
-      console.log(`   🌍 Before timezone conversion: ${baseDate.toISOString()}`);
-      // IST is GMT+1, so subtract 1 hour to get UTC
-      baseDate.setHours(baseDate.getHours() - 1);
-      console.log(`   🌍 After IST to UTC conversion: ${baseDate.toISOString()}`);
+      console.log(`   🌍 Before timezone conversion: ${baseDate.toString()}`);
+      // Get local timezone offset and adjust to UTC, then adjust for IST (+1 hour from UTC)
+      const localOffset = baseDate.getTimezoneOffset(); // minutes behind UTC
+      baseDate.setMinutes(baseDate.getMinutes() + localOffset); // Convert to UTC
+      baseDate.setHours(baseDate.getHours() - 1); // IST is UTC+1, so subtract 1 to get UTC
+      console.log(`   🌍 After IST to UTC conversion: ${baseDate.toString()}`);
     }
     
     console.log(`   ✅ Final parsed UK format: "${dateValue}" → ${baseDate.toISOString()}`);
@@ -208,19 +222,17 @@ async function processConversionAdjustment(conversionData, options = {}) {
     console.log(`   Order ID: ${conversionData.order_id}`);
     console.log(`   GCLID Present: ${conversionData.gclid ? 'YES' : 'NO'}`);
     
-    // UNIFIED DATE HANDLING - UPDATED WITH UK FORMAT SUPPORT
+    // UNIFIED DATE HANDLING - SIMPLIFIED APPROACH
     let conversionDateTime;
     
     if (conversionData.adjustment_type === 'RESTATEMENT') {
-      // ADJUSTMENTS: Use current time + Dublin correction (EXISTING LOGIC)
+      // ADJUSTMENTS: Use current time
       const now = new Date();
-      const dublinOffset = 1; // Dublin UTC+1
-      now.setHours(now.getHours() + dublinOffset);
       conversionDateTime = now.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
-      console.log(`   Conversion Date: ${conversionDateTime} (CURRENT + Dublin TZ correction)`);
+      console.log(`   Conversion Date: ${conversionDateTime} (current time for adjustment)`);
       
     } else {
-      // INITIAL CONVERSIONS: Parse HubSpot date + apply safety buffer
+      // INITIAL CONVERSIONS: Parse HubSpot date + server timezone compensation
       if (!conversionData.create_date) {
         throw new Error('Initial conversion requires create_date field');
       }
@@ -228,12 +240,11 @@ async function processConversionAdjustment(conversionData, options = {}) {
       // Parse the date (handles both UK and ISO formats)
       const createDate = parseAndAdjustCreateDate(conversionData.create_date);
       
-      // EXISTING SAFETY BUFFER: Add 2 hours to ensure conversion is always after click
-      // This also compensates for server being 1 hour behind Dublin
-      createDate.setHours(createDate.getHours() + 2);
+      // Only compensate for server timezone offset (1 hour behind Dublin)
+      createDate.setHours(createDate.getHours() + 1);
       
       conversionDateTime = createDate.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
-      console.log(`   Conversion Date: ${conversionDateTime} (parsed + 2hr safety buffer)`);
+      console.log(`   Conversion Date: ${conversionDateTime} (parsed + 1hr server offset)`);
     }
     
     console.log(`Uploading Enhanced Conversion with GCLID: ${conversionData.gclid ? 'YES' : 'NO'}`);

@@ -428,16 +428,21 @@ router.get('/analytics/prob', (req, res) => {
   pipelineProb.handleGetProbabilities(req, res, hubspotClient);
 });
 
-// Dashboard Data API - Enhanced with analysis mode
+// ENHANCED: Dashboard Data API - Copy roas-revenue pattern
 router.get('/analytics/dashboard-data', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
-    const analysisMode = req.query.mode || 'pipeline';
-    
-    console.log(`📊 Dashboard data API: ${days} days, ${analysisMode} mode`);
-    
+    const { mode, days, startDate, endDate } = req.query;
     const hubspotData = require('./scripts/analytics/hubspot-data');
-    const result = await hubspotData.getDashboardSummary(getDbConnection, days, analysisMode);
+    
+    console.log(`📊 Dashboard Data API: mode=${mode}, days=${days}, startDate=${startDate}, endDate=${endDate}`);
+    
+    const result = await hubspotData.getDashboardSummary(getDbConnection, {
+      mode: mode || 'pipeline',
+      days: parseInt(days) || 30,
+      startDate,
+      endDate
+    });
+    
     res.json(result);
   } catch (error) {
     console.error('❌ Dashboard data API failed:', error.message);
@@ -445,22 +450,28 @@ router.get('/analytics/dashboard-data', async (req, res) => {
   }
 });
 
-// Campaign Performance API - Enhanced with analysis mode
+// ENHANCED: Campaign Performance API - Copy roas-revenue pattern  
 router.get('/analytics/campaigns', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
-    const analysisMode = req.query.mode || 'pipeline';
-    
-    console.log(`🎯 Campaign data API: ${days} days, ${analysisMode} mode`);
-    
+    const { mode, days, startDate, endDate } = req.query;
     const hubspotData = require('./scripts/analytics/hubspot-data');
-    const result = await hubspotData.getCampaignPerformance(getDbConnection, days, analysisMode);
+    
+    console.log(`🎯 Campaign Data API: mode=${mode}, days=${days}, startDate=${startDate}, endDate=${endDate}`);
+    
+    const result = await hubspotData.getCampaignPerformance(getDbConnection, {
+      mode: mode || 'pipeline',
+      days: parseInt(days) || 30,
+      startDate,
+      endDate
+    });
+    
     res.json(result);
   } catch (error) {
     console.error('❌ Campaign data API failed:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Google Ads Metrics API - NEW: Dedicated endpoint for Google Ads data
 router.get('/analytics/google-ads-metrics', async (req, res) => {
@@ -477,16 +488,21 @@ router.get('/analytics/google-ads-metrics', async (req, res) => {
   }
 });
 
-// Territory Analysis API - Enhanced with analysis mode
+// ENHANCED: Territory Analysis API - Copy roas-revenue pattern
 router.get('/analytics/territories', async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
-    const analysisMode = req.query.mode || 'pipeline';
-    
-    console.log(`🌍 Territory data API: ${days} days, ${analysisMode} mode`);
-    
+    const { mode, days, startDate, endDate } = req.query;
     const hubspotData = require('./scripts/analytics/hubspot-data');
-    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, days, analysisMode);
+    
+    console.log(`🌍 Territory Data API: mode=${mode}, days=${days}, startDate=${startDate}, endDate=${endDate}`);
+    
+    const result = await hubspotData.getTerritoryAnalysis(getDbConnection, {
+      mode: mode || 'pipeline', 
+      days: parseInt(days) || 30,
+      startDate,
+      endDate
+    });
+    
     res.json(result);
   } catch (error) {
     console.error('❌ Territory data API failed:', error.message);
