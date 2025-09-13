@@ -1,6 +1,12 @@
 /**
- * Burn Rate Timeseries Analysis Module
+ * ENHANCED: Burn Rate Timeseries Analysis Module with Attribution Fix
  * /scripts/analytics/burn-rate-timeseries.js
+ * 
+ * ATTRIBUTION FIXES APPLIED:
+ * - Enhanced attribution logic for campaign tracking template fix
+ * - Uses custom 'google_ads_campaign' field when hs_analytics_source_data_1 = '{campaign}'
+ * - Multi-layered attribution matching consistent with other enhanced files
+ * - Maintains burn rate accuracy while fixing attribution gaps
  * 
  * BUSINESS LOGIC ONLY - No routing, pure data processing
  * Provides time-series burn rate data with flexible date ranges + nationality breakdown
@@ -9,7 +15,49 @@
 const mysql = require('mysql2/promise');
 
 /**
- * Get burn rate time-series data with flexible date ranges + nationality breakdown
+ * ENHANCED: Build Google Ads attribution query with fallback logic
+ * This matches the same logic used in other enhanced files
+ */
+function buildEnhancedGoogleAdsAttributionQuery() {
+  return `
+    (
+      -- Standard PAID_SEARCH attribution (when tracking template works)
+      (
+        hc.hs_analytics_source = 'PAID_SEARCH' 
+        AND hc.hs_analytics_source_data_1 != '{campaign}'
+        AND hc.hs_analytics_source_data_1 IS NOT NULL
+        AND hc.hs_analytics_source_data_1 != ''
+      )
+      
+      OR
+      
+      -- ENHANCED: Fixed attribution for broken tracking template
+      (
+        hc.hs_analytics_source = 'PAID_SEARCH'
+        AND hc.hs_analytics_source_data_1 = '{campaign}'
+        AND hc.google_ads_campaign IS NOT NULL
+        AND hc.google_ads_campaign != ''
+      )
+      
+      OR
+      
+      -- ENHANCED: Fallback attribution when google_ads_campaign field available
+      (
+        hc.hs_analytics_source = 'PAID_SEARCH'
+        AND hc.google_ads_campaign IS NOT NULL
+        AND hc.google_ads_campaign != ''
+        AND (
+          hc.hs_analytics_source_data_1 IS NULL
+          OR hc.hs_analytics_source_data_1 = ''
+          OR hc.hs_analytics_source_data_1 = '{campaign}'
+        )
+      )
+    )
+  `;
+}
+
+/**
+ * ENHANCED: Get burn rate time-series data with flexible date ranges + nationality breakdown
  */
 async function getBurnRateTimeseries(getDbConnection, options = {}) {
   try {
@@ -20,7 +68,7 @@ async function getBurnRateTimeseries(getDbConnection, options = {}) {
       granularity = 'auto' // 'daily', 'weekly', 'auto'
     } = options;
 
-    console.log(`🔥 Getting burn rate timeseries:`, options);
+    console.log(`🔥 Getting ENHANCED burn rate timeseries:`, options);
 
     const connection = await getDbConnection();
     
@@ -31,16 +79,56 @@ async function getBurnRateTimeseries(getDbConnection, options = {}) {
       
       // Determine granularity
       const timeGranularity = determineGranularity(granularity, dateRange.totalDays);
-      console.log(`📊 Using ${timeGranularity} granularity`);
+      console.log(`📊 Using ${timeGranularity} granularity with ENHANCED attribution`);
       
-      // Build and execute timeseries query
-      const query = buildTimeseriesQuery(timeGranularity);
+      // Get attribution quality metrics first
+      console.log(`🔍 Analyzing attribution quality...`);
+      const [attributionQuality] = await connection.execute(`
+        SELECT 
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
+            AND hc.hs_analytics_source_data_1 != '{campaign}'
+            AND hc.hs_analytics_source_data_1 IS NOT NULL
+            AND hc.hs_analytics_source_data_1 != ''
+            THEN 1 
+          END) as standard_attribution,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+            AND hc.hs_analytics_source_data_1 = '{campaign}'
+            AND hc.google_ads_campaign IS NOT NULL
+            AND hc.google_ads_campaign != ''
+            THEN 1 
+          END) as enhanced_attribution,
+          COUNT(CASE 
+            WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+            AND hc.hs_analytics_source_data_1 = '{campaign}'
+            THEN 1 
+          END) as broken_template_count,
+          COUNT(*) as total_google_ads_contacts
+        FROM hub_contacts hc
+        WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+          AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
+      `, [dateRange.start, dateRange.end]);
+      
+      const attrQuality = attributionQuality[0] || {};
+      console.log(`🔧 Attribution Quality Analysis:`, {
+        standard: attrQuality.standard_attribution || 0,
+        enhanced: attrQuality.enhanced_attribution || 0,
+        broken_templates: attrQuality.broken_template_count || 0,
+        total_google_ads: attrQuality.total_google_ads_contacts || 0,
+        enhancement_recovery: attrQuality.broken_template_count > 0 ? 
+          `${((attrQuality.enhanced_attribution / attrQuality.broken_template_count) * 100).toFixed(1)}%` : '100%'
+      });
+      
+      // Build and execute enhanced timeseries query
+      const query = buildEnhancedTimeseriesQuery(timeGranularity);
       const [results] = await connection.execute(query, [dateRange.start, dateRange.end]);
       
-      console.log(`✅ Retrieved ${results.length} ${timeGranularity} data points`);
+      console.log(`✅ Retrieved ${results.length} ${timeGranularity} data points using enhanced attribution`);
       
-      // Get nationality breakdown of burned contacts
-      const nationalityBreakdown = await getNationalityBreakdown(connection, dateRange);
+      // Get nationality breakdown of burned contacts (also enhanced)
+      const nationalityBreakdown = await getEnhancedNationalityBreakdown(connection, dateRange);
       
       // Process and aggregate data
       const processedData = processTimeseriesData(results, timeGranularity, dateRange);
@@ -52,13 +140,37 @@ async function getBurnRateTimeseries(getDbConnection, options = {}) {
         success: true,
         data: processedData,
         summary: summary,
-        nationalityBreakdown: nationalityBreakdown, // NEW: Added nationality data
+        nationalityBreakdown: nationalityBreakdown,
+        attribution_enhancement: {
+          status: 'ACTIVE',
+          features: [
+            'Enhanced Google Ads attribution with {campaign} fix',
+            'Multi-layered attribution matching',
+            'Burn rate analysis enhancement',
+            'Attribution quality reporting'
+          ],
+          quality_metrics: {
+            standard_attribution: parseInt(attrQuality.standard_attribution) || 0,
+            enhanced_attribution: parseInt(attrQuality.enhanced_attribution) || 0,
+            broken_template_count: parseInt(attrQuality.broken_template_count) || 0,
+            total_contacts: parseInt(attrQuality.total_google_ads_contacts) || 0,
+            enhancement_coverage: attrQuality.broken_template_count > 0 ? 
+              ((attrQuality.enhanced_attribution / attrQuality.broken_template_count) * 100).toFixed(1) + '%' : '100%'
+          }
+        },
         metadata: {
           dateRange: dateRange,
           granularity: timeGranularity,
           totalDataPoints: processedData.length,
-          dataSource: 'MySQL HubSpot Direct Territory Query',
-          methodology: 'Direct HubSpot territory = "Unsupported Territory" count'
+          dataSource: 'MySQL HubSpot Enhanced Attribution Territory Query',
+          methodology: 'Enhanced Google Ads Attribution + Direct HubSpot territory = "Unsupported Territory" count',
+          attribution_method: 'enhanced_multi_layered_google_ads_attribution',
+          enhancement_notes: [
+            'Includes contacts with broken {campaign} tracking template',
+            'Uses custom google_ads_campaign field for attribution recovery',
+            'Multi-layered Google Ads attribution matching applied',
+            'Attribution quality metrics included'
+          ]
         },
         timestamp: new Date().toISOString()
       };
@@ -68,10 +180,14 @@ async function getBurnRateTimeseries(getDbConnection, options = {}) {
     }
     
   } catch (error) {
-    console.error('❌ Burn rate timeseries failed:', error.message);
+    console.error('❌ Enhanced burn rate timeseries failed:', error.message);
     return {
       success: false,
       error: error.message,
+      attribution_enhancement: {
+        status: 'ERROR',
+        error: error.message
+      },
       timestamp: new Date().toISOString()
     };
   }
@@ -130,56 +246,86 @@ function determineGranularity(granularity, totalDays) {
 }
 
 /**
- * Build timeseries SQL query based on granularity
+ * ENHANCED: Build timeseries SQL query with enhanced attribution
  */
-function buildTimeseriesQuery(granularity) {
+function buildEnhancedTimeseriesQuery(granularity) {
   const baseWhere = `
-    WHERE hs_analytics_source = 'PAID_SEARCH'
-      AND (hubspot_owner_id != 10017927 OR hubspot_owner_id IS NULL OR hubspot_owner_id = '')
-      AND DATE(createdate) >= ? 
-      AND DATE(createdate) <= ?
+    WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
+      AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+      AND DATE(hc.createdate) >= ? 
+      AND DATE(hc.createdate) <= ?
   `;
   
   if (granularity === 'daily') {
     return `
       SELECT 
-        DATE(createdate) as period_date,
+        DATE(hc.createdate) as period_date,
         'daily' as granularity,
         COUNT(*) as total_contacts,
-        COUNT(CASE WHEN territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
-        COUNT(CASE WHEN territory != 'Unsupported Territory' OR territory IS NULL THEN 1 END) as supported_contacts,
+        COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
+        COUNT(CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN 1 END) as supported_contacts,
         ROUND(
-          (COUNT(CASE WHEN territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100, 
+          (COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100, 
           2
-        ) as burn_rate_percentage
-      FROM hub_contacts 
+        ) as burn_rate_percentage,
+        -- Enhanced attribution breakdown per day
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
+          AND hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          THEN 1 
+        END) as standard_attribution_count,
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          THEN 1 
+        END) as enhanced_attribution_count
+      FROM hub_contacts hc
       ${baseWhere}
-      GROUP BY DATE(createdate)
+      GROUP BY DATE(hc.createdate)
       ORDER BY period_date
     `;
   } else {
     // Weekly aggregation
     return `
       SELECT 
-        DATE_SUB(DATE(createdate), INTERVAL WEEKDAY(DATE(createdate)) DAY) as period_date,
+        DATE_SUB(DATE(hc.createdate), INTERVAL WEEKDAY(DATE(hc.createdate)) DAY) as period_date,
         'weekly' as granularity,
         COUNT(*) as total_contacts,
-        COUNT(CASE WHEN territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
-        COUNT(CASE WHEN territory != 'Unsupported Territory' OR territory IS NULL THEN 1 END) as supported_contacts,
+        COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
+        COUNT(CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN 1 END) as supported_contacts,
         ROUND(
-          (COUNT(CASE WHEN territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100, 
+          (COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100, 
           2
-        ) as burn_rate_percentage
-      FROM hub_contacts 
+        ) as burn_rate_percentage,
+        -- Enhanced attribution breakdown per week
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
+          AND hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          THEN 1 
+        END) as standard_attribution_count,
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          THEN 1 
+        END) as enhanced_attribution_count
+      FROM hub_contacts hc
       ${baseWhere}
-      GROUP BY DATE_SUB(DATE(createdate), INTERVAL WEEKDAY(DATE(createdate)) DAY)
+      GROUP BY DATE_SUB(DATE(hc.createdate), INTERVAL WEEKDAY(DATE(hc.createdate)) DAY)
       ORDER BY period_date
     `;
   }
 }
 
 /**
- * Process and clean timeseries data
+ * ENHANCED: Process and clean timeseries data with attribution metrics
  */
 function processTimeseriesData(results, granularity, dateRange) {
   return results.map(row => ({
@@ -191,7 +337,16 @@ function processTimeseriesData(results, granularity, dateRange) {
     burnRatePercentage: parseFloat(row.burn_rate_percentage) || 0,
     // Additional calculated fields
     supportedRatePercentage: row.total_contacts > 0 ? 
-      ((parseInt(row.supported_contacts) / parseInt(row.total_contacts)) * 100).toFixed(2) : 0
+      ((parseInt(row.supported_contacts) / parseInt(row.total_contacts)) * 100).toFixed(2) : 0,
+    // Enhanced attribution metrics per period
+    attribution_breakdown: {
+      standard_count: parseInt(row.standard_attribution_count) || 0,
+      enhanced_count: parseInt(row.enhanced_attribution_count) || 0,
+      total_attributed: (parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0),
+      enhancement_percentage: ((parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0)) > 0 ?
+        (((parseInt(row.enhanced_attribution_count) || 0) / 
+          ((parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0))) * 100).toFixed(1) : '0'
+    }
   }));
 }
 
@@ -215,6 +370,10 @@ function calculateSummaryStats(data, dateRange) {
   // Trend calculation (simple linear trend)
   const trend = calculateTrend(data);
   
+  // Enhanced attribution summary
+  const totalStandardAttribution = data.reduce((sum, d) => sum + d.attribution_breakdown.standard_count, 0);
+  const totalEnhancedAttribution = data.reduce((sum, d) => sum + d.attribution_breakdown.enhanced_count, 0);
+  
   return {
     totalContacts,
     totalSupported,
@@ -228,6 +387,14 @@ function calculateSummaryStats(data, dateRange) {
       start: dateRange.start,
       end: dateRange.end,
       days: dateRange.totalDays
+    },
+    // Enhanced attribution summary
+    attribution_summary: {
+      standard_total: totalStandardAttribution,
+      enhanced_total: totalEnhancedAttribution,
+      total_attributed: totalStandardAttribution + totalEnhancedAttribution,
+      enhancement_percentage: (totalStandardAttribution + totalEnhancedAttribution) > 0 ?
+        ((totalEnhancedAttribution / (totalStandardAttribution + totalEnhancedAttribution)) * 100).toFixed(1) : '0'
     }
   };
 }
@@ -259,48 +426,87 @@ function calculateTrend(data) {
 }
 
 /**
- * Get nationality breakdown of burned (unsupported territory) contacts
+ * ENHANCED: Get nationality breakdown of burned (unsupported territory) contacts with enhanced attribution
  */
-async function getNationalityBreakdown(connection, dateRange) {
+async function getEnhancedNationalityBreakdown(connection, dateRange) {
   try {
-    console.log(`🌍 Getting nationality breakdown for burned contacts...`);
+    console.log(`🌍 Getting nationality breakdown for burned contacts with enhanced attribution...`);
     
     const [nationalityResults] = await connection.execute(`
       SELECT 
-        COALESCE(nationality, 'Unknown') as nationality,
+        COALESCE(hc.nationality, 'Unknown') as nationality,
         COUNT(*) as burned_contacts,
-        ROUND((COUNT(*) * 25), 2) as estimated_waste_eur
-      FROM hub_contacts 
-      WHERE hs_analytics_source = 'PAID_SEARCH'
-        AND territory = 'Unsupported Territory'
-        AND (hubspot_owner_id != 10017927 OR hubspot_owner_id IS NULL OR hubspot_owner_id = '')
-        AND DATE(createdate) >= ? 
-        AND DATE(createdate) <= ?
-      GROUP BY nationality
+        ROUND((COUNT(*) * 25), 2) as estimated_waste_eur,
+        -- Enhanced attribution breakdown by nationality
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
+          AND hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          THEN 1 
+        END) as standard_attribution_count,
+        COUNT(CASE 
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          THEN 1 
+        END) as enhanced_attribution_count
+      FROM hub_contacts hc
+      WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
+        AND hc.territory = 'Unsupported Territory'
+        AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+        AND DATE(hc.createdate) >= ? 
+        AND DATE(hc.createdate) <= ?
+      GROUP BY hc.nationality
       ORDER BY burned_contacts DESC
     `, [dateRange.start, dateRange.end]);
     
     const totalBurnedContacts = nationalityResults.reduce((sum, row) => sum + parseInt(row.burned_contacts), 0);
+    const totalStandardAttribution = nationalityResults.reduce((sum, row) => sum + parseInt(row.standard_attribution_count), 0);
+    const totalEnhancedAttribution = nationalityResults.reduce((sum, row) => sum + parseInt(row.enhanced_attribution_count), 0);
     
     console.log(`✅ Found ${nationalityResults.length} nationalities causing ${totalBurnedContacts} burned contacts`);
+    console.log(`🔧 Attribution breakdown: ${totalStandardAttribution} standard, ${totalEnhancedAttribution} enhanced`);
     
     return {
       totalBurnedContacts: totalBurnedContacts,
       totalEstimatedWaste: totalBurnedContacts * 25, // €25 estimated cost per contact
+      attribution_breakdown: {
+        standard_total: totalStandardAttribution,
+        enhanced_total: totalEnhancedAttribution,
+        total_attributed: totalStandardAttribution + totalEnhancedAttribution,
+        enhancement_percentage: (totalStandardAttribution + totalEnhancedAttribution) > 0 ?
+          ((totalEnhancedAttribution / (totalStandardAttribution + totalEnhancedAttribution)) * 100).toFixed(1) : '0'
+      },
       nationalities: nationalityResults.map(row => ({
         nationality: row.nationality,
         burnedContacts: parseInt(row.burned_contacts),
         estimatedWaste: parseFloat(row.estimated_waste_eur),
         percentage: totalBurnedContacts > 0 ? 
-          ((parseInt(row.burned_contacts) / totalBurnedContacts) * 100).toFixed(1) : 0
+          ((parseInt(row.burned_contacts) / totalBurnedContacts) * 100).toFixed(1) : 0,
+        attribution_breakdown: {
+          standard_count: parseInt(row.standard_attribution_count) || 0,
+          enhanced_count: parseInt(row.enhanced_attribution_count) || 0,
+          total_attributed: (parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0),
+          enhancement_percentage: ((parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0)) > 0 ?
+            (((parseInt(row.enhanced_attribution_count) || 0) / 
+              ((parseInt(row.standard_attribution_count) || 0) + (parseInt(row.enhanced_attribution_count) || 0))) * 100).toFixed(1) : '0'
+        }
       }))
     };
     
   } catch (error) {
-    console.error('❌ Nationality breakdown failed:', error.message);
+    console.error('❌ Enhanced nationality breakdown failed:', error.message);
     return {
       totalBurnedContacts: 0,
       totalEstimatedWaste: 0,
+      attribution_breakdown: {
+        standard_total: 0,
+        enhanced_total: 0,
+        total_attributed: 0,
+        enhancement_percentage: '0'
+      },
       nationalities: [],
       error: error.message
     };
@@ -312,7 +518,7 @@ async function getNationalityBreakdown(connection, dateRange) {
  */
 async function handleBurnRateTimeseriesRequest(req, res, getDbConnection) {
   try {
-    console.log(`🔥 Burn rate timeseries request:`, req.query);
+    console.log(`🔥 Enhanced burn rate timeseries request:`, req.query);
     
     // Extract and validate parameters
     const options = {
@@ -352,17 +558,21 @@ async function handleBurnRateTimeseriesRequest(req, res, getDbConnection) {
       }
     }
     
-    // Get timeseries data
+    // Get enhanced timeseries data
     const result = await getBurnRateTimeseries(getDbConnection, options);
     
     // Return result
     res.json(result);
     
   } catch (error) {
-    console.error('❌ Burn rate timeseries request failed:', error.message);
+    console.error('❌ Enhanced burn rate timeseries request failed:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
+      attribution_enhancement: {
+        status: 'ERROR',
+        error: error.message
+      },
       timestamp: new Date().toISOString()
     });
   }
@@ -370,5 +580,7 @@ async function handleBurnRateTimeseriesRequest(req, res, getDbConnection) {
 
 module.exports = {
   getBurnRateTimeseries,
-  handleBurnRateTimeseriesRequest
+  handleBurnRateTimeseriesRequest,
+  // Export enhanced attribution functions for consistency
+  buildEnhancedGoogleAdsAttributionQuery
 };
