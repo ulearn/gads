@@ -810,12 +810,24 @@ async function createCampaignFromTemplate({
             target_search_network: templateCampaign.network_settings?.target_search_network ?? true,
             target_content_network: templateCampaign.network_settings?.target_content_network ?? false,
             target_partner_search_network: templateCampaign.network_settings?.target_partner_search_network ?? false
-          }
+          },
+          contains_eu_political_advertising: 1 // 1 = DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING
         }
       }
     ];
 
-    const mutateResponse = await customer.mutateResources(operations);
+    log('🔄 Attempting mutateResources with operations:', JSON.stringify(operations, null, 2));
+
+    let mutateResponse;
+    try {
+      mutateResponse = await customer.mutateResources(operations);
+      log('✅ MutateResources successful:', JSON.stringify(mutateResponse, null, 2));
+    } catch (mutateError) {
+      log('❌ MutateResources failed:', mutateError.message);
+      log('❌ MutateResources stack:', mutateError.stack);
+      log('❌ MutateResources full error:', JSON.stringify(mutateError, null, 2));
+      throw mutateError;
+    }
 
     // Extract the created resources
     const newBudgetResourceName = mutateResponse.results[0].resource_name;
@@ -934,9 +946,11 @@ The campaign is created but PAUSED for your safety. You can enable it when ready
 
   } catch (error) {
     log('❌ Campaign creation failed:', error.message);
+    log('❌ Full error stack:', error.stack);
+    log('❌ Full error object:', JSON.stringify(error, null, 2));
     return {
       success: false,
-      error: error.message,
+      error: error.message || 'Unknown error occurred',
       report: `❌ **Campaign Creation Failed:**
 
 **Error:** ${error.message}
