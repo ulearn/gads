@@ -1,16 +1,17 @@
 /**
- * ECL Handler - Enhanced Conversions with Unified Date Handling - COMPLETE FIXED VERSION
+ * ECL Handler - Enhanced Conversions with Unified Date Handling - FIXED VERSION
  * File: /home/hub/public_html/gads/scripts/google/ecl-handler.js
  * 
  * UNIFIED DATE LOGIC:
- * - Initial conversions: Parse UK/ISO format + 2hr safety buffer + server timezone compensation
- * - Adjustments: Use current datetime + Dublin correction
+ * - Initial conversions: Parse UK/ISO format + server timezone compensation
+ * - Adjustments: Use current datetime (no buffer - HubSpot workflow has 1-minute delay)
  * 
  * FIXES:
  * - Handles UK date format: "13/09/2025 13:13 IST"
  * - Handles ISO date format: "2025-09-13T12:13:00.000Z"
  * - Compensates for server being 1 hour behind Dublin
  * - Prevents "conversion sent before click" errors
+ * - CRITICAL FIX: Adjustments use current time (not future time)
  */
 
 const { GoogleAdsApi, enums, ResourceNames } = require('google-ads-api');
@@ -35,7 +36,7 @@ function hashPhone(phone) {
 }
 
 /**
- * CORRECTED parseAndAdjustCreateDate function - FIXED VERSION
+ * Parse UK date format from HubSpot - SIMPLE VERSION RESTORED
  */
 function parseAndAdjustCreateDate(dateValue) {
   if (!dateValue) return null;
@@ -49,7 +50,6 @@ function parseAndAdjustCreateDate(dateValue) {
     const parts = dateValue.trim().split(' ');
     const datePart = parts[0]; // "13/09/2025"
     const timePart = parts[1]; // "13:13" or undefined
-    const timezonePart = parts[2]; // "IST" or undefined
     
     console.log(`   📅 Date parts: ${JSON.stringify(parts)}`);
     
@@ -64,42 +64,22 @@ function parseAndAdjustCreateDate(dateValue) {
     }
     console.log(`   ⏰ Time: ${timeString}`);
     
-    // FIXED: Create the Date object properly for UK format (DD/MM/YYYY)
-    // JavaScript Date constructor expects (year, month-1, day, hour, minute, second)
-    const parsedYear = parseInt(year);
-    const parsedMonth = parseInt(month) - 1; // JavaScript months are 0-based
-    const parsedDay = parseInt(day);
-    
     // Parse time components
     const timeParts = timeString.split(':');
     const hours = parseInt(timeParts[0]) || 0;
     const minutes = parseInt(timeParts[1]) || 0;
     const seconds = parseInt(timeParts[2]) || 0;
     
-    console.log(`   📋 Creating Date with: ${parsedYear}, ${parsedMonth}, ${parsedDay}, ${hours}, ${minutes}, ${seconds}`);
+    // Create Date object using components
+    // JavaScript Date expects (year, month-1, day, hour, minute, second)
+    const parsedYear = parseInt(year);
+    const parsedMonth = parseInt(month) - 1; // JavaScript months are 0-based
+    const parsedDay = parseInt(day);
     
-    // Create Date object - this creates local time initially
     baseDate = new Date(parsedYear, parsedMonth, parsedDay, hours, minutes, seconds);
     
-    console.log(`   📋 Created Date object: ${baseDate.toString()}`);
-    console.log(`   ✅ Valid date check: ${!isNaN(baseDate.getTime())}`);
+    console.log(`   ✅ Created date: ${baseDate.toISOString()}`);
     
-    if (isNaN(baseDate.getTime())) {
-      throw new Error(`Failed to create valid date from: ${dateValue}`);
-    }
-    
-    // Handle timezone conversion if IST (Dublin time = GMT+1)
-    // Convert to UTC by adjusting for local timezone offset and then adjusting for IST
-    if (timezonePart === 'IST' || timezonePart === 'GMT+1') {
-      console.log(`   🌍 Before timezone conversion: ${baseDate.toString()}`);
-      // Get local timezone offset and adjust to UTC, then adjust for IST (+1 hour from UTC)
-      const localOffset = baseDate.getTimezoneOffset(); // minutes behind UTC
-      baseDate.setMinutes(baseDate.getMinutes() + localOffset); // Convert to UTC
-      baseDate.setHours(baseDate.getHours() - 1); // IST is UTC+1, so subtract 1 to get UTC
-      console.log(`   🌍 After IST to UTC conversion: ${baseDate.toString()}`);
-    }
-    
-    console.log(`   ✅ Final parsed UK format: "${dateValue}" → ${baseDate.toISOString()}`);
   } else {
     // Already ISO format
     baseDate = new Date(dateValue);
@@ -108,8 +88,8 @@ function parseAndAdjustCreateDate(dateValue) {
   
   // Final validation
   if (isNaN(baseDate.getTime())) {
-    console.error(`❌ FINAL VALIDATION FAILED for: ${dateValue}`);
-    throw new Error(`Invalid date format after parsing: ${dateValue}`);
+    console.error(`❌ Invalid date: ${dateValue}`);
+    throw new Error(`Invalid date format: ${dateValue}`);
   }
   
   return baseDate;
@@ -214,6 +194,7 @@ async function uploadEnhancedConversion(conversion) {
 
 /**
  * Process conversion with unified date handling - MAIN ENTRY POINT
+ * FIXED: Adjustments use current time (no buffer - HubSpot has 1-minute workflow delay)
  */
 async function processConversionAdjustment(conversionData, options = {}) {
   try {
@@ -222,14 +203,14 @@ async function processConversionAdjustment(conversionData, options = {}) {
     console.log(`   Order ID: ${conversionData.order_id}`);
     console.log(`   GCLID Present: ${conversionData.gclid ? 'YES' : 'NO'}`);
     
-    // UNIFIED DATE HANDLING - SIMPLIFIED APPROACH
+    // UNIFIED DATE HANDLING - FIXED FOR ADJUSTMENTS
     let conversionDateTime;
     
     if (conversionData.adjustment_type === 'RESTATEMENT') {
-      // ADJUSTMENTS: Use current time
+      // ADJUSTMENTS: Use current time (no buffer needed - HubSpot workflow already has 1-minute delay)
       const now = new Date();
       conversionDateTime = now.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
-      console.log(`   Conversion Date: ${conversionDateTime} (current time for adjustment)`);
+      console.log(`   Conversion Date: ${conversionDateTime} (current time for adjustment - HubSpot has 1min delay)`);
       
     } else {
       // INITIAL CONVERSIONS: Parse HubSpot date + server timezone compensation
@@ -240,22 +221,48 @@ async function processConversionAdjustment(conversionData, options = {}) {
       // Parse the date (handles both UK and ISO formats)
       const createDate = parseAndAdjustCreateDate(conversionData.create_date);
       
-      // Only compensate for server timezone offset (1 hour behind Dublin)
-      createDate.setHours(createDate.getHours() + 1);
+      // Check if this is a chat conversion (Bird.com) or HubSpot conversion
+      const isChatConversion = conversionData.channel === "chat";
+      
+      if (isChatConversion) {
+        // Chat conversions (Bird.com) are already in UTC - no adjustment needed
+        console.log(`   📱 Chat conversion detected - no time adjustment needed`);
+      } else {
+        // HubSpot conversions need +1 hour (server is 1 hour behind Dublin IST)
+        createDate.setHours(createDate.getHours() + 1);
+        console.log(`   🔄 HubSpot conversion - adding 1hr for IST→UTC adjustment`);
+      }
       
       conversionDateTime = createDate.toISOString().slice(0, 19).replace('T', ' ') + '+00:00';
-      console.log(`   Conversion Date: ${conversionDateTime} (parsed + 1hr server offset)`);
+      console.log(`   Conversion Date: ${conversionDateTime}${isChatConversion ? ' (chat - no adjustment)' : ' (HubSpot + 1hr)'}`);
+    }
+    
+    // Parse the conversion value FIRST (handle Euro symbol and commas)
+    let parsedValue = 0;
+    if (conversionData.adjustment_value) {
+      // Handle adjustment_value field (e.g., "€1,367.77")
+      parsedValue = parseFloat(conversionData.adjustment_value.replace(/[€,]/g, ''));
+    } else if (conversionData.conversion_value) {
+      // Handle conversion_value field (can also have Euro symbol)
+      const valueStr = String(conversionData.conversion_value);
+      parsedValue = parseFloat(valueStr.replace(/[€,]/g, ''));
+    }
+    
+    // Validate parsed value
+    if (isNaN(parsedValue)) {
+      console.log(`⚠️  Value parsing failed: adjustment_value="${conversionData.adjustment_value}", conversion_value="${conversionData.conversion_value}"`);
+      parsedValue = 0;
     }
     
     console.log(`Uploading Enhanced Conversion with GCLID: ${conversionData.gclid ? 'YES' : 'NO'}`);
     console.log(`   Order ID: ${conversionData.order_id}`);
-    console.log(`   Value: ${conversionData.currency_code}${conversionData.conversion_value}`);
+    console.log(`   Value: ${conversionData.currency_code || 'EUR'}${parsedValue.toFixed(2)}`);
     
     // Build Google Ads conversion payload
     const conversion = {
       conversion_action_id: conversionData.conversion_action_id,
       conversion_date_time: conversionDateTime,
-      conversion_value: conversionData.conversion_value || 0,
+      conversion_value: parsedValue,
       currency_code: conversionData.currency_code || 'EUR',
       order_id: conversionData.order_id,
       gclid: conversionData.gclid,
@@ -340,11 +347,47 @@ async function testConversionActionSetup() {
   }
 }
 
+/**
+ * Test live connection with safe date handling
+ */
+async function testLiveConnection() {
+  try {
+    console.log('🔍 Testing ECL live connection with safe date...');
+    
+    const testData = {
+      conversion_action_id: '7264211475',
+      stage: 'TEST',
+      order_id: `TEST-${Date.now()}`,
+      gclid: 'TEST-GCLID-' + Math.random().toString(36).substring(7),
+      contact_email: 'test@ulearntest.com',
+      contact_phone: '',
+      currency_code: 'EUR',
+      adjustment_type: 'RESTATEMENT', // This will trigger the safe date logic
+      conversion_value: 10.00
+    };
+    
+    const result = await processConversionAdjustment(testData);
+    
+    return {
+      success: true,
+      message: 'ECL live connection test successful',
+      result
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
 module.exports = {
   processConversionAdjustment,
   calculateStageValue,
   hashEmail,
   hashPhone,
   uploadEnhancedConversion,
-  testConversionActionSetup
+  testConversionActionSetup,
+  testLiveConnection
 };
