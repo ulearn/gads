@@ -57,6 +57,61 @@ const toolDefinitions = {
     }
   },
 
+  GAds_Create_API: {
+    name: 'GAds_Create_API',
+    description: 'Create new Google Ads campaigns based on existing successful campaigns with country/language targeting (Mutate API)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        template_campaign_id: {
+          type: 'string',
+          description: 'ID of the existing successful campaign to copy from',
+          required: true
+        },
+        new_campaign_name: {
+          type: 'string',
+          description: 'Name for the new campaign',
+          required: true
+        },
+        target_country_code: {
+          type: 'string',
+          description: 'Target country code (e.g., IT for Italy, ES for Spain, FR for France)',
+          required: true
+        },
+        target_language_code: {
+          type: 'string',
+          description: 'Target language code (e.g., en, es, it, fr, de)',
+          default: 'en'
+        },
+        daily_budget_micros: {
+          type: 'number',
+          description: 'Daily budget in micros (e.g., 50000000 = $50/day)',
+          default: 50000000
+        },
+        copy_ad_groups: {
+          type: 'boolean',
+          description: 'Copy ad groups from template campaign',
+          default: true
+        },
+        copy_keywords: {
+          type: 'boolean',
+          description: 'Copy keywords from template campaign',
+          default: true
+        },
+        copy_ads: {
+          type: 'boolean',
+          description: 'Copy ads from template campaign',
+          default: true
+        }
+      },
+      required: ['template_campaign_id', 'new_campaign_name', 'target_country_code']
+    }
+  },
+
   GAds_Audience_API: {
     name: 'GAds_Audience_API',
     description: 'Audience Manager access for segments, custom audiences, targeting insights, and demographic data (Direct API)',

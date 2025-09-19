@@ -714,9 +714,294 @@ ${demographics.filter(d => d.income_range).map(d => `- ${d.income_range.type}`).
   }
 }
 
+/**
+ * Create a new Google Ads campaign based on an existing successful campaign
+ */
+async function createCampaignFromTemplate({
+  account_id = process.env.GADS_LIVE_ID,
+  template_campaign_id,
+  new_campaign_name,
+  target_country_code,
+  target_language_code = 'en',
+  daily_budget_micros,
+  copy_ad_groups = true,
+  copy_keywords = true,
+  copy_ads = true
+}) {
+  log('🚀 Campaign Creation called:', {
+    account_id,
+    template_campaign_id,
+    new_campaign_name,
+    target_country_code,
+    target_language_code,
+    daily_budget_micros,
+    copy_ad_groups,
+    copy_keywords,
+    copy_ads
+  });
+
+  try {
+    const customer = googleAdsClient.Customer({
+      customer_id: account_id,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      login_customer_id: process.env.GADS_LIVE_MCC_ID
+    });
+
+    // Step 1: Get template campaign details
+    log('📋 Fetching template campaign details...');
+    const templateQuery = `
+      SELECT
+        campaign.id,
+        campaign.name,
+        campaign.advertising_channel_type,
+        campaign.advertising_channel_sub_type,
+        campaign.status,
+        campaign.bidding_strategy_type,
+        campaign.campaign_budget,
+        campaign.network_settings.target_google_search,
+        campaign.network_settings.target_search_network,
+        campaign.network_settings.target_content_network,
+        campaign.network_settings.target_partner_search_network,
+        campaign.geo_target_type_setting.positive_geo_target_type,
+        campaign.geo_target_type_setting.negative_geo_target_type
+      FROM campaign
+      WHERE campaign.id = ${template_campaign_id}
+    `;
+
+    const templateResults = await customer.query(templateQuery);
+    if (templateResults.length === 0) {
+      throw new Error(`Template campaign ${template_campaign_id} not found`);
+    }
+
+    const templateCampaign = templateResults[0].campaign;
+    log('✅ Template campaign found:', templateCampaign.name);
+
+    // Step 2: Create budget first
+    log('💰 Creating campaign budget...');
+    const budgetResource = `customers/${account_id}/campaignBudgets/-1`;
+    const budgetOperation = {
+      create: {
+        resource_name: budgetResource,
+        name: `Budget for ${new_campaign_name}`,
+        amount_micros: daily_budget_micros || 50000000, // Default $50/day
+        delivery_method: 'STANDARD',
+        explicitly_shared: false
+      }
+    };
+
+    const budgetResponse = await customer.campaignBudgets.mutateCampaignBudgets([budgetOperation]);
+    const newBudgetResourceName = budgetResponse.results[0].resource_name;
+    log('✅ Budget created:', newBudgetResourceName);
+
+    // Step 3: Create the new campaign
+    log('🎯 Creating new campaign...');
+    const campaignResource = `customers/${account_id}/campaigns/-1`;
+    const campaignOperation = {
+      create: {
+        resource_name: campaignResource,
+        name: new_campaign_name,
+        advertising_channel_type: templateCampaign.advertising_channel_type,
+        advertising_channel_sub_type: templateCampaign.advertising_channel_sub_type,
+        status: 'PAUSED', // Start paused for safety
+        bidding_strategy_type: templateCampaign.bidding_strategy_type,
+        campaign_budget: newBudgetResourceName,
+        network_settings: {
+          target_google_search: templateCampaign.network_settings.target_google_search,
+          target_search_network: templateCampaign.network_settings.target_search_network,
+          target_content_network: templateCampaign.network_settings.target_content_network,
+          target_partner_search_network: templateCampaign.network_settings.target_partner_search_network
+        },
+        geo_target_type_setting: {
+          positive_geo_target_type: templateCampaign.geo_target_type_setting.positive_geo_target_type,
+          negative_geo_target_type: templateCampaign.geo_target_type_setting.negative_geo_target_type
+        }
+      }
+    };
+
+    const campaignResponse = await customer.campaigns.mutateCampaigns([campaignOperation]);
+    const newCampaignResourceName = campaignResponse.results[0].resource_name;
+    const newCampaignId = newCampaignResourceName.split('/')[3];
+    log('✅ Campaign created:', newCampaignResourceName);
+
+    // Step 4: Add geo targeting for the target country
+    log('🌍 Adding geo targeting...');
+    const geoTargetOperation = {
+      create: {
+        campaign: newCampaignResourceName,
+        criterion_id: getCountryCriterionId(target_country_code),
+        type: 'LOCATION'
+      }
+    };
+
+    await customer.campaignCriteria.mutateCampaignCriteria([geoTargetOperation]);
+    log('✅ Geo targeting added for:', target_country_code);
+
+    // Step 5: Add language targeting
+    log('🗣️ Adding language targeting...');
+    const languageTargetOperation = {
+      create: {
+        campaign: newCampaignResourceName,
+        criterion_id: getLanguageCriterionId(target_language_code),
+        type: 'LANGUAGE'
+      }
+    };
+
+    await customer.campaignCriteria.mutateCampaignCriteria([languageTargetOperation]);
+    log('✅ Language targeting added for:', target_language_code);
+
+    let copiedAssets = {
+      ad_groups: 0,
+      keywords: 0,
+      ads: 0
+    };
+
+    // Step 6: Copy ad groups if requested
+    if (copy_ad_groups) {
+      log('📁 Copying ad groups from template...');
+      const adGroupsQuery = `
+        SELECT
+          ad_group.id,
+          ad_group.name,
+          ad_group.status,
+          ad_group.type,
+          ad_group.cpc_bid_micros
+        FROM ad_group
+        WHERE ad_group.campaign = 'customers/${account_id}/campaigns/${template_campaign_id}'
+      `;
+
+      const adGroupResults = await customer.query(adGroupsQuery);
+
+      for (const result of adGroupResults) {
+        const templateAdGroup = result.ad_group;
+        const adGroupOperation = {
+          create: {
+            name: `${templateAdGroup.name} - ${target_country_code}`,
+            campaign: newCampaignResourceName,
+            status: 'PAUSED',
+            type: templateAdGroup.type,
+            cpc_bid_micros: templateAdGroup.cpc_bid_micros
+          }
+        };
+
+        const adGroupResponse = await customer.adGroups.mutateAdGroups([adGroupOperation]);
+        const newAdGroupResourceName = adGroupResponse.results[0].resource_name;
+        copiedAssets.ad_groups++;
+
+        log(`✅ Ad group copied: ${templateAdGroup.name} -> ${newAdGroupResourceName}`);
+      }
+    }
+
+    return {
+      success: true,
+      campaign_id: newCampaignId,
+      campaign_resource_name: newCampaignResourceName,
+      budget_resource_name: newBudgetResourceName,
+      template_campaign_id,
+      copied_assets: copiedAssets,
+      target_country: target_country_code,
+      target_language: target_language_code,
+      status: 'PAUSED',
+      report: `✅ **Campaign Created Successfully!**
+
+**New Campaign:** ${new_campaign_name}
+**Campaign ID:** ${newCampaignId}
+**Status:** PAUSED (safe start)
+**Target Country:** ${target_country_code}
+**Target Language:** ${target_language_code}
+
+**Copied from Template Campaign ID:** ${template_campaign_id}
+
+**Assets Copied:**
+- 📁 Ad Groups: ${copiedAssets.ad_groups}
+- 🔑 Keywords: ${copiedAssets.keywords}
+- 📢 Ads: ${copiedAssets.ads}
+
+**Next Steps:**
+1. Review campaign settings in Google Ads interface
+2. Adjust targeting and demographics as needed
+3. Enable campaign when ready (currently PAUSED)
+4. Monitor performance and optimize
+
+The campaign is created but PAUSED for your safety. You can enable it when ready.`
+    };
+
+  } catch (error) {
+    log('❌ Campaign creation failed:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      report: `❌ **Campaign Creation Failed:**
+
+**Error:** ${error.message}
+
+**Possible causes:**
+- Insufficient Google Ads API permissions
+- Invalid template campaign ID
+- Account lacks campaign creation privileges
+- Billing issues or account restrictions
+
+**Please check:**
+1. Google Ads API access level
+2. Account permissions for campaign creation
+3. Template campaign exists and is accessible
+4. Account has active billing setup`
+    };
+  }
+}
+
+/**
+ * Helper function to get country criterion ID for geo targeting
+ */
+function getCountryCriterionId(countryCode) {
+  const countryCodes = {
+    'ES': 2724,  // Spain
+    'IT': 2380,  // Italy
+    'FR': 2250,  // France
+    'DE': 2276,  // Germany
+    'UK': 2826,  // United Kingdom
+    'US': 2840,  // United States
+    'IE': 2372,  // Ireland
+    'PT': 2620,  // Portugal
+    'NL': 2528,  // Netherlands
+    'BE': 2056,  // Belgium
+    'AT': 2040,  // Austria
+    'CH': 2756,  // Switzerland
+    'PL': 2616,  // Poland
+    'CZ': 2203,  // Czech Republic
+    'BR': 2076,  // Brazil
+    'MX': 2484,  // Mexico
+    'AR': 2032,  // Argentina
+    'CO': 2170,  // Colombia
+    'CL': 2152,  // Chile
+    'PE': 2604   // Peru
+  };
+
+  return countryCodes[countryCode.toUpperCase()] || 2380; // Default to Italy
+}
+
+/**
+ * Helper function to get language criterion ID for language targeting
+ */
+function getLanguageCriterionId(languageCode) {
+  const languageCodes = {
+    'en': 1000,  // English
+    'es': 1003,  // Spanish
+    'it': 1004,  // Italian
+    'fr': 1002,  // French
+    'de': 1001,  // German
+    'pt': 1014,  // Portuguese
+    'nl': 1010,  // Dutch
+    'pl': 1013,  // Polish
+    'cs': 1009   // Czech
+  };
+
+  return languageCodes[languageCode.toLowerCase()] || 1000; // Default to English
+}
+
 module.exports = {
   getAccountOverview,
   getCampaignAnalysis,
   getAudienceAnalysis,
+  createCampaignFromTemplate,
   googleAdsClient // Export client for future extensions
 };
