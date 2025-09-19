@@ -4,6 +4,8 @@
  * CRITICAL FIX: Properly handles ALL zero values (0, "0", 0.00) and ensures complete field sync
  */
 
+const { syncLogger } = require('../../logger');
+
 //=============================================================================//
 //   SIMPLE CONFIGURATION - Just table names and basics
 //=============================================================================//
@@ -62,7 +64,7 @@ function logValueSync(fieldName, originalValue, transformedValue, action = 'SYNC
       originalValue === 0 || 
       originalValue === "0") {
     
-    console.log(`   💾 ${action}: ${fieldName} = "${originalValue}" (${typeof originalValue}) → "${transformedValue}" (${typeof transformedValue})`);
+    syncLogger.log(`   💾 ${action}: ${fieldName} = "${originalValue}" (${typeof originalValue}) → "${transformedValue}" (${typeof transformedValue})`);
   }
 }
 
@@ -117,11 +119,11 @@ async function ensureColumnExists(connection, tableName, hubspotFieldName, field
           `ALTER TABLE ${extensionTableName} ADD COLUMN \`${hubspotFieldName}\` ${dataType} DEFAULT NULL`
         );
         
-        console.log(`   ✅ NEW field → Extension: ${hubspotFieldName} (${dataType}) in ${extensionTableName}`);
+        syncLogger.log(`   ✅ NEW field → Extension: ${hubspotFieldName} (${dataType}) in ${extensionTableName}`);
         return { tableName: extensionTableName, columnName: hubspotFieldName };
         
       } catch (error) {
-        console.error(`   ❌ Failed to add new field ${hubspotFieldName} to extension table: ${error.message}`);
+        syncLogger.error(`   ❌ Failed to add new field ${hubspotFieldName} to extension table: ${error.message}`);
         return null;
       }
     } else {
@@ -133,17 +135,17 @@ async function ensureColumnExists(connection, tableName, hubspotFieldName, field
           `ALTER TABLE ${tableName} ADD COLUMN \`${hubspotFieldName}\` ${dataType} DEFAULT NULL`
         );
         
-        console.log(`   ✅ Added column: ${hubspotFieldName} (${dataType}) to ${tableName}`);
+        syncLogger.log(`   ✅ Added column: ${hubspotFieldName} (${dataType}) to ${tableName}`);
         return { tableName, columnName: hubspotFieldName };
         
       } catch (error) {
-        console.error(`   ❌ Failed to add column ${hubspotFieldName}: ${error.message}`);
+        syncLogger.error(`   ❌ Failed to add column ${hubspotFieldName}: ${error.message}`);
         return null;
       }
     }
     
   } catch (error) {
-    console.error(`   ❌ Error checking column ${hubspotFieldName}: ${error.message}`);
+    syncLogger.error(`   ❌ Error checking column ${hubspotFieldName}: ${error.message}`);
     return null;
   }
 }
@@ -254,11 +256,11 @@ async function ensureTableExists(connection, objectType) {
     `;
     
     await connection.execute(createSQL);
-    console.log(`✅ ${tableName} table ready`);
+    syncLogger.log(`✅ ${tableName} table ready`);
     
     return config;
   } catch (error) {
-    console.error(`❌ Failed to initialize table for ${objectType}:`, error.message);
+    syncLogger.error(`❌ Failed to initialize table for ${objectType}:` + error.message);
     throw error;
   }
 }
@@ -302,7 +304,7 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
         // Track zero values for debugging
         if (fieldValue === 0 || fieldValue === "0" || fieldValue === 0.0) {
           zeroValueFields++;
-          console.log(`   🔢 ZERO VALUE DETECTED: ${hubspotFieldName} = ${fieldValue} (will be synced)`);
+          syncLogger.log(`   🔢 ZERO VALUE DETECTED: ${hubspotFieldName} = ${fieldValue} (will be synced)`);
         }
         
         try {
@@ -324,7 +326,7 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
             logValueSync(hubspotFieldName, fieldValue, transformedValue, 'SYNC');
           }
         } catch (error) {
-          console.error(`❌ Error processing field ${hubspotFieldName}:`, error.message);
+          syncLogger.error(`❌ Error processing field ${hubspotFieldName}:` + error.message);
         }
       }
     }
@@ -343,12 +345,12 @@ async function processHubSpotObject(hubspotObject, connection, objectType) {
         logMessage += `, ${zeroValueFields} zero values`;
       }
       logMessage += ')';
-      console.log(logMessage);
+      syncLogger.log(logMessage);
     }
     
     return true;
   } catch (error) {
-    console.error(`❌ Failed to process ${objectType} ${hubspotObject.id}:`, error.message);
+    syncLogger.error(`❌ Failed to process ${objectType} ${hubspotObject.id}:` + error.message);
     return false;
   }
 }

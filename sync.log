@@ -1,0 +1,1640 @@
+[2025-09-19T11:24:07.213Z] SYNC LOG ROTATED: Previous 5182 lines moved to sync_history.log
+[2025-09-19T11:24:07.216Z]      ✅ NEW association: 275694762202 → 192803431641
+[2025-09-19T11:24:07.217Z]    🔗 Contact 48551 has 5 deal associations
+[2025-09-19T11:24:07.218Z]      ✅ NEW association: 48551 → 5823548111
+[2025-09-19T11:24:07.220Z]      ✅ NEW association: 48551 → 99531744472
+[2025-09-19T11:24:07.222Z]      ✅ NEW association: 48551 → 151536815346
+[2025-09-19T11:24:07.224Z]      ✅ NEW association: 48551 → 174876516579
+[2025-09-19T11:24:07.225Z]      ✅ NEW association: 48551 → 250563081464
+[2025-09-19T11:24:07.225Z]    🔗 Contact 24310893772 has 1 deal associations
+[2025-09-19T11:24:07.227Z]      ✅ NEW association: 24310893772 → 16361111254
+[2025-09-19T11:24:07.227Z]    🔗 Contact 417032959176 has 1 deal associations
+[2025-09-19T11:24:07.228Z]      ✅ NEW association: 417032959176 → 294835806444
+[2025-09-19T11:24:07.229Z]    🔗 Contact 394809213132 has 1 deal associations
+[2025-09-19T11:24:07.230Z]      ✅ NEW association: 394809213132 → 281390943435
+[2025-09-19T11:24:07.230Z]    🔗 Contact 415864722678 has 1 deal associations
+[2025-09-19T11:24:07.232Z]      ✅ NEW association: 415864722678 → 294129259743
+[2025-09-19T11:24:07.233Z]    🔗 Contact 133503635695 has 2 deal associations
+[2025-09-19T11:24:07.234Z]      ✅ NEW association: 133503635695 → 76128251105
+[2025-09-19T11:24:07.237Z]      ✅ NEW association: 133503635695 → 77594538227
+[2025-09-19T11:24:07.237Z]    🔗 Contact 396204717248 has 1 deal associations
+[2025-09-19T11:24:07.239Z]      ✅ NEW association: 396204717248 → 281848345816
+[2025-09-19T11:24:07.239Z]    🔗 Contact 411204599026 has 1 deal associations
+[2025-09-19T11:24:07.241Z]      ✅ NEW association: 411204599026 → 291588522179
+[2025-09-19T11:24:07.241Z]    🔗 Contact 9735501 has 1 deal associations
+[2025-09-19T11:24:07.242Z]      ✅ NEW association: 9735501 → 10479975116
+[2025-09-19T11:24:07.243Z]    🔗 Contact 83246682351 has 11 deal associations
+[2025-09-19T11:24:07.245Z]      ✅ NEW association: 83246682351 → 76068562123
+[2025-09-19T11:24:07.247Z]      ✅ NEW association: 83246682351 → 92960558289
+[2025-09-19T11:24:07.250Z]      ✅ NEW association: 83246682351 → 92960567515
+[2025-09-19T11:24:07.252Z]      ✅ NEW association: 83246682351 → 92960583871
+[2025-09-19T11:24:07.254Z]      ✅ NEW association: 83246682351 → 93035854012
+[2025-09-19T11:24:07.256Z]      ✅ NEW association: 83246682351 → 93035882735
+[2025-09-19T11:24:07.258Z]      ✅ NEW association: 83246682351 → 125369123012
+[2025-09-19T11:24:07.259Z]      ✅ NEW association: 83246682351 → 168155444473
+[2025-09-19T11:24:07.261Z]      ✅ NEW association: 83246682351 → 186343072956
+[2025-09-19T11:24:07.263Z]      ✅ NEW association: 83246682351 → 190941245631
+[2025-09-19T11:24:07.265Z]      ✅ NEW association: 83246682351 → 227395648742
+[2025-09-19T11:24:07.266Z]    🔗 Contact 682351 has 1 deal associations
+[2025-09-19T11:24:07.268Z]      ✅ NEW association: 682351 → 147809055957
+[2025-09-19T11:24:07.268Z]    🔗 Contact 86210156784 has 1 deal associations
+[2025-09-19T11:24:07.271Z] ERROR:      ❌ Failed to save association 86210156784 → 37291243709:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:07.271Z]    🔗 Contact 399816087762 has 1 deal associations
+[2025-09-19T11:24:07.274Z]      ✅ NEW association: 399816087762 → 284141611226
+[2025-09-19T11:24:07.274Z]    🔗 Contact 403744835775 has 1 deal associations
+[2025-09-19T11:24:07.276Z]      ✅ NEW association: 403744835775 → 286653439201
+[2025-09-19T11:24:07.276Z]    🔗 Contact 346075533513 has 1 deal associations
+[2025-09-19T11:24:07.278Z]      ✅ NEW association: 346075533513 → 249853659373
+[2025-09-19T11:24:07.279Z]    🔗 Contact 403935283404 has 1 deal associations
+[2025-09-19T11:24:07.281Z]      ✅ NEW association: 403935283404 → 286711331052
+[2025-09-19T11:24:07.281Z]    🔗 Contact 30853952455 has 1 deal associations
+[2025-09-19T11:24:07.283Z]      ✅ NEW association: 30853952455 → 16502495459
+[2025-09-19T11:24:07.283Z]    🔗 Contact 416235310272 has 1 deal associations
+[2025-09-19T11:24:07.285Z]      ✅ NEW association: 416235310272 → 294316109049
+[2025-09-19T11:24:07.286Z]    🔗 Contact 416650859733 has 1 deal associations
+[2025-09-19T11:24:07.287Z]      ✅ NEW association: 416650859733 → 294655370459
+[2025-09-19T11:24:07.288Z]    🔗 Contact 416942507238 has 1 deal associations
+[2025-09-19T11:24:07.290Z]      ✅ NEW association: 416942507238 → 294801283293
+[2025-09-19T11:24:07.290Z]    🔗 Contact 414978430162 has 1 deal associations
+[2025-09-19T11:24:07.292Z]      ✅ NEW association: 414978430162 → 293575386311
+[2025-09-19T11:24:07.292Z]    🔗 Contact 414801967347 has 1 deal associations
+[2025-09-19T11:24:07.294Z]      ✅ NEW association: 414801967347 → 293532074191
+[2025-09-19T11:24:07.294Z]    🔗 Contact 415082856676 has 1 deal associations
+[2025-09-19T11:24:07.296Z]      ✅ NEW association: 415082856676 → 293558329539
+[2025-09-19T11:24:07.296Z]    🔗 Contact 414019621063 has 1 deal associations
+[2025-09-19T11:24:07.298Z]      ✅ NEW association: 414019621063 → 293000952001
+[2025-09-19T11:24:07.298Z]    🔗 Contact 416731580620 has 1 deal associations
+[2025-09-19T11:24:07.300Z]      ✅ NEW association: 416731580620 → 294692395217
+[2025-09-19T11:24:07.301Z]    🔗 Contact 429372026078 has 2 deal associations
+[2025-09-19T11:24:07.302Z]      ✅ NEW association: 429372026078 → 232850822365
+[2025-09-19T11:24:07.304Z]      ✅ NEW association: 429372026078 → 302024417489
+[2025-09-19T11:24:07.304Z]    🔗 Contact 364208564466 has 1 deal associations
+[2025-09-19T11:24:07.306Z]      ✅ NEW association: 364208564466 → 259869123819
+[2025-09-19T11:24:07.306Z]    🔗 Contact 79149036750 has 4 deal associations
+[2025-09-19T11:24:07.307Z]      ✅ NEW association: 79149036750 → 16056277726
+[2025-09-19T11:24:07.308Z]      ✅ NEW association: 79149036750 → 16304487913
+[2025-09-19T11:24:07.310Z]      ✅ NEW association: 79149036750 → 201320068300
+[2025-09-19T11:24:07.311Z]      ✅ NEW association: 79149036750 → 247828348123
+[2025-09-19T11:24:07.311Z]    🔗 Contact 420515056865 has 1 deal associations
+[2025-09-19T11:24:07.317Z]      ✅ NEW association: 420515056865 → 296936539365
+[2025-09-19T11:24:07.317Z]    🔗 Contact 364031939786 has 1 deal associations
+[2025-09-19T11:24:07.319Z]      ✅ NEW association: 364031939786 → 262735424732
+[2025-09-19T11:24:07.319Z]    🔗 Contact 358454988016 has 1 deal associations
+[2025-09-19T11:24:07.321Z]      ✅ NEW association: 358454988016 → 259441324246
+[2025-09-19T11:24:07.321Z]    🔗 Contact 7451894720 has 3 deal associations
+[2025-09-19T11:24:07.323Z]      ✅ NEW association: 7451894720 → 13446864607
+[2025-09-19T11:24:07.325Z]      ✅ NEW association: 7451894720 → 14208293614
+[2025-09-19T11:24:07.330Z]      ✅ NEW association: 7451894720 → 45646097594
+[2025-09-19T11:24:07.330Z]    🔗 Contact 360047047880 has 1 deal associations
+[2025-09-19T11:24:07.332Z]      ✅ NEW association: 360047047880 → 260470362317
+[2025-09-19T11:24:07.332Z]    🔗 Contact 5397651 has 1 deal associations
+[2025-09-19T11:24:07.335Z]      ✅ NEW association: 5397651 → 8520656838
+[2025-09-19T11:24:07.335Z]    🔗 Contact 413688719582 has 1 deal associations
+[2025-09-19T11:24:07.337Z]      ✅ NEW association: 413688719582 → 292724203762
+[2025-09-19T11:24:07.337Z]    🔗 Contact 405674600634 has 1 deal associations
+[2025-09-19T11:24:07.340Z]      ✅ NEW association: 405674600634 → 287958839509
+[2025-09-19T11:24:07.340Z]    🔗 Contact 409653094629 has 1 deal associations
+[2025-09-19T11:24:07.342Z]      ✅ NEW association: 409653094629 → 290482426048
+[2025-09-19T11:24:07.342Z]    🔗 Contact 310967067872 has 2 deal associations
+[2025-09-19T11:24:07.345Z]      ✅ NEW association: 310967067872 → 240386626751
+[2025-09-19T11:24:07.347Z]      ✅ NEW association: 310967067872 → 246062862539
+[2025-09-19T11:24:07.547Z]    📦 Processing batch 14/20
+[2025-09-19T11:24:07.749Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:07.749Z]    🔗 Contact 412910705897 has 1 deal associations
+[2025-09-19T11:24:07.752Z]      ✅ NEW association: 412910705897 → 292428907728
+[2025-09-19T11:24:07.752Z]    🔗 Contact 413691293944 has 1 deal associations
+[2025-09-19T11:24:07.753Z]      ✅ NEW association: 413691293944 → 292934041845
+[2025-09-19T11:24:07.753Z]    🔗 Contact 367351 has 1 deal associations
+[2025-09-19T11:24:07.755Z]      ✅ NEW association: 367351 → 6142243006
+[2025-09-19T11:24:07.755Z]    🔗 Contact 386456564945 has 2 deal associations
+[2025-09-19T11:24:07.758Z]      ✅ NEW association: 386456564945 → 267341916405
+[2025-09-19T11:24:07.760Z]      ✅ NEW association: 386456564945 → 275582627018
+[2025-09-19T11:24:07.760Z]    🔗 Contact 412298496199 has 1 deal associations
+[2025-09-19T11:24:07.761Z]      ✅ NEW association: 412298496199 → 291909229802
+[2025-09-19T11:24:07.762Z]    🔗 Contact 408484016354 has 1 deal associations
+[2025-09-19T11:24:07.763Z]      ✅ NEW association: 408484016354 → 291389950174
+[2025-09-19T11:24:07.764Z]    🔗 Contact 129752146137 has 2 deal associations
+[2025-09-19T11:24:07.766Z]      ✅ NEW association: 129752146137 → 76962031847
+[2025-09-19T11:24:07.767Z]      ✅ NEW association: 129752146137 → 89750506736
+[2025-09-19T11:24:07.767Z]    🔗 Contact 203736468727 has 2 deal associations
+[2025-09-19T11:24:07.769Z]      ✅ NEW association: 203736468727 → 127842240708
+[2025-09-19T11:24:07.770Z]      ✅ NEW association: 203736468727 → 150912945351
+[2025-09-19T11:24:07.770Z]    🔗 Contact 2329301 has 10 deal associations
+[2025-09-19T11:24:07.772Z]      ✅ NEW association: 2329301 → 7254443502
+[2025-09-19T11:24:07.773Z]      ✅ NEW association: 2329301 → 56254534842
+[2025-09-19T11:24:07.775Z]      ✅ NEW association: 2329301 → 74192228586
+[2025-09-19T11:24:07.776Z]      ✅ NEW association: 2329301 → 75055213807
+[2025-09-19T11:24:07.778Z]      ✅ NEW association: 2329301 → 75055222994
+[2025-09-19T11:24:07.779Z]      ✅ NEW association: 2329301 → 115126142187
+[2025-09-19T11:24:07.781Z]      ✅ NEW association: 2329301 → 132146604233
+[2025-09-19T11:24:07.783Z]      ✅ NEW association: 2329301 → 141989177565
+[2025-09-19T11:24:07.784Z]      ✅ NEW association: 2329301 → 180289026267
+[2025-09-19T11:24:07.786Z]      ✅ NEW association: 2329301 → 287025854698
+[2025-09-19T11:24:07.786Z]    🔗 Contact 10862951 has 1 deal associations
+[2025-09-19T11:24:07.787Z]      ✅ NEW association: 10862951 → 11114989544
+[2025-09-19T11:24:07.787Z]    🔗 Contact 128553785562 has 1 deal associations
+[2025-09-19T11:24:07.788Z]      ✅ NEW association: 128553785562 → 71145094372
+[2025-09-19T11:24:07.788Z]    🔗 Contact 314797500625 has 1 deal associations
+[2025-09-19T11:24:07.789Z]      ✅ NEW association: 314797500625 → 225230075125
+[2025-09-19T11:24:07.789Z]    🔗 Contact 191870567643 has 1 deal associations
+[2025-09-19T11:24:07.791Z]      ✅ NEW association: 191870567643 → 236266939632
+[2025-09-19T11:24:07.791Z]    🔗 Contact 156040143097 has 1 deal associations
+[2025-09-19T11:24:07.793Z]      ✅ NEW association: 156040143097 → 107608295613
+[2025-09-19T11:24:07.793Z]    🔗 Contact 296320953577 has 1 deal associations
+[2025-09-19T11:24:07.794Z]      ✅ NEW association: 296320953577 → 209919619302
+[2025-09-19T11:24:07.794Z]    🔗 Contact 222089521377 has 2 deal associations
+[2025-09-19T11:24:07.795Z]      ✅ NEW association: 222089521377 → 10725737681
+[2025-09-19T11:24:07.797Z]      ✅ NEW association: 222089521377 → 157966247106
+[2025-09-19T11:24:07.797Z]    🔗 Contact 390371929333 has 1 deal associations
+[2025-09-19T11:24:07.798Z]      ✅ NEW association: 390371929333 → 278309490895
+[2025-09-19T11:24:07.798Z]    🔗 Contact 341813472481 has 2 deal associations
+[2025-09-19T11:24:07.800Z]      ✅ NEW association: 341813472481 → 242917375203
+[2025-09-19T11:24:07.801Z]      ✅ NEW association: 341813472481 → 252654469328
+[2025-09-19T11:24:07.801Z]    🔗 Contact 199490689230 has 1 deal associations
+[2025-09-19T11:24:07.802Z]      ✅ NEW association: 199490689230 → 132146611390
+[2025-09-19T11:24:07.802Z]    🔗 Contact 26973256396 has 6 deal associations
+[2025-09-19T11:24:07.804Z]      ✅ NEW association: 26973256396 → 15858287607
+[2025-09-19T11:24:07.805Z]      ✅ NEW association: 26973256396 → 16166327522
+[2025-09-19T11:24:07.807Z]      ✅ NEW association: 26973256396 → 16255430362
+[2025-09-19T11:24:07.808Z]      ✅ NEW association: 26973256396 → 16255457006
+[2025-09-19T11:24:07.810Z]      ✅ NEW association: 26973256396 → 152868274410
+[2025-09-19T11:24:07.811Z]      ✅ NEW association: 26973256396 → 237544352971
+[2025-09-19T11:24:07.812Z]    🔗 Contact 409301935337 has 1 deal associations
+[2025-09-19T11:24:07.813Z]      ✅ NEW association: 409301935337 → 287920634095
+[2025-09-19T11:24:07.813Z]    🔗 Contact 282484568288 has 1 deal associations
+[2025-09-19T11:24:07.815Z]      ✅ NEW association: 282484568288 → 198533965040
+[2025-09-19T11:24:07.815Z]    🔗 Contact 234656156903 has 1 deal associations
+[2025-09-19T11:24:07.816Z]      ✅ NEW association: 234656156903 → 286721159375
+[2025-09-19T11:24:07.816Z]    🔗 Contact 430740372693 has 1 deal associations
+[2025-09-19T11:24:07.818Z]      ✅ NEW association: 430740372693 → 302870868162
+[2025-09-19T11:24:07.818Z]    🔗 Contact 411165656253 has 1 deal associations
+[2025-09-19T11:24:07.819Z]      ✅ NEW association: 411165656253 → 291473536194
+[2025-09-19T11:24:07.819Z]    🔗 Contact 412133085379 has 1 deal associations
+[2025-09-19T11:24:07.820Z]      ✅ NEW association: 412133085379 → 292045594844
+[2025-09-19T11:24:07.820Z]    🔗 Contact 420371355867 has 1 deal associations
+[2025-09-19T11:24:07.822Z]      ✅ NEW association: 420371355867 → 296921662706
+[2025-09-19T11:24:07.822Z]    🔗 Contact 289450575064 has 1 deal associations
+[2025-09-19T11:24:07.824Z]      ✅ NEW association: 289450575064 → 204293420228
+[2025-09-19T11:24:07.824Z]    🔗 Contact 4239501 has 1 deal associations
+[2025-09-19T11:24:07.825Z]      ✅ NEW association: 4239501 → 7641431025
+[2025-09-19T11:24:07.825Z]    🔗 Contact 399117351116 has 1 deal associations
+[2025-09-19T11:24:07.827Z]      ✅ NEW association: 399117351116 → 283569031414
+[2025-09-19T11:24:07.827Z]    🔗 Contact 186521977034 has 2 deal associations
+[2025-09-19T11:24:07.828Z]      ✅ NEW association: 186521977034 → 121726274790
+[2025-09-19T11:24:07.830Z]      ✅ NEW association: 186521977034 → 126689645800
+[2025-09-19T11:24:07.830Z]    🔗 Contact 38445291734 has 1 deal associations
+[2025-09-19T11:24:07.831Z]      ✅ NEW association: 38445291734 → 18848054261
+[2025-09-19T11:24:07.831Z]    🔗 Contact 338736197853 has 1 deal associations
+[2025-09-19T11:24:07.834Z]      ✅ NEW association: 338736197853 → 244562232540
+[2025-09-19T11:24:07.834Z]    🔗 Contact 405720801523 has 1 deal associations
+[2025-09-19T11:24:07.835Z]      ✅ NEW association: 405720801523 → 287905786103
+[2025-09-19T11:24:07.835Z]    🔗 Contact 422999566555 has 1 deal associations
+[2025-09-19T11:24:07.837Z]      ✅ NEW association: 422999566555 → 297939710175
+[2025-09-19T11:24:07.837Z]    🔗 Contact 5411201 has 1 deal associations
+[2025-09-19T11:24:07.840Z]      ✅ NEW association: 5411201 → 8538247894
+[2025-09-19T11:24:07.840Z]    🔗 Contact 407476359394 has 1 deal associations
+[2025-09-19T11:24:07.842Z]      ✅ NEW association: 407476359394 → 289081545974
+[2025-09-19T11:24:07.843Z]    🔗 Contact 405565062336 has 1 deal associations
+[2025-09-19T11:24:07.845Z]      ✅ NEW association: 405565062336 → 290299912413
+[2025-09-19T11:24:07.846Z]    🔗 Contact 258254095550 has 1 deal associations
+[2025-09-19T11:24:07.848Z]      ✅ NEW association: 258254095550 → 178343514310
+[2025-09-19T11:24:07.848Z]    🔗 Contact 367663568089 has 2 deal associations
+[2025-09-19T11:24:07.850Z]      ✅ NEW association: 367663568089 → 255046566117
+[2025-09-19T11:24:07.852Z]      ✅ NEW association: 367663568089 → 274461753573
+[2025-09-19T11:24:07.852Z]    🔗 Contact 156571439322 has 1 deal associations
+[2025-09-19T11:24:07.854Z]      ✅ NEW association: 156571439322 → 97454330057
+[2025-09-19T11:24:07.854Z]    🔗 Contact 409958842601 has 1 deal associations
+[2025-09-19T11:24:07.856Z]      ✅ NEW association: 409958842601 → 290638170319
+[2025-09-19T11:24:07.856Z]    🔗 Contact 410055197897 has 1 deal associations
+[2025-09-19T11:24:07.858Z]      ✅ NEW association: 410055197897 → 290638585056
+[2025-09-19T11:24:07.858Z]    🔗 Contact 409993498823 has 1 deal associations
+[2025-09-19T11:24:07.860Z]      ✅ NEW association: 409993498823 → 292137833700
+[2025-09-19T11:24:07.860Z]    🔗 Contact 410107898061 has 1 deal associations
+[2025-09-19T11:24:07.863Z]      ✅ NEW association: 410107898061 → 290680861914
+[2025-09-19T11:24:07.863Z]    🔗 Contact 411155278073 has 1 deal associations
+[2025-09-19T11:24:07.865Z]      ✅ NEW association: 411155278073 → 291431783619
+[2025-09-19T11:24:07.865Z]    🔗 Contact 310489576671 has 1 deal associations
+[2025-09-19T11:24:07.867Z]      ✅ NEW association: 310489576671 → 221959616737
+[2025-09-19T11:24:07.867Z]    🔗 Contact 408024365298 has 1 deal associations
+[2025-09-19T11:24:07.868Z]      ✅ NEW association: 408024365298 → 292061674698
+[2025-09-19T11:24:07.868Z]    🔗 Contact 403570342078 has 1 deal associations
+[2025-09-19T11:24:07.870Z]      ✅ NEW association: 403570342078 → 286514818271
+[2025-09-19T11:24:07.870Z]    🔗 Contact 108863235288 has 3 deal associations
+[2025-09-19T11:24:07.871Z]      ✅ NEW association: 108863235288 → 53981062375
+[2025-09-19T11:24:07.873Z] ERROR:      ❌ Failed to save association 108863235288 → 70387036371:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:07.874Z]      ✅ NEW association: 108863235288 → 297617581295
+[2025-09-19T11:24:07.874Z]    🔗 Contact 24392415960 has 3 deal associations
+[2025-09-19T11:24:07.876Z]      ✅ NEW association: 24392415960 → 15637459151
+[2025-09-19T11:24:07.877Z]      ✅ NEW association: 24392415960 → 16622226627
+[2025-09-19T11:24:07.879Z]      ✅ NEW association: 24392415960 → 21736615644
+[2025-09-19T11:24:07.879Z]    🔗 Contact 329313277129 has 2 deal associations
+[2025-09-19T11:24:07.880Z]      ✅ NEW association: 329313277129 → 241826572531
+[2025-09-19T11:24:07.882Z]      ✅ NEW association: 329313277129 → 301966582000
+[2025-09-19T11:24:07.882Z]    🔗 Contact 394612823237 has 1 deal associations
+[2025-09-19T11:24:07.883Z]      ✅ NEW association: 394612823237 → 288799139034
+[2025-09-19T11:24:07.883Z]    🔗 Contact 406870885568 has 1 deal associations
+[2025-09-19T11:24:07.884Z]      ✅ NEW association: 406870885568 → 288623419630
+[2025-09-19T11:24:07.884Z]    🔗 Contact 406504664310 has 1 deal associations
+[2025-09-19T11:24:07.886Z]      ✅ NEW association: 406504664310 → 288462321879
+[2025-09-19T11:24:07.886Z]    🔗 Contact 111726781682 has 1 deal associations
+[2025-09-19T11:24:07.887Z]      ✅ NEW association: 111726781682 → 56585172217
+[2025-09-19T11:24:07.887Z]    🔗 Contact 364248241396 has 1 deal associations
+[2025-09-19T11:24:07.889Z]      ✅ NEW association: 364248241396 → 262792875233
+[2025-09-19T11:24:07.889Z]    🔗 Contact 32255857903 has 2 deal associations
+[2025-09-19T11:24:07.895Z]      ✅ NEW association: 32255857903 → 16542043361
+[2025-09-19T11:24:07.902Z]      ✅ NEW association: 32255857903 → 71353137388
+[2025-09-19T11:24:07.903Z]    🔗 Contact 286446875887 has 1 deal associations
+[2025-09-19T11:24:07.905Z]      ✅ NEW association: 286446875887 → 201637436660
+[2025-09-19T11:24:07.905Z]    🔗 Contact 4736501 has 1 deal associations
+[2025-09-19T11:24:07.906Z]      ✅ NEW association: 4736501 → 8342549455
+[2025-09-19T11:24:07.907Z]    🔗 Contact 24318322376 has 1 deal associations
+[2025-09-19T11:24:07.908Z]      ✅ NEW association: 24318322376 → 15566072816
+[2025-09-19T11:24:07.908Z]    🔗 Contact 406726693063 has 1 deal associations
+[2025-09-19T11:24:07.910Z]      ✅ NEW association: 406726693063 → 288590743746
+[2025-09-19T11:24:07.910Z]    🔗 Contact 406075684035 has 1 deal associations
+[2025-09-19T11:24:07.911Z]      ✅ NEW association: 406075684035 → 288182725856
+[2025-09-19T11:24:07.911Z]    🔗 Contact 384369961174 has 1 deal associations
+[2025-09-19T11:24:07.917Z]      ✅ NEW association: 384369961174 → 288312316102
+[2025-09-19T11:24:07.917Z]    🔗 Contact 407566461146 has 1 deal associations
+[2025-09-19T11:24:07.918Z]      ✅ NEW association: 407566461146 → 289154014453
+[2025-09-19T11:24:07.918Z]    🔗 Contact 406557347039 has 1 deal associations
+[2025-09-19T11:24:07.920Z]      ✅ NEW association: 406557347039 → 288332807391
+[2025-09-19T11:24:07.920Z]    🔗 Contact 44289247680 has 2 deal associations
+[2025-09-19T11:24:07.921Z]      ✅ NEW association: 44289247680 → 21774360290
+[2025-09-19T11:24:07.922Z]      ✅ NEW association: 44289247680 → 173519684857
+[2025-09-19T11:24:07.923Z]    🔗 Contact 8008951 has 3 deal associations
+[2025-09-19T11:24:07.924Z]      ✅ NEW association: 8008951 → 12034816738
+[2025-09-19T11:24:07.925Z]      ✅ NEW association: 8008951 → 51293846722
+[2025-09-19T11:24:07.927Z]      ✅ NEW association: 8008951 → 295858268396
+[2025-09-19T11:24:07.927Z]    🔗 Contact 144530129118 has 2 deal associations
+[2025-09-19T11:24:07.928Z]      ✅ NEW association: 144530129118 → 85511478471
+[2025-09-19T11:24:07.930Z]      ✅ NEW association: 144530129118 → 88773694702
+[2025-09-19T11:24:07.930Z]    🔗 Contact 2602301 has 1 deal associations
+[2025-09-19T11:24:07.931Z]      ✅ NEW association: 2602301 → 6907215585
+[2025-09-19T11:24:07.931Z]    🔗 Contact 44451 has 13 deal associations
+[2025-09-19T11:24:07.933Z]      ✅ NEW association: 44451 → 70372489462
+[2025-09-19T11:24:07.934Z]      ✅ NEW association: 44451 → 70387053754
+[2025-09-19T11:24:07.936Z]      ✅ NEW association: 44451 → 70387092708
+[2025-09-19T11:24:07.938Z]      ✅ NEW association: 44451 → 76068556020
+[2025-09-19T11:24:07.940Z]      ✅ NEW association: 44451 → 92960371904
+[2025-09-19T11:24:07.942Z]      ✅ NEW association: 44451 → 144693173493
+[2025-09-19T11:24:07.943Z]      ✅ NEW association: 44451 → 144693175508
+[2025-09-19T11:24:07.944Z]      ✅ NEW association: 44451 → 156851304654
+[2025-09-19T11:24:07.953Z]      ✅ NEW association: 44451 → 180581249252
+[2025-09-19T11:24:07.955Z]      ✅ NEW association: 44451 → 205110717679
+[2025-09-19T11:24:07.959Z]      ✅ NEW association: 44451 → 258180610272
+[2025-09-19T11:24:07.961Z]      ✅ NEW association: 44451 → 258180612288
+[2025-09-19T11:24:07.963Z]      ✅ NEW association: 44451 → 258253738182
+[2025-09-19T11:24:07.963Z]    🔗 Contact 385346692296 has 1 deal associations
+[2025-09-19T11:24:07.965Z]      ✅ NEW association: 385346692296 → 275513079011
+[2025-09-19T11:24:07.966Z]    🔗 Contact 364564074718 has 1 deal associations
+[2025-09-19T11:24:07.967Z]      ✅ NEW association: 364564074718 → 263011807444
+[2025-09-19T11:24:07.967Z]    🔗 Contact 258993433826 has 1 deal associations
+[2025-09-19T11:24:07.969Z]      ✅ NEW association: 258993433826 → 178511257788
+[2025-09-19T11:24:07.969Z]    🔗 Contact 294420957418 has 4 deal associations
+[2025-09-19T11:24:07.971Z]      ✅ NEW association: 294420957418 → 208516043992
+[2025-09-19T11:24:07.972Z]      ✅ NEW association: 294420957418 → 218356485368
+[2025-09-19T11:24:07.973Z]      ✅ NEW association: 294420957418 → 287958868215
+[2025-09-19T11:24:07.975Z]      ✅ NEW association: 294420957418 → 293493750977
+[2025-09-19T11:24:07.975Z]    🔗 Contact 411920641229 has 1 deal associations
+[2025-09-19T11:24:07.976Z]      ✅ NEW association: 411920641229 → 183657267447
+[2025-09-19T11:24:07.977Z]    🔗 Contact 237541837038 has 1 deal associations
+[2025-09-19T11:24:07.978Z]      ✅ NEW association: 237541837038 → 163523932404
+[2025-09-19T11:24:07.978Z]    🔗 Contact 406790371557 has 1 deal associations
+[2025-09-19T11:24:07.980Z]      ✅ NEW association: 406790371557 → 288589797582
+[2025-09-19T11:24:07.980Z]    🔗 Contact 390101 has 1 deal associations
+[2025-09-19T11:24:07.984Z]      ✅ NEW association: 390101 → 6149885380
+[2025-09-19T11:24:07.984Z]    🔗 Contact 369534533848 has 1 deal associations
+[2025-09-19T11:24:07.985Z]      ✅ NEW association: 369534533848 → 265222827210
+[2025-09-19T11:24:07.985Z]    🔗 Contact 347157622000 has 2 deal associations
+[2025-09-19T11:24:07.987Z]      ✅ NEW association: 347157622000 → 251281294536
+[2025-09-19T11:24:07.988Z]      ✅ NEW association: 347157622000 → 251487651012
+[2025-09-19T11:24:07.988Z]    🔗 Contact 239785470151 has 3 deal associations
+[2025-09-19T11:24:07.990Z]      ✅ NEW association: 239785470151 → 164469414125
+[2025-09-19T11:24:07.991Z]      ✅ NEW association: 239785470151 → 193920604376
+[2025-09-19T11:24:07.993Z]      ✅ NEW association: 239785470151 → 201285322957
+[2025-09-19T11:24:07.993Z]    🔗 Contact 231692904641 has 2 deal associations
+[2025-09-19T11:24:07.995Z]      ✅ NEW association: 231692904641 → 158586228934
+[2025-09-19T11:24:07.997Z]      ✅ NEW association: 231692904641 → 174509505767
+[2025-09-19T11:24:07.997Z]    🔗 Contact 391980123364 has 1 deal associations
+[2025-09-19T11:24:07.998Z]      ✅ NEW association: 391980123364 → 279050149087
+[2025-09-19T11:24:07.998Z]    🔗 Contact 375613248731 has 1 deal associations
+[2025-09-19T11:24:08.000Z]      ✅ NEW association: 375613248731 → 270790492365
+[2025-09-19T11:24:08.000Z]    🔗 Contact 205523357932 has 1 deal associations
+[2025-09-19T11:24:08.001Z]      ✅ NEW association: 205523357932 → 134767840480
+[2025-09-19T11:24:08.001Z]    🔗 Contact 386456199381 has 1 deal associations
+[2025-09-19T11:24:08.003Z]      ✅ NEW association: 386456199381 → 276295075038
+[2025-09-19T11:24:08.003Z]    🔗 Contact 11163501 has 2 deal associations
+[2025-09-19T11:24:08.005Z]      ✅ NEW association: 11163501 → 15603250362
+[2025-09-19T11:24:08.007Z]      ✅ NEW association: 11163501 → 270793061610
+[2025-09-19T11:24:08.007Z]    🔗 Contact 378336975050 has 1 deal associations
+[2025-09-19T11:24:08.008Z]      ✅ NEW association: 378336975050 → 270790420694
+[2025-09-19T11:24:08.008Z]    🔗 Contact 423006020813 has 1 deal associations
+[2025-09-19T11:24:08.009Z]      ✅ NEW association: 423006020813 → 298378601697
+[2025-09-19T11:24:08.010Z]    🔗 Contact 274702114015 has 5 deal associations
+[2025-09-19T11:24:08.011Z] ERROR:      ❌ Failed to save association 274702114015 → 66923251912:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.013Z] ERROR:      ❌ Failed to save association 274702114015 → 71298735297:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.015Z]      ✅ NEW association: 274702114015 → 167702998248
+[2025-09-19T11:24:08.017Z]      ✅ NEW association: 274702114015 → 191847490763
+[2025-09-19T11:24:08.018Z]      ✅ NEW association: 274702114015 → 195973174460
+[2025-09-19T11:24:08.018Z]    🔗 Contact 31382254305 has 1 deal associations
+[2025-09-19T11:24:08.020Z]      ✅ NEW association: 31382254305 → 16387090658
+[2025-09-19T11:24:08.020Z]    🔗 Contact 401098891483 has 1 deal associations
+[2025-09-19T11:24:08.021Z]      ✅ NEW association: 401098891483 → 286828408034
+[2025-09-19T11:24:08.021Z]    🔗 Contact 5952817 has 1 deal associations
+[2025-09-19T11:24:08.023Z]      ✅ NEW association: 5952817 → 285692526803
+[2025-09-19T11:24:08.023Z]    🔗 Contact 37201 has 18 deal associations
+[2025-09-19T11:24:08.024Z]      ✅ NEW association: 37201 → 5823548380
+[2025-09-19T11:24:08.026Z]      ✅ NEW association: 37201 → 6897753800
+[2025-09-19T11:24:08.027Z]      ✅ NEW association: 37201 → 6904523474
+[2025-09-19T11:24:08.029Z]      ✅ NEW association: 37201 → 6932408825
+[2025-09-19T11:24:08.030Z]      ✅ NEW association: 37201 → 6937912011
+[2025-09-19T11:24:08.031Z]      ✅ NEW association: 37201 → 7097916648
+[2025-09-19T11:24:08.033Z]      ✅ NEW association: 37201 → 7363897297
+[2025-09-19T11:24:08.035Z]      ✅ NEW association: 37201 → 8345428416
+[2025-09-19T11:24:08.036Z]      ✅ NEW association: 37201 → 9347637199
+[2025-09-19T11:24:08.037Z]      ✅ NEW association: 37201 → 9865363423
+[2025-09-19T11:24:08.039Z]      ✅ NEW association: 37201 → 9880193743
+[2025-09-19T11:24:08.040Z]      ✅ NEW association: 37201 → 112136726735
+[2025-09-19T11:24:08.042Z]      ✅ NEW association: 37201 → 165641936094
+[2025-09-19T11:24:08.043Z]      ✅ NEW association: 37201 → 166360880316
+[2025-09-19T11:24:08.044Z]      ✅ NEW association: 37201 → 199558319315
+[2025-09-19T11:24:08.046Z]      ✅ NEW association: 37201 → 219200087265
+[2025-09-19T11:24:08.047Z]      ✅ NEW association: 37201 → 253868086517
+[2025-09-19T11:24:08.049Z]      ✅ NEW association: 37201 → 256895337712
+[2025-09-19T11:24:08.049Z]    🔗 Contact 420072020209 has 1 deal associations
+[2025-09-19T11:24:08.050Z]      ✅ NEW association: 420072020209 → 296584412374
+[2025-09-19T11:24:08.050Z]    🔗 Contact 391413129407 has 1 deal associations
+[2025-09-19T11:24:08.052Z]      ✅ NEW association: 391413129407 → 278944181485
+[2025-09-19T11:24:08.052Z]    🔗 Contact 409800407280 has 1 deal associations
+[2025-09-19T11:24:08.053Z]      ✅ NEW association: 409800407280 → 290018183400
+[2025-09-19T11:24:08.053Z]    🔗 Contact 383934871796 has 1 deal associations
+[2025-09-19T11:24:08.055Z]      ✅ NEW association: 383934871796 → 272078619839
+[2025-09-19T11:24:08.055Z]    🔗 Contact 289395696872 has 1 deal associations
+[2025-09-19T11:24:08.056Z]      ✅ NEW association: 289395696872 → 204149023972
+[2025-09-19T11:24:08.257Z]    📦 Processing batch 15/20
+[2025-09-19T11:24:08.462Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:08.463Z]    🔗 Contact 163246400700 has 1 deal associations
+[2025-09-19T11:24:08.464Z]      ✅ NEW association: 163246400700 → 103587315943
+[2025-09-19T11:24:08.464Z]    🔗 Contact 97021697246 has 1 deal associations
+[2025-09-19T11:24:08.466Z] ERROR:      ❌ Failed to save association 97021697246 → 43967986930:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.466Z]    🔗 Contact 346255661286 has 1 deal associations
+[2025-09-19T11:24:08.468Z]      ✅ NEW association: 346255661286 → 246062821614
+[2025-09-19T11:24:08.468Z]    🔗 Contact 402970160366 has 1 deal associations
+[2025-09-19T11:24:08.469Z]      ✅ NEW association: 402970160366 → 280346335472
+[2025-09-19T11:24:08.469Z]    🔗 Contact 397628781762 has 1 deal associations
+[2025-09-19T11:24:08.470Z]      ✅ NEW association: 397628781762 → 284940597473
+[2025-09-19T11:24:08.471Z]    🔗 Contact 396244268244 has 1 deal associations
+[2025-09-19T11:24:08.472Z]      ✅ NEW association: 396244268244 → 286148842708
+[2025-09-19T11:24:08.472Z]    🔗 Contact 279661594826 has 1 deal associations
+[2025-09-19T11:24:08.474Z]      ✅ NEW association: 279661594826 → 196037017837
+[2025-09-19T11:24:08.474Z]    🔗 Contact 335026136272 has 1 deal associations
+[2025-09-19T11:24:08.475Z]      ✅ NEW association: 335026136272 → 241389516989
+[2025-09-19T11:24:08.476Z]    🔗 Contact 401057551589 has 1 deal associations
+[2025-09-19T11:24:08.477Z]      ✅ NEW association: 401057551589 → 285007057119
+[2025-09-19T11:24:08.477Z]    🔗 Contact 404593973468 has 1 deal associations
+[2025-09-19T11:24:08.479Z]      ✅ NEW association: 404593973468 → 287856160965
+[2025-09-19T11:24:08.479Z]    🔗 Contact 265019265234 has 1 deal associations
+[2025-09-19T11:24:08.481Z]      ✅ NEW association: 265019265234 → 185056874732
+[2025-09-19T11:24:08.481Z]    🔗 Contact 7089601 has 1 deal associations
+[2025-09-19T11:24:08.483Z]      ✅ NEW association: 7089601 → 9220554708
+[2025-09-19T11:24:08.483Z]    🔗 Contact 350011829449 has 1 deal associations
+[2025-09-19T11:24:08.484Z]      ✅ NEW association: 350011829449 → 254450947275
+[2025-09-19T11:24:08.484Z]    🔗 Contact 397557578981 has 1 deal associations
+[2025-09-19T11:24:08.486Z]      ✅ NEW association: 397557578981 → 285024413896
+[2025-09-19T11:24:08.486Z]    🔗 Contact 9601 has 3 deal associations
+[2025-09-19T11:24:08.488Z]      ✅ NEW association: 9601 → 14745819601
+[2025-09-19T11:24:08.489Z]      ✅ NEW association: 9601 → 14745819852
+[2025-09-19T11:24:08.491Z]      ✅ NEW association: 9601 → 288156636395
+[2025-09-19T11:24:08.491Z]    🔗 Contact 366772157661 has 2 deal associations
+[2025-09-19T11:24:08.493Z]      ✅ NEW association: 366772157661 → 263527729378
+[2025-09-19T11:24:08.495Z]      ✅ NEW association: 366772157661 → 264820934905
+[2025-09-19T11:24:08.495Z]    🔗 Contact 396612126961 has 1 deal associations
+[2025-09-19T11:24:08.496Z]      ✅ NEW association: 396612126961 → 281845429449
+[2025-09-19T11:24:08.496Z]    🔗 Contact 401703530695 has 1 deal associations
+[2025-09-19T11:24:08.500Z]      ✅ NEW association: 401703530695 → 285214984412
+[2025-09-19T11:24:08.500Z]    🔗 Contact 401170249931 has 1 deal associations
+[2025-09-19T11:24:08.502Z]      ✅ NEW association: 401170249931 → 284898043087
+[2025-09-19T11:24:08.502Z]    🔗 Contact 400799471803 has 1 deal associations
+[2025-09-19T11:24:08.503Z]      ✅ NEW association: 400799471803 → 284701781188
+[2025-09-19T11:24:08.503Z]    🔗 Contact 5063601 has 4 deal associations
+[2025-09-19T11:24:08.505Z]      ✅ NEW association: 5063601 → 8376682221
+[2025-09-19T11:24:08.507Z] ERROR:      ❌ Failed to save association 5063601 → 32504900810:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.509Z] ERROR:      ❌ Failed to save association 5063601 → 63398729971:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.511Z]      ✅ NEW association: 5063601 → 168869554412
+[2025-09-19T11:24:08.511Z]    🔗 Contact 31777940462 has 1 deal associations
+[2025-09-19T11:24:08.513Z]      ✅ NEW association: 31777940462 → 16432118495
+[2025-09-19T11:24:08.513Z]    🔗 Contact 168369532116 has 3 deal associations
+[2025-09-19T11:24:08.514Z]      ✅ NEW association: 168369532116 → 7245027809
+[2025-09-19T11:24:08.516Z]      ✅ NEW association: 168369532116 → 107647631581
+[2025-09-19T11:24:08.518Z]      ✅ NEW association: 168369532116 → 110206833895
+[2025-09-19T11:24:08.518Z]    🔗 Contact 400633851094 has 1 deal associations
+[2025-09-19T11:24:08.520Z]      ✅ NEW association: 400633851094 → 284622983357
+[2025-09-19T11:24:08.520Z]    🔗 Contact 333933176007 has 1 deal associations
+[2025-09-19T11:24:08.522Z]      ✅ NEW association: 333933176007 → 240453853431
+[2025-09-19T11:24:08.522Z]    🔗 Contact 345686395116 has 1 deal associations
+[2025-09-19T11:24:08.524Z]      ✅ NEW association: 345686395116 → 250256252151
+[2025-09-19T11:24:08.524Z]    🔗 Contact 394288083169 has 1 deal associations
+[2025-09-19T11:24:08.526Z]      ✅ NEW association: 394288083169 → 280733766886
+[2025-09-19T11:24:08.526Z]    🔗 Contact 12851 has 6 deal associations
+[2025-09-19T11:24:08.529Z]      ✅ NEW association: 12851 → 6102272491
+[2025-09-19T11:24:08.531Z]      ✅ NEW association: 12851 → 6102274493
+[2025-09-19T11:24:08.532Z]      ✅ NEW association: 12851 → 6103039690
+[2025-09-19T11:24:08.534Z]      ✅ NEW association: 12851 → 6510255865
+[2025-09-19T11:24:08.536Z]      ✅ NEW association: 12851 → 7327244529
+[2025-09-19T11:24:08.537Z]      ✅ NEW association: 12851 → 8884759758
+[2025-09-19T11:24:08.537Z]    🔗 Contact 372175327445 has 1 deal associations
+[2025-09-19T11:24:08.538Z]      ✅ NEW association: 372175327445 → 264643256527
+[2025-09-19T11:24:08.539Z]    🔗 Contact 397975647471 has 1 deal associations
+[2025-09-19T11:24:08.540Z]      ✅ NEW association: 397975647471 → 282867998912
+[2025-09-19T11:24:08.540Z]    🔗 Contact 398543805639 has 1 deal associations
+[2025-09-19T11:24:08.542Z]      ✅ NEW association: 398543805639 → 283207612651
+[2025-09-19T11:24:08.542Z]    🔗 Contact 418604642526 has 1 deal associations
+[2025-09-19T11:24:08.543Z]      ✅ NEW association: 418604642526 → 295858263245
+[2025-09-19T11:24:08.543Z]    🔗 Contact 395675268341 has 1 deal associations
+[2025-09-19T11:24:08.545Z]      ✅ NEW association: 395675268341 → 281546314969
+[2025-09-19T11:24:08.545Z]    🔗 Contact 400046850259 has 1 deal associations
+[2025-09-19T11:24:08.546Z]      ✅ NEW association: 400046850259 → 284262602970
+[2025-09-19T11:24:08.547Z]    🔗 Contact 3126401 has 1 deal associations
+[2025-09-19T11:24:08.548Z]      ✅ NEW association: 3126401 → 7071902681
+[2025-09-19T11:24:08.548Z]    🔗 Contact 283411961042 has 1 deal associations
+[2025-09-19T11:24:08.549Z]      ✅ NEW association: 283411961042 → 199365201087
+[2025-09-19T11:24:08.549Z]    🔗 Contact 407477273793 has 1 deal associations
+[2025-09-19T11:24:08.551Z]      ✅ NEW association: 407477273793 → 289076069612
+[2025-09-19T11:24:08.551Z]    🔗 Contact 338857830590 has 1 deal associations
+[2025-09-19T11:24:08.552Z]      ✅ NEW association: 338857830590 → 244715500774
+[2025-09-19T11:24:08.552Z]    🔗 Contact 399131899098 has 1 deal associations
+[2025-09-19T11:24:08.554Z]      ✅ NEW association: 399131899098 → 283643522260
+[2025-09-19T11:24:08.554Z]    🔗 Contact 77142571237 has 1 deal associations
+[2025-09-19T11:24:08.556Z]      ✅ NEW association: 77142571237 → 31083089091
+[2025-09-19T11:24:08.556Z]    🔗 Contact 394513625323 has 1 deal associations
+[2025-09-19T11:24:08.557Z]      ✅ NEW association: 394513625323 → 280912143596
+[2025-09-19T11:24:08.558Z]    🔗 Contact 382173662426 has 1 deal associations
+[2025-09-19T11:24:08.559Z]      ✅ NEW association: 382173662426 → 268901919957
+[2025-09-19T11:24:08.559Z]    🔗 Contact 395496458444 has 1 deal associations
+[2025-09-19T11:24:08.560Z]      ✅ NEW association: 395496458444 → 281390953693
+[2025-09-19T11:24:08.560Z]    🔗 Contact 17801 has 3 deal associations
+[2025-09-19T11:24:08.562Z]      ✅ NEW association: 17801 → 6887432399
+[2025-09-19T11:24:08.564Z]      ✅ NEW association: 17801 → 7002227153
+[2025-09-19T11:24:08.565Z]      ✅ NEW association: 17801 → 7363500991
+[2025-09-19T11:24:08.566Z]    🔗 Contact 368585011413 has 1 deal associations
+[2025-09-19T11:24:08.567Z]      ✅ NEW association: 368585011413 → 265028587712
+[2025-09-19T11:24:08.567Z]    🔗 Contact 14394110918 has 1 deal associations
+[2025-09-19T11:24:08.569Z]      ✅ NEW association: 14394110918 → 13857671366
+[2025-09-19T11:24:08.569Z]    🔗 Contact 382964708582 has 1 deal associations
+[2025-09-19T11:24:08.571Z]      ✅ NEW association: 382964708582 → 279517804749
+[2025-09-19T11:24:08.571Z]    🔗 Contact 31264358852 has 1 deal associations
+[2025-09-19T11:24:08.573Z]      ✅ NEW association: 31264358852 → 16374476536
+[2025-09-19T11:24:08.573Z]    🔗 Contact 11259851 has 1 deal associations
+[2025-09-19T11:24:08.575Z]      ✅ NEW association: 11259851 → 11617135330
+[2025-09-19T11:24:08.575Z]    🔗 Contact 18323344342 has 1 deal associations
+[2025-09-19T11:24:08.577Z]      ✅ NEW association: 18323344342 → 14727404476
+[2025-09-19T11:24:08.577Z]    🔗 Contact 20233485538 has 1 deal associations
+[2025-09-19T11:24:08.579Z]      ✅ NEW association: 20233485538 → 15042961601
+[2025-09-19T11:24:08.579Z]    🔗 Contact 21450250733 has 1 deal associations
+[2025-09-19T11:24:08.581Z]      ✅ NEW association: 21450250733 → 15213611221
+[2025-09-19T11:24:08.581Z]    🔗 Contact 395621199034 has 1 deal associations
+[2025-09-19T11:24:08.583Z]      ✅ NEW association: 395621199034 → 281540061426
+[2025-09-19T11:24:08.583Z]    🔗 Contact 2500101 has 1 deal associations
+[2025-09-19T11:24:08.585Z]      ✅ NEW association: 2500101 → 6785486010
+[2025-09-19T11:24:08.585Z]    🔗 Contact 318334358731 has 1 deal associations
+[2025-09-19T11:24:08.587Z]      ✅ NEW association: 318334358731 → 228165969108
+[2025-09-19T11:24:08.587Z]    🔗 Contact 340621911231 has 1 deal associations
+[2025-09-19T11:24:08.589Z]      ✅ NEW association: 340621911231 → 246055404742
+[2025-09-19T11:24:08.590Z]    🔗 Contact 347510337781 has 1 deal associations
+[2025-09-19T11:24:08.592Z]      ✅ NEW association: 347510337781 → 237269052662
+[2025-09-19T11:24:08.592Z]    🔗 Contact 205102174438 has 2 deal associations
+[2025-09-19T11:24:08.594Z]      ✅ NEW association: 205102174438 → 120891670719
+[2025-09-19T11:24:08.596Z]      ✅ NEW association: 205102174438 → 135770978550
+[2025-09-19T11:24:08.596Z]    🔗 Contact 403804228807 has 1 deal associations
+[2025-09-19T11:24:08.598Z]      ✅ NEW association: 403804228807 → 286719703261
+[2025-09-19T11:24:08.598Z]    🔗 Contact 77202345204 has 4 deal associations
+[2025-09-19T11:24:08.600Z]      ✅ NEW association: 77202345204 → 31095571675
+[2025-09-19T11:24:08.601Z]      ✅ NEW association: 77202345204 → 58443467975
+[2025-09-19T11:24:08.602Z]      ✅ NEW association: 77202345204 → 199482065120
+[2025-09-19T11:24:08.604Z]      ✅ NEW association: 77202345204 → 284939841764
+[2025-09-19T11:24:08.604Z]    🔗 Contact 95498629360 has 1 deal associations
+[2025-09-19T11:24:08.606Z] ERROR:      ❌ Failed to save association 95498629360 → 40178373879:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:08.606Z]    🔗 Contact 292230737123 has 1 deal associations
+[2025-09-19T11:24:08.608Z]      ✅ NEW association: 292230737123 → 205629409513
+[2025-09-19T11:24:08.608Z]    🔗 Contact 382456261846 has 1 deal associations
+[2025-09-19T11:24:08.611Z]      ✅ NEW association: 382456261846 → 273480004855
+[2025-09-19T11:24:08.611Z]    🔗 Contact 4840551 has 1 deal associations
+[2025-09-19T11:24:08.613Z]      ✅ NEW association: 4840551 → 8125250763
+[2025-09-19T11:24:08.613Z]    🔗 Contact 315277947089 has 1 deal associations
+[2025-09-19T11:24:08.614Z]      ✅ NEW association: 315277947089 → 225633540286
+[2025-09-19T11:24:08.614Z]    🔗 Contact 10567601 has 4 deal associations
+[2025-09-19T11:24:08.616Z]      ✅ NEW association: 10567601 → 28490005753
+[2025-09-19T11:24:08.617Z]      ✅ NEW association: 10567601 → 29381629176
+[2025-09-19T11:24:08.619Z]      ✅ NEW association: 10567601 → 194464613569
+[2025-09-19T11:24:08.621Z]      ✅ NEW association: 10567601 → 195185835194
+[2025-09-19T11:24:08.621Z]    🔗 Contact 225054380254 has 1 deal associations
+[2025-09-19T11:24:08.622Z]      ✅ NEW association: 225054380254 → 152930455799
+[2025-09-19T11:24:08.622Z]    🔗 Contact 43920857024 has 1 deal associations
+[2025-09-19T11:24:08.624Z]      ✅ NEW association: 43920857024 → 21554095578
+[2025-09-19T11:24:08.624Z]    🔗 Contact 410589562065 has 1 deal associations
+[2025-09-19T11:24:08.626Z]      ✅ NEW association: 410589562065 → 291068094665
+[2025-09-19T11:24:08.626Z]    🔗 Contact 389733494972 has 1 deal associations
+[2025-09-19T11:24:08.627Z]      ✅ NEW association: 389733494972 → 277853533429
+[2025-09-19T11:24:08.628Z]    🔗 Contact 41042463478 has 1 deal associations
+[2025-09-19T11:24:08.629Z]      ✅ NEW association: 41042463478 → 26124925156
+[2025-09-19T11:24:08.629Z]    🔗 Contact 269598480609 has 1 deal associations
+[2025-09-19T11:24:08.630Z]      ✅ NEW association: 269598480609 → 187624324294
+[2025-09-19T11:24:08.630Z]    🔗 Contact 394450632948 has 1 deal associations
+[2025-09-19T11:24:08.632Z]      ✅ NEW association: 394450632948 → 280854576349
+[2025-09-19T11:24:08.632Z]    🔗 Contact 8936901 has 1 deal associations
+[2025-09-19T11:24:08.634Z]      ✅ NEW association: 8936901 → 9910840312
+[2025-09-19T11:24:08.634Z]    🔗 Contact 393288974535 has 1 deal associations
+[2025-09-19T11:24:08.635Z]      ✅ NEW association: 393288974535 → 280167726290
+[2025-09-19T11:24:08.636Z]    🔗 Contact 5641181380 has 1 deal associations
+[2025-09-19T11:24:08.637Z]      ✅ NEW association: 5641181380 → 12062319602
+[2025-09-19T11:24:08.637Z]    🔗 Contact 4173704129 has 1 deal associations
+[2025-09-19T11:24:08.639Z]      ✅ NEW association: 4173704129 → 12065124588
+[2025-09-19T11:24:08.640Z]    🔗 Contact 5834597622 has 1 deal associations
+[2025-09-19T11:24:08.642Z]      ✅ NEW association: 5834597622 → 12110727140
+[2025-09-19T11:24:08.642Z]    🔗 Contact 325610720443 has 1 deal associations
+[2025-09-19T11:24:08.645Z]      ✅ NEW association: 325610720443 → 231342854387
+[2025-09-19T11:24:08.645Z]    🔗 Contact 414515243200 has 1 deal associations
+[2025-09-19T11:24:08.654Z]      ✅ NEW association: 414515243200 → 293016214769
+[2025-09-19T11:24:08.654Z]    🔗 Contact 393663469754 has 1 deal associations
+[2025-09-19T11:24:08.656Z]      ✅ NEW association: 393663469754 → 280078921930
+[2025-09-19T11:24:08.656Z]    🔗 Contact 394628653272 has 1 deal associations
+[2025-09-19T11:24:08.658Z]      ✅ NEW association: 394628653272 → 280892219581
+[2025-09-19T11:24:08.658Z]    🔗 Contact 8839601 has 1 deal associations
+[2025-09-19T11:24:08.659Z]      ✅ NEW association: 8839601 → 9855679164
+[2025-09-19T11:24:08.660Z]    🔗 Contact 5299851 has 1 deal associations
+[2025-09-19T11:24:08.663Z]      ✅ NEW association: 5299851 → 8458237175
+[2025-09-19T11:24:08.663Z]    🔗 Contact 341398830308 has 1 deal associations
+[2025-09-19T11:24:08.665Z]      ✅ NEW association: 341398830308 → 246657483987
+[2025-09-19T11:24:08.665Z]    🔗 Contact 400959819978 has 1 deal associations
+[2025-09-19T11:24:08.667Z]      ✅ NEW association: 400959819978 → 284994417884
+[2025-09-19T11:24:08.667Z]    🔗 Contact 369913340132 has 3 deal associations
+[2025-09-19T11:24:08.669Z]      ✅ NEW association: 369913340132 → 268613040365
+[2025-09-19T11:24:08.670Z]      ✅ NEW association: 369913340132 → 276189305048
+[2025-09-19T11:24:08.672Z]      ✅ NEW association: 369913340132 → 285715771635
+[2025-09-19T11:24:08.672Z]    🔗 Contact 292110856404 has 2 deal associations
+[2025-09-19T11:24:08.674Z]      ✅ NEW association: 292110856404 → 200526869747
+[2025-09-19T11:24:08.676Z]      ✅ NEW association: 292110856404 → 205629556922
+[2025-09-19T11:24:08.676Z]    🔗 Contact 371029914849 has 1 deal associations
+[2025-09-19T11:24:08.678Z]      ✅ NEW association: 371029914849 → 266684842230
+[2025-09-19T11:24:08.678Z]    🔗 Contact 341475683531 has 1 deal associations
+[2025-09-19T11:24:08.680Z]      ✅ NEW association: 341475683531 → 177099253952
+[2025-09-19T11:24:08.680Z]    🔗 Contact 4793451 has 1 deal associations
+[2025-09-19T11:24:08.682Z]      ✅ NEW association: 4793451 → 8095451124
+[2025-09-19T11:24:08.682Z]    🔗 Contact 368257504459 has 1 deal associations
+[2025-09-19T11:24:08.684Z]      ✅ NEW association: 368257504459 → 263036648677
+[2025-09-19T11:24:08.684Z]    🔗 Contact 310635327732 has 1 deal associations
+[2025-09-19T11:24:08.686Z]      ✅ NEW association: 310635327732 → 222133264625
+[2025-09-19T11:24:08.686Z]    🔗 Contact 7713151 has 1 deal associations
+[2025-09-19T11:24:08.688Z]      ✅ NEW association: 7713151 → 183483102440
+[2025-09-19T11:24:08.688Z]    🔗 Contact 4258501 has 1 deal associations
+[2025-09-19T11:24:08.689Z]      ✅ NEW association: 4258501 → 7663015884
+[2025-09-19T11:24:08.690Z]    🔗 Contact 4855751 has 1 deal associations
+[2025-09-19T11:24:08.691Z]      ✅ NEW association: 4855751 → 8137697220
+[2025-09-19T11:24:08.691Z]    🔗 Contact 4238001 has 1 deal associations
+[2025-09-19T11:24:08.693Z]      ✅ NEW association: 4238001 → 7655582161
+[2025-09-19T11:24:08.693Z]    🔗 Contact 4610901 has 1 deal associations
+[2025-09-19T11:24:08.696Z]      ✅ NEW association: 4610901 → 7936128753
+[2025-09-19T11:24:08.697Z]    🔗 Contact 179404670146 has 1 deal associations
+[2025-09-19T11:24:08.698Z]      ✅ NEW association: 179404670146 → 116421450993
+[2025-09-19T11:24:08.698Z]    🔗 Contact 392859854055 has 1 deal associations
+[2025-09-19T11:24:08.700Z]      ✅ NEW association: 392859854055 → 279818183887
+[2025-09-19T11:24:08.900Z]    📦 Processing batch 16/20
+[2025-09-19T11:24:09.115Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:09.115Z]    🔗 Contact 409955726541 has 1 deal associations
+[2025-09-19T11:24:09.119Z]      ✅ NEW association: 409955726541 → 290697705696
+[2025-09-19T11:24:09.119Z]    🔗 Contact 388252592339 has 1 deal associations
+[2025-09-19T11:24:09.120Z]      ✅ NEW association: 388252592339 → 279275812078
+[2025-09-19T11:24:09.120Z]    🔗 Contact 9435901 has 2 deal associations
+[2025-09-19T11:24:09.122Z]      ✅ NEW association: 9435901 → 172456662227
+[2025-09-19T11:24:09.123Z]      ✅ NEW association: 9435901 → 250562987235
+[2025-09-19T11:24:09.123Z]    🔗 Contact 391968031951 has 1 deal associations
+[2025-09-19T11:24:09.125Z]      ✅ NEW association: 391968031951 → 279217852659
+[2025-09-19T11:24:09.125Z]    🔗 Contact 388323726581 has 1 deal associations
+[2025-09-19T11:24:09.126Z]      ✅ NEW association: 388323726581 → 277178958047
+[2025-09-19T11:24:09.126Z]    🔗 Contact 290325561561 has 1 deal associations
+[2025-09-19T11:24:09.128Z]      ✅ NEW association: 290325561561 → 205629378778
+[2025-09-19T11:24:09.128Z]    🔗 Contact 292701328597 has 1 deal associations
+[2025-09-19T11:24:09.130Z]      ✅ NEW association: 292701328597 → 207026215104
+[2025-09-19T11:24:09.130Z]    🔗 Contact 2520451 has 1 deal associations
+[2025-09-19T11:24:09.131Z]      ✅ NEW association: 2520451 → 6790873561
+[2025-09-19T11:24:09.131Z]    🔗 Contact 10843451 has 1 deal associations
+[2025-09-19T11:24:09.133Z]      ✅ NEW association: 10843451 → 11097958083
+[2025-09-19T11:24:09.133Z]    🔗 Contact 292219918585 has 1 deal associations
+[2025-09-19T11:24:09.135Z]      ✅ NEW association: 292219918585 → 205629406436
+[2025-09-19T11:24:09.135Z]    🔗 Contact 92785545432 has 1 deal associations
+[2025-09-19T11:24:09.136Z]      ✅ NEW association: 92785545432 → 277167032515
+[2025-09-19T11:24:09.136Z]    🔗 Contact 3956101 has 1 deal associations
+[2025-09-19T11:24:09.138Z]      ✅ NEW association: 3956101 → 7479143368
+[2025-09-19T11:24:09.138Z]    🔗 Contact 158689813751 has 1 deal associations
+[2025-09-19T11:24:09.139Z]      ✅ NEW association: 158689813751 → 98407901421
+[2025-09-19T11:24:09.139Z]    🔗 Contact 2858501 has 1 deal associations
+[2025-09-19T11:24:09.141Z]      ✅ NEW association: 2858501 → 6936509653
+[2025-09-19T11:24:09.141Z]    🔗 Contact 4081162943 has 1 deal associations
+[2025-09-19T11:24:09.143Z]      ✅ NEW association: 4081162943 → 280200718582
+[2025-09-19T11:24:09.143Z]    🔗 Contact 1449851 has 1 deal associations
+[2025-09-19T11:24:09.145Z]      ✅ NEW association: 1449851 → 6464361970
+[2025-09-19T11:24:09.145Z]    🔗 Contact 3051901 has 1 deal associations
+[2025-09-19T11:24:09.146Z]      ✅ NEW association: 3051901 → 6980540646
+[2025-09-19T11:24:09.146Z]    🔗 Contact 391393198285 has 1 deal associations
+[2025-09-19T11:24:09.148Z]      ✅ NEW association: 391393198285 → 278935026903
+[2025-09-19T11:24:09.148Z]    🔗 Contact 390703651063 has 1 deal associations
+[2025-09-19T11:24:09.150Z]      ✅ NEW association: 390703651063 → 278522086613
+[2025-09-19T11:24:09.150Z]    🔗 Contact 2524351 has 1 deal associations
+[2025-09-19T11:24:09.153Z]      ✅ NEW association: 2524351 → 6792625342
+[2025-09-19T11:24:09.153Z]    🔗 Contact 364366173404 has 1 deal associations
+[2025-09-19T11:24:09.154Z]      ✅ NEW association: 364366173404 → 262926423266
+[2025-09-19T11:24:09.154Z]    🔗 Contact 402132169975 has 1 deal associations
+[2025-09-19T11:24:09.157Z]      ✅ NEW association: 402132169975 → 285607899357
+[2025-09-19T11:24:09.157Z]    🔗 Contact 368658428131 has 1 deal associations
+[2025-09-19T11:24:09.158Z]      ✅ NEW association: 368658428131 → 266505602270
+[2025-09-19T11:24:09.158Z]    🔗 Contact 388915892434 has 1 deal associations
+[2025-09-19T11:24:09.160Z]      ✅ NEW association: 388915892434 → 277503267028
+[2025-09-19T11:24:09.160Z]    🔗 Contact 221693978812 has 1 deal associations
+[2025-09-19T11:24:09.161Z]      ✅ NEW association: 221693978812 → 150266136805
+[2025-09-19T11:24:09.161Z]    🔗 Contact 331599055072 has 1 deal associations
+[2025-09-19T11:24:09.163Z]      ✅ NEW association: 331599055072 → 238714672339
+[2025-09-19T11:24:09.163Z]    🔗 Contact 234899115197 has 2 deal associations
+[2025-09-19T11:24:09.164Z]      ✅ NEW association: 234899115197 → 139515036902
+[2025-09-19T11:24:09.165Z]      ✅ NEW association: 234899115197 → 200773724394
+[2025-09-19T11:24:09.166Z]    🔗 Contact 2601601 has 1 deal associations
+[2025-09-19T11:24:09.167Z]      ✅ NEW association: 2601601 → 6813725681
+[2025-09-19T11:24:09.167Z]    🔗 Contact 2442101 has 1 deal associations
+[2025-09-19T11:24:09.168Z]      ✅ NEW association: 2442101 → 6764916456
+[2025-09-19T11:24:09.169Z]    🔗 Contact 2523001 has 1 deal associations
+[2025-09-19T11:24:09.170Z]      ✅ NEW association: 2523001 → 6798729181
+[2025-09-19T11:24:09.170Z]    🔗 Contact 375948204266 has 1 deal associations
+[2025-09-19T11:24:09.172Z]      ✅ NEW association: 375948204266 → 269815520457
+[2025-09-19T11:24:09.172Z]    🔗 Contact 1582401 has 1 deal associations
+[2025-09-19T11:24:09.173Z]      ✅ NEW association: 1582401 → 6503672523
+[2025-09-19T11:24:09.173Z]    🔗 Contact 390255349969 has 1 deal associations
+[2025-09-19T11:24:09.175Z]      ✅ NEW association: 390255349969 → 278201354449
+[2025-09-19T11:24:09.175Z]    🔗 Contact 388451873009 has 1 deal associations
+[2025-09-19T11:24:09.177Z]      ✅ NEW association: 388451873009 → 277124654303
+[2025-09-19T11:24:09.177Z]    🔗 Contact 381157701819 has 1 deal associations
+[2025-09-19T11:24:09.179Z]      ✅ NEW association: 381157701819 → 278307669195
+[2025-09-19T11:24:09.179Z]    🔗 Contact 388485656812 has 1 deal associations
+[2025-09-19T11:24:09.180Z]      ✅ NEW association: 388485656812 → 277142997214
+[2025-09-19T11:24:09.181Z]    🔗 Contact 387294008552 has 1 deal associations
+[2025-09-19T11:24:09.183Z]      ✅ NEW association: 387294008552 → 276766620889
+[2025-09-19T11:24:09.183Z]    🔗 Contact 389550142711 has 1 deal associations
+[2025-09-19T11:24:09.185Z]      ✅ NEW association: 389550142711 → 277772000463
+[2025-09-19T11:24:09.185Z]    🔗 Contact 388560478453 has 1 deal associations
+[2025-09-19T11:24:09.187Z]      ✅ NEW association: 388560478453 → 277194986720
+[2025-09-19T11:24:09.187Z]    🔗 Contact 245395729634 has 7 deal associations
+[2025-09-19T11:24:09.188Z]      ✅ NEW association: 245395729634 → 98871673071
+[2025-09-19T11:24:09.190Z]      ✅ NEW association: 245395729634 → 107460400344
+[2025-09-19T11:24:09.192Z]      ✅ NEW association: 245395729634 → 167845898468
+[2025-09-19T11:24:09.194Z]      ✅ NEW association: 245395729634 → 205110700220
+[2025-09-19T11:24:09.196Z]      ✅ NEW association: 245395729634 → 216340168891
+[2025-09-19T11:24:09.200Z]      ✅ NEW association: 245395729634 → 246063374575
+[2025-09-19T11:24:09.202Z]      ✅ NEW association: 245395729634 → 267885415625
+[2025-09-19T11:24:09.202Z]    🔗 Contact 99178590449 has 1 deal associations
+[2025-09-19T11:24:09.204Z]      ✅ NEW association: 99178590449 → 270542751933
+[2025-09-19T11:24:09.204Z]    🔗 Contact 9349051 has 4 deal associations
+[2025-09-19T11:24:09.206Z]      ✅ NEW association: 9349051 → 10189884880
+[2025-09-19T11:24:09.208Z]      ✅ NEW association: 9349051 → 11158980029
+[2025-09-19T11:24:09.212Z] ERROR:      ❌ Failed to save association 9349051 → 70743830739:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.216Z] ERROR:      ❌ Failed to save association 9349051 → 76954152128:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.216Z]    🔗 Contact 326941698264 has 1 deal associations
+[2025-09-19T11:24:09.217Z]      ✅ NEW association: 326941698264 → 234639281366
+[2025-09-19T11:24:09.218Z]    🔗 Contact 95417422036 has 1 deal associations
+[2025-09-19T11:24:09.221Z] ERROR:      ❌ Failed to save association 95417422036 → 42641145025:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.221Z]    🔗 Contact 358789768390 has 1 deal associations
+[2025-09-19T11:24:09.222Z]      ✅ NEW association: 358789768390 → 250792663250
+[2025-09-19T11:24:09.222Z]    🔗 Contact 248175287510 has 3 deal associations
+[2025-09-19T11:24:09.224Z]      ✅ NEW association: 248175287510 → 168670124240
+[2025-09-19T11:24:09.225Z]      ✅ NEW association: 248175287510 → 169337296073
+[2025-09-19T11:24:09.226Z]      ✅ NEW association: 248175287510 → 255093639403
+[2025-09-19T11:24:09.226Z]    🔗 Contact 8628542173 has 1 deal associations
+[2025-09-19T11:24:09.228Z]      ✅ NEW association: 8628542173 → 12597078223
+[2025-09-19T11:24:09.228Z]    🔗 Contact 409592865987 has 1 deal associations
+[2025-09-19T11:24:09.229Z]      ✅ NEW association: 409592865987 → 290499709147
+[2025-09-19T11:24:09.230Z]    🔗 Contact 426651 has 1 deal associations
+[2025-09-19T11:24:09.231Z]      ✅ NEW association: 426651 → 6149877205
+[2025-09-19T11:24:09.231Z]    🔗 Contact 385651461323 has 1 deal associations
+[2025-09-19T11:24:09.233Z]      ✅ NEW association: 385651461323 → 276472234170
+[2025-09-19T11:24:09.233Z]    🔗 Contact 403802079452 has 1 deal associations
+[2025-09-19T11:24:09.234Z]      ✅ NEW association: 403802079452 → 208111930581
+[2025-09-19T11:24:09.234Z]    🔗 Contact 386088102106 has 1 deal associations
+[2025-09-19T11:24:09.236Z]      ✅ NEW association: 386088102106 → 275849946352
+[2025-09-19T11:24:09.236Z]    🔗 Contact 387161961688 has 1 deal associations
+[2025-09-19T11:24:09.238Z]      ✅ NEW association: 387161961688 → 276595856630
+[2025-09-19T11:24:09.238Z]    🔗 Contact 386833784049 has 1 deal associations
+[2025-09-19T11:24:09.240Z]      ✅ NEW association: 386833784049 → 276259685611
+[2025-09-19T11:24:09.240Z]    🔗 Contact 10981451 has 1 deal associations
+[2025-09-19T11:24:09.242Z]      ✅ NEW association: 10981451 → 11311515859
+[2025-09-19T11:24:09.242Z]    🔗 Contact 408673805560 has 1 deal associations
+[2025-09-19T11:24:09.244Z]      ✅ NEW association: 408673805560 → 289786761406
+[2025-09-19T11:24:09.244Z]    🔗 Contact 346194249964 has 2 deal associations
+[2025-09-19T11:24:09.246Z]      ✅ NEW association: 346194249964 → 247800370423
+[2025-09-19T11:24:09.248Z]      ✅ NEW association: 346194249964 → 251490165963
+[2025-09-19T11:24:09.248Z]    🔗 Contact 40614671293 has 2 deal associations
+[2025-09-19T11:24:09.250Z]      ✅ NEW association: 40614671293 → 19725085420
+[2025-09-19T11:24:09.251Z] ERROR:      ❌ Failed to save association 40614671293 → 54389652703:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.251Z]    🔗 Contact 6493451 has 1 deal associations
+[2025-09-19T11:24:09.253Z]      ✅ NEW association: 6493451 → 22513140971
+[2025-09-19T11:24:09.253Z]    🔗 Contact 311352870124 has 1 deal associations
+[2025-09-19T11:24:09.254Z]      ✅ NEW association: 311352870124 → 214236145869
+[2025-09-19T11:24:09.254Z]    🔗 Contact 406892869860 has 1 deal associations
+[2025-09-19T11:24:09.256Z]      ✅ NEW association: 406892869860 → 288633860293
+[2025-09-19T11:24:09.256Z]    🔗 Contact 84291639514 has 1 deal associations
+[2025-09-19T11:24:09.257Z] ERROR:      ❌ Failed to save association 84291639514 → 34654153950:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.257Z]    🔗 Contact 289315279084 has 2 deal associations
+[2025-09-19T11:24:09.259Z]      ✅ NEW association: 289315279084 → 12381257191
+[2025-09-19T11:24:09.261Z]      ✅ NEW association: 289315279084 → 191440591036
+[2025-09-19T11:24:09.261Z]    🔗 Contact 33754885112 has 1 deal associations
+[2025-09-19T11:24:09.262Z]      ✅ NEW association: 33754885112 → 16641051327
+[2025-09-19T11:24:09.262Z]    🔗 Contact 372846257345 has 1 deal associations
+[2025-09-19T11:24:09.264Z]      ✅ NEW association: 372846257345 → 267868340468
+[2025-09-19T11:24:09.264Z]    🔗 Contact 382693320895 has 1 deal associations
+[2025-09-19T11:24:09.266Z]      ✅ NEW association: 382693320895 → 273882357975
+[2025-09-19T11:24:09.266Z]    🔗 Contact 385808060608 has 1 deal associations
+[2025-09-19T11:24:09.268Z]      ✅ NEW association: 385808060608 → 275762638036
+[2025-09-19T11:24:09.268Z]    🔗 Contact 372856128711 has 1 deal associations
+[2025-09-19T11:24:09.269Z]      ✅ NEW association: 372856128711 → 272014353634
+[2025-09-19T11:24:09.269Z]    🔗 Contact 384162438381 has 1 deal associations
+[2025-09-19T11:24:09.271Z]      ✅ NEW association: 384162438381 → 274729943252
+[2025-09-19T11:24:09.271Z]    🔗 Contact 374436560103 has 1 deal associations
+[2025-09-19T11:24:09.272Z]      ✅ NEW association: 374436560103 → 268861955269
+[2025-09-19T11:24:09.272Z]    🔗 Contact 381756029161 has 1 deal associations
+[2025-09-19T11:24:09.274Z]      ✅ NEW association: 381756029161 → 273284525259
+[2025-09-19T11:24:09.274Z]    🔗 Contact 370482170085 has 1 deal associations
+[2025-09-19T11:24:09.276Z]      ✅ NEW association: 370482170085 → 274482313435
+[2025-09-19T11:24:09.276Z]    🔗 Contact 378019678407 has 1 deal associations
+[2025-09-19T11:24:09.277Z]      ✅ NEW association: 378019678407 → 270947570887
+[2025-09-19T11:24:09.277Z]    🔗 Contact 382915586268 has 1 deal associations
+[2025-09-19T11:24:09.279Z]      ✅ NEW association: 382915586268 → 273863710963
+[2025-09-19T11:24:09.279Z]    🔗 Contact 355779631334 has 1 deal associations
+[2025-09-19T11:24:09.281Z]      ✅ NEW association: 355779631334 → 256468807878
+[2025-09-19T11:24:09.281Z]    🔗 Contact 370749081800 has 1 deal associations
+[2025-09-19T11:24:09.290Z]      ✅ NEW association: 370749081800 → 266498029817
+[2025-09-19T11:24:09.290Z]    🔗 Contact 371952456915 has 1 deal associations
+[2025-09-19T11:24:09.293Z]      ✅ NEW association: 371952456915 → 267620831476
+[2025-09-19T11:24:09.293Z]    🔗 Contact 372883296472 has 1 deal associations
+[2025-09-19T11:24:09.299Z]      ✅ NEW association: 372883296472 → 267899690171
+[2025-09-19T11:24:09.299Z]    🔗 Contact 351679855826 has 1 deal associations
+[2025-09-19T11:24:09.302Z]      ✅ NEW association: 351679855826 → 270562692296
+[2025-09-19T11:24:09.302Z]    🔗 Contact 376065583332 has 1 deal associations
+[2025-09-19T11:24:09.304Z]      ✅ NEW association: 376065583332 → 269772006614
+[2025-09-19T11:24:09.304Z]    🔗 Contact 382498924780 has 1 deal associations
+[2025-09-19T11:24:09.305Z]      ✅ NEW association: 382498924780 → 273660556478
+[2025-09-19T11:24:09.306Z]    🔗 Contact 226764675293 has 1 deal associations
+[2025-09-19T11:24:09.307Z]      ✅ NEW association: 226764675293 → 154040801468
+[2025-09-19T11:24:09.307Z]    🔗 Contact 230276689120 has 1 deal associations
+[2025-09-19T11:24:09.309Z]      ✅ NEW association: 230276689120 → 157569668301
+[2025-09-19T11:24:09.309Z]    🔗 Contact 242085468404 has 1 deal associations
+[2025-09-19T11:24:09.310Z]      ✅ NEW association: 242085468404 → 166730864859
+[2025-09-19T11:24:09.311Z]    🔗 Contact 242388132056 has 1 deal associations
+[2025-09-19T11:24:09.313Z]      ✅ NEW association: 242388132056 → 166811272385
+[2025-09-19T11:24:09.313Z]    🔗 Contact 242394077406 has 1 deal associations
+[2025-09-19T11:24:09.315Z]      ✅ NEW association: 242394077406 → 166812148949
+[2025-09-19T11:24:09.315Z]    🔗 Contact 242706067694 has 1 deal associations
+[2025-09-19T11:24:09.316Z]      ✅ NEW association: 242706067694 → 166858147056
+[2025-09-19T11:24:09.317Z]    🔗 Contact 405743068400 has 1 deal associations
+[2025-09-19T11:24:09.318Z]      ✅ NEW association: 405743068400 → 287911185621
+[2025-09-19T11:24:09.318Z]    🔗 Contact 217331947751 has 1 deal associations
+[2025-09-19T11:24:09.320Z]      ✅ NEW association: 217331947751 → 146606717175
+[2025-09-19T11:24:09.320Z]    🔗 Contact 357207067888 has 1 deal associations
+[2025-09-19T11:24:09.322Z]      ✅ NEW association: 357207067888 → 258765770984
+[2025-09-19T11:24:09.322Z]    🔗 Contact 10137001 has 1 deal associations
+[2025-09-19T11:24:09.324Z]      ✅ NEW association: 10137001 → 10634020320
+[2025-09-19T11:24:09.324Z]    🔗 Contact 1458551 has 1 deal associations
+[2025-09-19T11:24:09.327Z]      ✅ NEW association: 1458551 → 6467766743
+[2025-09-19T11:24:09.327Z]    🔗 Contact 5170051 has 1 deal associations
+[2025-09-19T11:24:09.329Z]      ✅ NEW association: 5170051 → 8361578183
+[2025-09-19T11:24:09.330Z]    🔗 Contact 95516039394 has 1 deal associations
+[2025-09-19T11:24:09.332Z] ERROR:      ❌ Failed to save association 95516039394 → 40178432211:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.333Z]    🔗 Contact 1949701 has 1 deal associations
+[2025-09-19T11:24:09.335Z]      ✅ NEW association: 1949701 → 6619882478
+[2025-09-19T11:24:09.335Z]    🔗 Contact 1252101 has 1 deal associations
+[2025-09-19T11:24:09.336Z]      ✅ NEW association: 1252101 → 6400717251
+[2025-09-19T11:24:09.337Z]    🔗 Contact 503051 has 1 deal associations
+[2025-09-19T11:24:09.338Z]      ✅ NEW association: 503051 → 6233595849
+[2025-09-19T11:24:09.338Z]    🔗 Contact 385494526192 has 1 deal associations
+[2025-09-19T11:24:09.341Z]      ✅ NEW association: 385494526192 → 271423593710
+[2025-09-19T11:24:09.341Z]    🔗 Contact 10916001 has 1 deal associations
+[2025-09-19T11:24:09.343Z]      ✅ NEW association: 10916001 → 11177485807
+[2025-09-19T11:24:09.343Z]    🔗 Contact 374483072197 has 1 deal associations
+[2025-09-19T11:24:09.345Z]      ✅ NEW association: 374483072197 → 268895818957
+[2025-09-19T11:24:09.546Z]    📦 Processing batch 17/20
+[2025-09-19T11:24:09.735Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":97}
+[2025-09-19T11:24:09.735Z]    🔗 Contact 400116898039 has 1 deal associations
+[2025-09-19T11:24:09.737Z]      ✅ NEW association: 400116898039 → 284250041583
+[2025-09-19T11:24:09.737Z]    🔗 Contact 157352772802 has 1 deal associations
+[2025-09-19T11:24:09.738Z]      ✅ NEW association: 157352772802 → 107581040886
+[2025-09-19T11:24:09.738Z]    🔗 Contact 377687807163 has 1 deal associations
+[2025-09-19T11:24:09.740Z]      ✅ NEW association: 377687807163 → 270577658089
+[2025-09-19T11:24:09.740Z]    🔗 Contact 314739295461 has 1 deal associations
+[2025-09-19T11:24:09.742Z]      ✅ NEW association: 314739295461 → 225149439177
+[2025-09-19T11:24:09.742Z]    🔗 Contact 104978942152 has 1 deal associations
+[2025-09-19T11:24:09.744Z] ERROR:      ❌ Failed to save association 104978942152 → 50463242456:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.744Z]    🔗 Contact 227405859041 has 1 deal associations
+[2025-09-19T11:24:09.745Z]      ✅ NEW association: 227405859041 → 154516850936
+[2025-09-19T11:24:09.745Z]    🔗 Contact 341954955471 has 1 deal associations
+[2025-09-19T11:24:09.746Z]      ✅ NEW association: 341954955471 → 247076823255
+[2025-09-19T11:24:09.746Z]    🔗 Contact 388099958999 has 1 deal associations
+[2025-09-19T11:24:09.748Z]      ✅ NEW association: 388099958999 → 277173773554
+[2025-09-19T11:24:09.748Z]    🔗 Contact 365657042146 has 1 deal associations
+[2025-09-19T11:24:09.749Z]      ✅ NEW association: 365657042146 → 263289604318
+[2025-09-19T11:24:09.749Z]    🔗 Contact 239290197178 has 1 deal associations
+[2025-09-19T11:24:09.750Z]      ✅ NEW association: 239290197178 → 165641876669
+[2025-09-19T11:24:09.750Z]    🔗 Contact 325907590377 has 3 deal associations
+[2025-09-19T11:24:09.752Z]      ✅ NEW association: 325907590377 → 220318905584
+[2025-09-19T11:24:09.753Z]      ✅ NEW association: 325907590377 → 230413721839
+[2025-09-19T11:24:09.754Z]      ✅ NEW association: 325907590377 → 287025865932
+[2025-09-19T11:24:09.754Z]    🔗 Contact 230501206247 has 2 deal associations
+[2025-09-19T11:24:09.756Z]      ✅ NEW association: 230501206247 → 8734336705
+[2025-09-19T11:24:09.758Z]      ✅ NEW association: 230501206247 → 57915910334
+[2025-09-19T11:24:09.758Z]    🔗 Contact 23822874066 has 1 deal associations
+[2025-09-19T11:24:09.759Z]      ✅ NEW association: 23822874066 → 15508980213
+[2025-09-19T11:24:09.759Z]    🔗 Contact 9479051 has 1 deal associations
+[2025-09-19T11:24:09.761Z] ERROR:      ❌ Failed to save association 9479051 → 71597543645:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.761Z]    🔗 Contact 131801 has 1 deal associations
+[2025-09-19T11:24:09.762Z]      ✅ NEW association: 131801 → 6011835112
+[2025-09-19T11:24:09.762Z]    🔗 Contact 402316567778 has 1 deal associations
+[2025-09-19T11:24:09.764Z]      ✅ NEW association: 402316567778 → 283488902376
+[2025-09-19T11:24:09.764Z]    🔗 Contact 318648208600 has 1 deal associations
+[2025-09-19T11:24:09.766Z]      ✅ NEW association: 318648208600 → 228431018228
+[2025-09-19T11:24:09.766Z]    🔗 Contact 5309701 has 1 deal associations
+[2025-09-19T11:24:09.767Z]      ✅ NEW association: 5309701 → 8466375876
+[2025-09-19T11:24:09.767Z]    🔗 Contact 149670586585 has 1 deal associations
+[2025-09-19T11:24:09.769Z]      ✅ NEW association: 149670586585 → 107647621326
+[2025-09-19T11:24:09.769Z]    🔗 Contact 145956614390 has 1 deal associations
+[2025-09-19T11:24:09.770Z]      ✅ NEW association: 145956614390 → 107647621351
+[2025-09-19T11:24:09.770Z]    🔗 Contact 143695182018 has 1 deal associations
+[2025-09-19T11:24:09.772Z] ERROR:      ❌ Failed to save association 143695182018 → 88735733974:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.772Z]    🔗 Contact 266404701411 has 1 deal associations
+[2025-09-19T11:24:09.773Z]      ✅ NEW association: 266404701411 → 185056872648
+[2025-09-19T11:24:09.773Z]    🔗 Contact 4431701 has 1 deal associations
+[2025-09-19T11:24:09.774Z]      ✅ NEW association: 4431701 → 7818983881
+[2025-09-19T11:24:09.774Z]    🔗 Contact 20587104746 has 1 deal associations
+[2025-09-19T11:24:09.775Z]      ✅ NEW association: 20587104746 → 15126633661
+[2025-09-19T11:24:09.776Z]    🔗 Contact 233672421607 has 1 deal associations
+[2025-09-19T11:24:09.777Z]      ✅ NEW association: 233672421607 → 159851283663
+[2025-09-19T11:24:09.777Z]    🔗 Contact 226602139846 has 1 deal associations
+[2025-09-19T11:24:09.778Z]      ✅ NEW association: 226602139846 → 160519115971
+[2025-09-19T11:24:09.778Z]    🔗 Contact 243401388276 has 1 deal associations
+[2025-09-19T11:24:09.780Z]      ✅ NEW association: 243401388276 → 166509807839
+[2025-09-19T11:24:09.780Z]    🔗 Contact 31738501836 has 1 deal associations
+[2025-09-19T11:24:09.781Z]      ✅ NEW association: 31738501836 → 16461727706
+[2025-09-19T11:24:09.781Z]    🔗 Contact 32352438981 has 1 deal associations
+[2025-09-19T11:24:09.783Z]      ✅ NEW association: 32352438981 → 16621956598
+[2025-09-19T11:24:09.783Z]    🔗 Contact 18908764875 has 1 deal associations
+[2025-09-19T11:24:09.784Z]      ✅ NEW association: 18908764875 → 16366794193
+[2025-09-19T11:24:09.784Z]    🔗 Contact 435351 has 1 deal associations
+[2025-09-19T11:24:09.785Z]      ✅ NEW association: 435351 → 6199725001
+[2025-09-19T11:24:09.785Z]    🔗 Contact 28026035167 has 1 deal associations
+[2025-09-19T11:24:09.787Z]      ✅ NEW association: 28026035167 → 16152664509
+[2025-09-19T11:24:09.787Z]    🔗 Contact 415151 has 1 deal associations
+[2025-09-19T11:24:09.789Z]      ✅ NEW association: 415151 → 6147338429
+[2025-09-19T11:24:09.789Z]    🔗 Contact 4127351 has 1 deal associations
+[2025-09-19T11:24:09.790Z]      ✅ NEW association: 4127351 → 7576305621
+[2025-09-19T11:24:09.790Z]    🔗 Contact 24381962457 has 1 deal associations
+[2025-09-19T11:24:09.791Z]      ✅ NEW association: 24381962457 → 15573627874
+[2025-09-19T11:24:09.791Z]    🔗 Contact 197185871047 has 1 deal associations
+[2025-09-19T11:24:09.792Z]      ✅ NEW association: 197185871047 → 129537501426
+[2025-09-19T11:24:09.793Z]    🔗 Contact 4888501 has 1 deal associations
+[2025-09-19T11:24:09.795Z]      ✅ NEW association: 4888501 → 8158909891
+[2025-09-19T11:24:09.795Z]    🔗 Contact 7274701 has 1 deal associations
+[2025-09-19T11:24:09.796Z]      ✅ NEW association: 7274701 → 9295774412
+[2025-09-19T11:24:09.796Z]    🔗 Contact 8461901 has 1 deal associations
+[2025-09-19T11:24:09.798Z]      ✅ NEW association: 8461901 → 9745637055
+[2025-09-19T11:24:09.798Z]    🔗 Contact 20892820668 has 1 deal associations
+[2025-09-19T11:24:09.800Z]      ✅ NEW association: 20892820668 → 15145111010
+[2025-09-19T11:24:09.800Z]    🔗 Contact 371451 has 1 deal associations
+[2025-09-19T11:24:09.801Z]      ✅ NEW association: 371451 → 6149885373
+[2025-09-19T11:24:09.801Z]    🔗 Contact 248367469769 has 1 deal associations
+[2025-09-19T11:24:09.802Z]      ✅ NEW association: 248367469769 → 169332806854
+[2025-09-19T11:24:09.803Z]    🔗 Contact 35136316610 has 1 deal associations
+[2025-09-19T11:24:09.804Z]      ✅ NEW association: 35136316610 → 17352466412
+[2025-09-19T11:24:09.804Z]    🔗 Contact 156906547431 has 1 deal associations
+[2025-09-19T11:24:09.806Z]      ✅ NEW association: 156906547431 → 107540651195
+[2025-09-19T11:24:09.806Z]    🔗 Contact 188451 has 1 deal associations
+[2025-09-19T11:24:09.807Z]      ✅ NEW association: 188451 → 6070955219
+[2025-09-19T11:24:09.807Z]    🔗 Contact 42480763856 has 1 deal associations
+[2025-09-19T11:24:09.809Z] ERROR:      ❌ Failed to save association 42480763856 → 79203477734:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.809Z]    🔗 Contact 40239759585 has 1 deal associations
+[2025-09-19T11:24:09.810Z]      ✅ NEW association: 40239759585 → 19655195890
+[2025-09-19T11:24:09.810Z]    🔗 Contact 382589110481 has 1 deal associations
+[2025-09-19T11:24:09.812Z]      ✅ NEW association: 382589110481 → 273778398416
+[2025-09-19T11:24:09.812Z]    🔗 Contact 382670431465 has 1 deal associations
+[2025-09-19T11:24:09.813Z]      ✅ NEW association: 382670431465 → 273858073837
+[2025-09-19T11:24:09.813Z]    🔗 Contact 377701232860 has 1 deal associations
+[2025-09-19T11:24:09.815Z]      ✅ NEW association: 377701232860 → 270831998148
+[2025-09-19T11:24:09.815Z]    🔗 Contact 4551551 has 1 deal associations
+[2025-09-19T11:24:09.818Z]      ✅ NEW association: 4551551 → 7894328776
+[2025-09-19T11:24:09.818Z]    🔗 Contact 367668701420 has 1 deal associations
+[2025-09-19T11:24:09.820Z]      ✅ NEW association: 367668701420 → 266866909392
+[2025-09-19T11:24:09.820Z]    🔗 Contact 302066476231 has 1 deal associations
+[2025-09-19T11:24:09.821Z]      ✅ NEW association: 302066476231 → 214894878934
+[2025-09-19T11:24:09.821Z]    🔗 Contact 5209001 has 1 deal associations
+[2025-09-19T11:24:09.823Z]      ✅ NEW association: 5209001 → 8389870554
+[2025-09-19T11:24:09.823Z]    🔗 Contact 341849005265 has 1 deal associations
+[2025-09-19T11:24:09.825Z]      ✅ NEW association: 341849005265 → 246978794728
+[2025-09-19T11:24:09.825Z]    🔗 Contact 7276951 has 1 deal associations
+[2025-09-19T11:24:09.827Z]      ✅ NEW association: 7276951 → 9363681494
+[2025-09-19T11:24:09.827Z]    🔗 Contact 6807401 has 1 deal associations
+[2025-09-19T11:24:09.828Z]      ✅ NEW association: 6807401 → 11098122745
+[2025-09-19T11:24:09.828Z]    🔗 Contact 4932051 has 1 deal associations
+[2025-09-19T11:24:09.830Z]      ✅ NEW association: 4932051 → 8183831765
+[2025-09-19T11:24:09.830Z]    🔗 Contact 361979052274 has 1 deal associations
+[2025-09-19T11:24:09.832Z]      ✅ NEW association: 361979052274 → 261680917693
+[2025-09-19T11:24:09.832Z]    🔗 Contact 336459570364 has 1 deal associations
+[2025-09-19T11:24:09.833Z]      ✅ NEW association: 336459570364 → 242354855110
+[2025-09-19T11:24:09.833Z]    🔗 Contact 379648643271 has 1 deal associations
+[2025-09-19T11:24:09.835Z]      ✅ NEW association: 379648643271 → 271577522363
+[2025-09-19T11:24:09.835Z]    🔗 Contact 196751671502 has 4 deal associations
+[2025-09-19T11:24:09.838Z]      ✅ NEW association: 196751671502 → 101293765881
+[2025-09-19T11:24:09.840Z]      ✅ NEW association: 196751671502 → 129537481947
+[2025-09-19T11:24:09.841Z]      ✅ NEW association: 196751671502 → 177554302159
+[2025-09-19T11:24:09.843Z]      ✅ NEW association: 196751671502 → 187153732830
+[2025-09-19T11:24:09.843Z]    🔗 Contact 383699804353 has 2 deal associations
+[2025-09-19T11:24:09.845Z]      ✅ NEW association: 383699804353 → 274512536811
+[2025-09-19T11:24:09.847Z]      ✅ NEW association: 383699804353 → 274512537798
+[2025-09-19T11:24:09.847Z]    🔗 Contact 341710627022 has 1 deal associations
+[2025-09-19T11:24:09.849Z]      ✅ NEW association: 341710627022 → 246898043100
+[2025-09-19T11:24:09.849Z]    🔗 Contact 150568265977 has 2 deal associations
+[2025-09-19T11:24:09.850Z]      ✅ NEW association: 150568265977 → 93035925743
+[2025-09-19T11:24:09.852Z]      ✅ NEW association: 150568265977 → 93035967707
+[2025-09-19T11:24:09.852Z]    🔗 Contact 319355969735 has 2 deal associations
+[2025-09-19T11:24:09.853Z]      ✅ NEW association: 319355969735 → 231844503788
+[2025-09-19T11:24:09.856Z]      ✅ NEW association: 319355969735 → 275627045063
+[2025-09-19T11:24:09.856Z]    🔗 Contact 39631185095 has 1 deal associations
+[2025-09-19T11:24:09.858Z]      ✅ NEW association: 39631185095 → 19413117420
+[2025-09-19T11:24:09.858Z]    🔗 Contact 367419106536 has 1 deal associations
+[2025-09-19T11:24:09.859Z]      ✅ NEW association: 367419106536 → 264304105696
+[2025-09-19T11:24:09.860Z]    🔗 Contact 6274951 has 3 deal associations
+[2025-09-19T11:24:09.861Z]      ✅ NEW association: 6274951 → 9000642529
+[2025-09-19T11:24:09.863Z]      ✅ NEW association: 6274951 → 12091783908
+[2025-09-19T11:24:09.865Z]      ✅ NEW association: 6274951 → 13640736749
+[2025-09-19T11:24:09.865Z]    🔗 Contact 339720709318 has 1 deal associations
+[2025-09-19T11:24:09.866Z]      ✅ NEW association: 339720709318 → 247303763143
+[2025-09-19T11:24:09.866Z]    🔗 Contact 238678525161 has 1 deal associations
+[2025-09-19T11:24:09.868Z]      ✅ NEW association: 238678525161 → 164469401827
+[2025-09-19T11:24:09.868Z]    🔗 Contact 377345099970 has 1 deal associations
+[2025-09-19T11:24:09.869Z]      ✅ NEW association: 377345099970 → 270354216167
+[2025-09-19T11:24:09.869Z]    🔗 Contact 376503587045 has 1 deal associations
+[2025-09-19T11:24:09.871Z]      ✅ NEW association: 376503587045 → 269967345890
+[2025-09-19T11:24:09.871Z]    🔗 Contact 266414248160 has 1 deal associations
+[2025-09-19T11:24:09.873Z] ERROR:      ❌ Failed to save association 266414248160 → 61296903385:Cannot add or update a child row: a foreign key constraint fails (`hub_gads`.`hub_contact_deal_associations`, CONSTRAINT `hub_contact_deal_associations_ibfk_2` FOREIGN KEY (`deal_hubspot_id`) REFERENCES `hub_deals` (`hubspot_deal_id`))
+[2025-09-19T11:24:09.873Z]    🔗 Contact 345638665435 has 1 deal associations
+[2025-09-19T11:24:09.874Z]      ✅ NEW association: 345638665435 → 250193578194
+[2025-09-19T11:24:09.875Z]    🔗 Contact 13046880976 has 1 deal associations
+[2025-09-19T11:24:09.876Z]      ✅ NEW association: 13046880976 → 13552685506
+[2025-09-19T11:24:09.876Z]    🔗 Contact 361032537326 has 1 deal associations
+[2025-09-19T11:24:09.878Z]      ✅ NEW association: 361032537326 → 261525137621
+[2025-09-19T11:24:09.878Z]    🔗 Contact 382466231544 has 1 deal associations
+[2025-09-19T11:24:09.879Z]      ✅ NEW association: 382466231544 → 273709497573
+[2025-09-19T11:24:09.879Z]    🔗 Contact 374805366003 has 1 deal associations
+[2025-09-19T11:24:09.881Z]      ✅ NEW association: 374805366003 → 269044974802
+[2025-09-19T11:24:09.881Z]    🔗 Contact 374617455813 has 1 deal associations
+[2025-09-19T11:24:09.882Z]      ✅ NEW association: 374617455813 → 268918991071
+[2025-09-19T11:24:09.882Z]    🔗 Contact 378273100007 has 1 deal associations
+[2025-09-19T11:24:09.885Z]      ✅ NEW association: 378273100007 → 271131414772
+[2025-09-19T11:24:09.885Z]    🔗 Contact 372681191632 has 1 deal associations
+[2025-09-19T11:24:09.886Z]      ✅ NEW association: 372681191632 → 267642991839
+[2025-09-19T11:24:09.886Z]    🔗 Contact 375778352338 has 1 deal associations
+[2025-09-19T11:24:09.888Z]      ✅ NEW association: 375778352338 → 269630194890
+[2025-09-19T11:24:09.888Z]    🔗 Contact 374468763876 has 1 deal associations
+[2025-09-19T11:24:09.889Z]      ✅ NEW association: 374468763876 → 268809767142
+[2025-09-19T11:24:09.889Z]    🔗 Contact 375954180295 has 1 deal associations
+[2025-09-19T11:24:09.891Z]      ✅ NEW association: 375954180295 → 269827150049
+[2025-09-19T11:24:09.891Z]    🔗 Contact 364632236229 has 1 deal associations
+[2025-09-19T11:24:09.892Z]      ✅ NEW association: 364632236229 → 263021617345
+[2025-09-19T11:24:09.892Z]    🔗 Contact 367345960158 has 1 deal associations
+[2025-09-19T11:24:09.894Z]      ✅ NEW association: 367345960158 → 264201988338
+[2025-09-19T11:24:09.894Z]    🔗 Contact 364655083715 has 1 deal associations
+[2025-09-19T11:24:09.896Z]      ✅ NEW association: 364655083715 → 262989130975
+[2025-09-19T11:24:09.896Z]    🔗 Contact 368675655924 has 1 deal associations
+[2025-09-19T11:24:09.898Z]      ✅ NEW association: 368675655924 → 264843788524
+[2025-09-19T11:24:09.898Z]    🔗 Contact 369573535987 has 1 deal associations
+[2025-09-19T11:24:09.899Z]      ✅ NEW association: 369573535987 → 265858434274
+[2025-09-19T11:24:09.899Z]    🔗 Contact 371195707597 has 1 deal associations
+[2025-09-19T11:24:09.901Z]      ✅ NEW association: 371195707597 → 266844368070
+[2025-09-19T11:24:09.901Z]    🔗 Contact 366163248359 has 1 deal associations
+[2025-09-19T11:24:09.903Z]      ✅ NEW association: 366163248359 → 263689978078
+[2025-09-19T11:24:09.903Z]    🔗 Contact 362578717945 has 1 deal associations
+[2025-09-19T11:24:09.904Z]      ✅ NEW association: 362578717945 → 262053313779
+[2025-09-19T11:24:09.904Z]    🔗 Contact 364257007848 has 1 deal associations
+[2025-09-19T11:24:09.906Z]      ✅ NEW association: 364257007848 → 260175553739
+[2025-09-19T11:24:09.906Z]    🔗 Contact 365642552548 has 1 deal associations
+[2025-09-19T11:24:09.908Z]      ✅ NEW association: 365642552548 → 263364053236
+[2025-09-19T11:24:09.908Z]    🔗 Contact 363548749021 has 1 deal associations
+[2025-09-19T11:24:09.909Z]      ✅ NEW association: 363548749021 → 262566230245
+[2025-09-19T11:24:09.910Z]    🔗 Contact 361519007993 has 1 deal associations
+[2025-09-19T11:24:09.911Z]      ✅ NEW association: 361519007993 → 261328135396
+[2025-09-19T11:24:10.112Z]    📦 Processing batch 18/20
+[2025-09-19T11:24:10.349Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:10.349Z]    🔗 Contact 363213020359 has 1 deal associations
+[2025-09-19T11:24:10.351Z]      ✅ NEW association: 363213020359 → 262395756754
+[2025-09-19T11:24:10.351Z]    🔗 Contact 361510389966 has 1 deal associations
+[2025-09-19T11:24:10.352Z]      ✅ NEW association: 361510389966 → 261328096459
+[2025-09-19T11:24:10.352Z]    🔗 Contact 360915091685 has 1 deal associations
+[2025-09-19T11:24:10.354Z]      ✅ NEW association: 360915091685 → 261054891247
+[2025-09-19T11:24:10.354Z]    🔗 Contact 358717075652 has 1 deal associations
+[2025-09-19T11:24:10.355Z]      ✅ NEW association: 358717075652 → 259538674906
+[2025-09-19T11:24:10.355Z]    🔗 Contact 360430195940 has 1 deal associations
+[2025-09-19T11:24:10.357Z]      ✅ NEW association: 360430195940 → 260532395224
+[2025-09-19T11:24:10.357Z]    🔗 Contact 361211601118 has 1 deal associations
+[2025-09-19T11:24:10.358Z]      ✅ NEW association: 361211601118 → 261240116436
+[2025-09-19T11:24:10.358Z]    🔗 Contact 361717879024 has 1 deal associations
+[2025-09-19T11:24:10.359Z]      ✅ NEW association: 361717879024 → 261592544483
+[2025-09-19T11:24:10.359Z]    🔗 Contact 362554444024 has 1 deal associations
+[2025-09-19T11:24:10.361Z]      ✅ NEW association: 362554444024 → 261995483359
+[2025-09-19T11:24:10.361Z]    🔗 Contact 361579792594 has 1 deal associations
+[2025-09-19T11:24:10.362Z]      ✅ NEW association: 361579792594 → 261500763333
+[2025-09-19T11:24:10.362Z]    🔗 Contact 359474937048 has 1 deal associations
+[2025-09-19T11:24:10.364Z]      ✅ NEW association: 359474937048 → 260099218634
+[2025-09-19T11:24:10.364Z]    🔗 Contact 348694695119 has 1 deal associations
+[2025-09-19T11:24:10.365Z]      ✅ NEW association: 348694695119 → 251462472941
+[2025-09-19T11:24:10.365Z]    🔗 Contact 356389412039 has 1 deal associations
+[2025-09-19T11:24:10.367Z]      ✅ NEW association: 356389412039 → 258180461791
+[2025-09-19T11:24:10.367Z]    🔗 Contact 356843442400 has 1 deal associations
+[2025-09-19T11:24:10.368Z]      ✅ NEW association: 356843442400 → 258149571831
+[2025-09-19T11:24:10.368Z]    🔗 Contact 360641875185 has 1 deal associations
+[2025-09-19T11:24:10.370Z]      ✅ NEW association: 360641875185 → 260890938560
+[2025-09-19T11:24:10.370Z]    🔗 Contact 361470868728 has 1 deal associations
+[2025-09-19T11:24:10.372Z]      ✅ NEW association: 361470868728 → 261328071912
+[2025-09-19T11:24:10.372Z]    🔗 Contact 355694185660 has 1 deal associations
+[2025-09-19T11:24:10.373Z]      ✅ NEW association: 355694185660 → 257749634260
+[2025-09-19T11:24:10.374Z]    🔗 Contact 346272695520 has 1 deal associations
+[2025-09-19T11:24:10.375Z]      ✅ NEW association: 346272695520 → 250670964959
+[2025-09-19T11:24:10.375Z]    🔗 Contact 341037822172 has 1 deal associations
+[2025-09-19T11:24:10.377Z]      ✅ NEW association: 341037822172 → 253045799127
+[2025-09-19T11:24:10.377Z]    🔗 Contact 352792804566 has 1 deal associations
+[2025-09-19T11:24:10.378Z]      ✅ NEW association: 352792804566 → 255427199221
+[2025-09-19T11:24:10.379Z]    🔗 Contact 348171617503 has 1 deal associations
+[2025-09-19T11:24:10.380Z]      ✅ NEW association: 348171617503 → 252051672294
+[2025-09-19T11:24:10.380Z]    🔗 Contact 348170515656 has 1 deal associations
+[2025-09-19T11:24:10.382Z]      ✅ NEW association: 348170515656 → 252036860100
+[2025-09-19T11:24:10.382Z]    🔗 Contact 349059316946 has 1 deal associations
+[2025-09-19T11:24:10.384Z]      ✅ NEW association: 349059316946 → 252821905639
+[2025-09-19T11:24:10.384Z]    🔗 Contact 355191494871 has 1 deal associations
+[2025-09-19T11:24:10.385Z]      ✅ NEW association: 355191494871 → 257236059354
+[2025-09-19T11:24:10.385Z]    🔗 Contact 355141290208 has 1 deal associations
+[2025-09-19T11:24:10.387Z]      ✅ NEW association: 355141290208 → 257043149022
+[2025-09-19T11:24:10.387Z]    🔗 Contact 352201100521 has 1 deal associations
+[2025-09-19T11:24:10.389Z]      ✅ NEW association: 352201100521 → 254890956001
+[2025-09-19T11:24:10.389Z]    🔗 Contact 353869959356 has 1 deal associations
+[2025-09-19T11:24:10.390Z]      ✅ NEW association: 353869959356 → 256273175769
+[2025-09-19T11:24:10.390Z]    🔗 Contact 353284147439 has 1 deal associations
+[2025-09-19T11:24:10.392Z]      ✅ NEW association: 353284147439 → 255739577574
+[2025-09-19T11:24:10.392Z]    🔗 Contact 337103750341 has 1 deal associations
+[2025-09-19T11:24:10.394Z]      ✅ NEW association: 337103750341 → 243061167340
+[2025-09-19T11:24:10.394Z]    🔗 Contact 337902293212 has 1 deal associations
+[2025-09-19T11:24:10.396Z]      ✅ NEW association: 337902293212 → 243768236277
+[2025-09-19T11:24:10.396Z]    🔗 Contact 340911275244 has 1 deal associations
+[2025-09-19T11:24:10.397Z]      ✅ NEW association: 340911275244 → 246216629493
+[2025-09-19T11:24:10.397Z]    🔗 Contact 342183447745 has 1 deal associations
+[2025-09-19T11:24:10.399Z]      ✅ NEW association: 342183447745 → 247285795003
+[2025-09-19T11:24:10.399Z]    🔗 Contact 344234479804 has 1 deal associations
+[2025-09-19T11:24:10.400Z]      ✅ NEW association: 344234479804 → 248863256818
+[2025-09-19T11:24:10.400Z]    🔗 Contact 344626516173 has 1 deal associations
+[2025-09-19T11:24:10.401Z]      ✅ NEW association: 344626516173 → 249232995527
+[2025-09-19T11:24:10.401Z]    🔗 Contact 344672299212 has 1 deal associations
+[2025-09-19T11:24:10.403Z]      ✅ NEW association: 344672299212 → 249281550578
+[2025-09-19T11:24:10.403Z]    🔗 Contact 344769607879 has 1 deal associations
+[2025-09-19T11:24:10.405Z]      ✅ NEW association: 344769607879 → 249368024258
+[2025-09-19T11:24:10.405Z]    🔗 Contact 345312345280 has 1 deal associations
+[2025-09-19T11:24:10.407Z]      ✅ NEW association: 345312345280 → 249865244903
+[2025-09-19T11:24:10.407Z]    🔗 Contact 329459116278 has 1 deal associations
+[2025-09-19T11:24:10.409Z]      ✅ NEW association: 329459116278 → 236733824186
+[2025-09-19T11:24:10.409Z]    🔗 Contact 332288968900 has 1 deal associations
+[2025-09-19T11:24:10.410Z]      ✅ NEW association: 332288968900 → 239225697518
+[2025-09-19T11:24:10.410Z]    🔗 Contact 334373775596 has 1 deal associations
+[2025-09-19T11:24:10.412Z]      ✅ NEW association: 334373775596 → 240817011956
+[2025-09-19T11:24:10.412Z]    🔗 Contact 335903644877 has 1 deal associations
+[2025-09-19T11:24:10.414Z]      ✅ NEW association: 335903644877 → 242143444210
+[2025-09-19T11:24:10.414Z]    🔗 Contact 336645204172 has 1 deal associations
+[2025-09-19T11:24:10.415Z]      ✅ NEW association: 336645204172 → 242726580457
+[2025-09-19T11:24:10.415Z]    🔗 Contact 336744540394 has 1 deal associations
+[2025-09-19T11:24:10.417Z]      ✅ NEW association: 336744540394 → 242752658679
+[2025-09-19T11:24:10.417Z]    🔗 Contact 337483394260 has 1 deal associations
+[2025-09-19T11:24:10.418Z]      ✅ NEW association: 337483394260 → 243380403395
+[2025-09-19T11:24:10.418Z]    🔗 Contact 338209140983 has 1 deal associations
+[2025-09-19T11:24:10.419Z]      ✅ NEW association: 338209140983 → 244049486045
+[2025-09-19T11:24:10.420Z]    🔗 Contact 338635452612 has 1 deal associations
+[2025-09-19T11:24:10.422Z]      ✅ NEW association: 338635452612 → 244478244049
+[2025-09-19T11:24:10.422Z]    🔗 Contact 339078845677 has 1 deal associations
+[2025-09-19T11:24:10.423Z]      ✅ NEW association: 339078845677 → 244736596179
+[2025-09-19T11:24:10.423Z]    🔗 Contact 340069436655 has 1 deal associations
+[2025-09-19T11:24:10.424Z]      ✅ NEW association: 340069436655 → 245605571815
+[2025-09-19T11:24:10.424Z]    🔗 Contact 340130332906 has 1 deal associations
+[2025-09-19T11:24:10.426Z]      ✅ NEW association: 340130332906 → 245745323234
+[2025-09-19T11:24:10.426Z]    🔗 Contact 340137599184 has 1 deal associations
+[2025-09-19T11:24:10.427Z]      ✅ NEW association: 340137599184 → 245817035999
+[2025-09-19T11:24:10.427Z]    🔗 Contact 340611831021 has 1 deal associations
+[2025-09-19T11:24:10.428Z]      ✅ NEW association: 340611831021 → 246029951194
+[2025-09-19T11:24:10.429Z]    🔗 Contact 340791046358 has 1 deal associations
+[2025-09-19T11:24:10.430Z]      ✅ NEW association: 340791046358 → 246239010034
+[2025-09-19T11:24:10.430Z]    🔗 Contact 341134812358 has 1 deal associations
+[2025-09-19T11:24:10.432Z]      ✅ NEW association: 341134812358 → 246421255384
+[2025-09-19T11:24:10.432Z]    🔗 Contact 341190703334 has 1 deal associations
+[2025-09-19T11:24:10.433Z]      ✅ NEW association: 341190703334 → 246460145861
+[2025-09-19T11:24:10.433Z]    🔗 Contact 341706755278 has 1 deal associations
+[2025-09-19T11:24:10.435Z]      ✅ NEW association: 341706755278 → 246892731586
+[2025-09-19T11:24:10.435Z]    🔗 Contact 341925412077 has 1 deal associations
+[2025-09-19T11:24:10.437Z]      ✅ NEW association: 341925412077 → 246962612466
+[2025-09-19T11:24:10.437Z]    🔗 Contact 327241305306 has 1 deal associations
+[2025-09-19T11:24:10.439Z]      ✅ NEW association: 327241305306 → 234880172224
+[2025-09-19T11:24:10.439Z]    🔗 Contact 329293818045 has 1 deal associations
+[2025-09-19T11:24:10.440Z]      ✅ NEW association: 329293818045 → 236641480947
+[2025-09-19T11:24:10.440Z]    🔗 Contact 329544370368 has 1 deal associations
+[2025-09-19T11:24:10.441Z]      ✅ NEW association: 329544370368 → 236851752157
+[2025-09-19T11:24:10.441Z]    🔗 Contact 329785541851 has 1 deal associations
+[2025-09-19T11:24:10.443Z]      ✅ NEW association: 329785541851 → 237030083824
+[2025-09-19T11:24:10.444Z]    🔗 Contact 329870133453 has 1 deal associations
+[2025-09-19T11:24:10.445Z]      ✅ NEW association: 329870133453 → 237105951935
+[2025-09-19T11:24:10.445Z]    🔗 Contact 331146360005 has 1 deal associations
+[2025-09-19T11:24:10.446Z]      ✅ NEW association: 331146360005 → 238220842183
+[2025-09-19T11:24:10.446Z]    🔗 Contact 332032045252 has 1 deal associations
+[2025-09-19T11:24:10.447Z]      ✅ NEW association: 332032045252 → 239048866022
+[2025-09-19T11:24:10.448Z]    🔗 Contact 332226130120 has 1 deal associations
+[2025-09-19T11:24:10.449Z]      ✅ NEW association: 332226130120 → 239102553320
+[2025-09-19T11:24:10.449Z]    🔗 Contact 333028462818 has 1 deal associations
+[2025-09-19T11:24:10.450Z]      ✅ NEW association: 333028462818 → 239748325608
+[2025-09-19T11:24:10.450Z]    🔗 Contact 333247809743 has 1 deal associations
+[2025-09-19T11:24:10.452Z]      ✅ NEW association: 333247809743 → 239798303969
+[2025-09-19T11:24:10.452Z]    🔗 Contact 333681335510 has 1 deal associations
+[2025-09-19T11:24:10.453Z]      ✅ NEW association: 333681335510 → 240275773676
+[2025-09-19T11:24:10.453Z]    🔗 Contact 334718742719 has 1 deal associations
+[2025-09-19T11:24:10.454Z]      ✅ NEW association: 334718742719 → 241162747081
+[2025-09-19T11:24:10.454Z]    🔗 Contact 334726734045 has 1 deal associations
+[2025-09-19T11:24:10.456Z]      ✅ NEW association: 334726734045 → 241179119815
+[2025-09-19T11:24:10.456Z]    🔗 Contact 334729825525 has 1 deal associations
+[2025-09-19T11:24:10.457Z]      ✅ NEW association: 334729825525 → 241214355681
+[2025-09-19T11:24:10.457Z]    🔗 Contact 334767270101 has 1 deal associations
+[2025-09-19T11:24:10.458Z]      ✅ NEW association: 334767270101 → 241219523787
+[2025-09-19T11:24:10.458Z]    🔗 Contact 336448501980 has 1 deal associations
+[2025-09-19T11:24:10.460Z]      ✅ NEW association: 336448501980 → 242354658518
+[2025-09-19T11:24:10.460Z]    🔗 Contact 318532225239 has 1 deal associations
+[2025-09-19T11:24:10.461Z]      ✅ NEW association: 318532225239 → 228254753979
+[2025-09-19T11:24:10.461Z]    🔗 Contact 318868862166 has 1 deal associations
+[2025-09-19T11:24:10.462Z]      ✅ NEW association: 318868862166 → 228581332197
+[2025-09-19T11:24:10.462Z]    🔗 Contact 320026266840 has 1 deal associations
+[2025-09-19T11:24:10.464Z]      ✅ NEW association: 320026266840 → 229577032920
+[2025-09-19T11:24:10.464Z]    🔗 Contact 320184158415 has 1 deal associations
+[2025-09-19T11:24:10.465Z]      ✅ NEW association: 320184158415 → 229650533601
+[2025-09-19T11:24:10.465Z]    🔗 Contact 320833310950 has 1 deal associations
+[2025-09-19T11:24:10.466Z]      ✅ NEW association: 320833310950 → 230161638621
+[2025-09-19T11:24:10.466Z]    🔗 Contact 320797632740 has 1 deal associations
+[2025-09-19T11:24:10.468Z]      ✅ NEW association: 320797632740 → 230326920393
+[2025-09-19T11:24:10.468Z]    🔗 Contact 321332791497 has 1 deal associations
+[2025-09-19T11:24:10.469Z]      ✅ NEW association: 321332791497 → 230694116555
+[2025-09-19T11:24:10.469Z]    🔗 Contact 322006001856 has 1 deal associations
+[2025-09-19T11:24:10.470Z]      ✅ NEW association: 322006001856 → 231230394599
+[2025-09-19T11:24:10.470Z]    🔗 Contact 322281344232 has 1 deal associations
+[2025-09-19T11:24:10.472Z]      ✅ NEW association: 322281344232 → 231337259221
+[2025-09-19T11:24:10.472Z]    🔗 Contact 322350022887 has 1 deal associations
+[2025-09-19T11:24:10.473Z]      ✅ NEW association: 322350022887 → 231441229017
+[2025-09-19T11:24:10.473Z]    🔗 Contact 322639370473 has 1 deal associations
+[2025-09-19T11:24:10.475Z]      ✅ NEW association: 322639370473 → 231546505446
+[2025-09-19T11:24:10.475Z]    🔗 Contact 323576362189 has 1 deal associations
+[2025-09-19T11:24:10.477Z]      ✅ NEW association: 323576362189 → 232119613647
+[2025-09-19T11:24:10.477Z]    🔗 Contact 324991464650 has 1 deal associations
+[2025-09-19T11:24:10.478Z]      ✅ NEW association: 324991464650 → 232976066781
+[2025-09-19T11:24:10.478Z]    🔗 Contact 325012424953 has 1 deal associations
+[2025-09-19T11:24:10.480Z]      ✅ NEW association: 325012424953 → 232976259311
+[2025-09-19T11:24:10.480Z]    🔗 Contact 325262861498 has 1 deal associations
+[2025-09-19T11:24:10.481Z]      ✅ NEW association: 325262861498 → 233230579946
+[2025-09-19T11:24:10.481Z]    🔗 Contact 327088143590 has 1 deal associations
+[2025-09-19T11:24:10.483Z]      ✅ NEW association: 327088143590 → 234807586005
+[2025-09-19T11:24:10.483Z]    🔗 Contact 327495494873 has 1 deal associations
+[2025-09-19T11:24:10.484Z]      ✅ NEW association: 327495494873 → 235191711937
+[2025-09-19T11:24:10.484Z]    🔗 Contact 327636356292 has 1 deal associations
+[2025-09-19T11:24:10.485Z]      ✅ NEW association: 327636356292 → 235364891838
+[2025-09-19T11:24:10.485Z]    🔗 Contact 327791477961 has 1 deal associations
+[2025-09-19T11:24:10.487Z]      ✅ NEW association: 327791477961 → 235502801122
+[2025-09-19T11:24:10.487Z]    🔗 Contact 328445537498 has 1 deal associations
+[2025-09-19T11:24:10.488Z]      ✅ NEW association: 328445537498 → 236017656039
+[2025-09-19T11:24:10.488Z]    🔗 Contact 318990895297 has 1 deal associations
+[2025-09-19T11:24:10.489Z]      ✅ NEW association: 318990895297 → 239198227672
+[2025-09-19T11:24:10.489Z]    🔗 Contact 310494469310 has 1 deal associations
+[2025-09-19T11:24:10.491Z]      ✅ NEW association: 310494469310 → 222075606254
+[2025-09-19T11:24:10.491Z]    🔗 Contact 310748778712 has 1 deal associations
+[2025-09-19T11:24:10.492Z]      ✅ NEW association: 310748778712 → 222255016133
+[2025-09-19T11:24:10.492Z]    🔗 Contact 311521177829 has 1 deal associations
+[2025-09-19T11:24:10.493Z]      ✅ NEW association: 311521177829 → 222731912385
+[2025-09-19T11:24:10.493Z]    🔗 Contact 311537135827 has 1 deal associations
+[2025-09-19T11:24:10.494Z]      ✅ NEW association: 311537135827 → 222785382636
+[2025-09-19T11:24:10.495Z]    🔗 Contact 311737041127 has 1 deal associations
+[2025-09-19T11:24:10.496Z]      ✅ NEW association: 311737041127 → 222944239818
+[2025-09-19T11:24:10.496Z]    🔗 Contact 312217188576 has 1 deal associations
+[2025-09-19T11:24:10.497Z]      ✅ NEW association: 312217188576 → 223153114352
+[2025-09-19T11:24:10.497Z]    🔗 Contact 312317875391 has 1 deal associations
+[2025-09-19T11:24:10.498Z]      ✅ NEW association: 312317875391 → 223287275734
+[2025-09-19T11:24:10.498Z]    🔗 Contact 312605335801 has 1 deal associations
+[2025-09-19T11:24:10.500Z]      ✅ NEW association: 312605335801 → 223551306973
+[2025-09-19T11:24:10.700Z]    📦 Processing batch 19/20
+[2025-09-19T11:24:10.895Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:10.895Z]    🔗 Contact 313220887759 has 1 deal associations
+[2025-09-19T11:24:10.897Z]      ✅ NEW association: 313220887759 → 224118077643
+[2025-09-19T11:24:10.897Z]    🔗 Contact 314081553639 has 1 deal associations
+[2025-09-19T11:24:10.898Z]      ✅ NEW association: 314081553639 → 224581379305
+[2025-09-19T11:24:10.898Z]    🔗 Contact 315605750002 has 1 deal associations
+[2025-09-19T11:24:10.900Z]      ✅ NEW association: 315605750002 → 225932483789
+[2025-09-19T11:24:10.900Z]    🔗 Contact 316080344274 has 1 deal associations
+[2025-09-19T11:24:10.901Z]      ✅ NEW association: 316080344274 → 226161935603
+[2025-09-19T11:24:10.901Z]    🔗 Contact 316185119935 has 1 deal associations
+[2025-09-19T11:24:10.903Z]      ✅ NEW association: 316185119935 → 226364590282
+[2025-09-19T11:24:10.903Z]    🔗 Contact 316457896174 has 1 deal associations
+[2025-09-19T11:24:10.905Z]      ✅ NEW association: 316457896174 → 226436894959
+[2025-09-19T11:24:10.905Z]    🔗 Contact 316584699104 has 1 deal associations
+[2025-09-19T11:24:10.906Z]      ✅ NEW association: 316584699104 → 226666393799
+[2025-09-19T11:24:10.906Z]    🔗 Contact 316746142968 has 1 deal associations
+[2025-09-19T11:24:10.908Z]      ✅ NEW association: 316746142968 → 228019753197
+[2025-09-19T11:24:10.908Z]    🔗 Contact 317325257950 has 1 deal associations
+[2025-09-19T11:24:10.910Z]      ✅ NEW association: 317325257950 → 227355032825
+[2025-09-19T11:24:10.910Z]    🔗 Contact 317770534078 has 1 deal associations
+[2025-09-19T11:24:10.911Z]      ✅ NEW association: 317770534078 → 227730688188
+[2025-09-19T11:24:10.911Z]    🔗 Contact 317876137207 has 1 deal associations
+[2025-09-19T11:24:10.912Z]      ✅ NEW association: 317876137207 → 227675745498
+[2025-09-19T11:24:10.912Z]    🔗 Contact 318746864872 has 1 deal associations
+[2025-09-19T11:24:10.914Z]      ✅ NEW association: 318746864872 → 228563084476
+[2025-09-19T11:24:10.914Z]    🔗 Contact 319680725230 has 1 deal associations
+[2025-09-19T11:24:10.915Z]      ✅ NEW association: 319680725230 → 229257788637
+[2025-09-19T11:24:10.915Z]    🔗 Contact 320044106962 has 1 deal associations
+[2025-09-19T11:24:10.917Z]      ✅ NEW association: 320044106962 → 229725507811
+[2025-09-19T11:24:10.917Z]    🔗 Contact 320198442185 has 1 deal associations
+[2025-09-19T11:24:10.919Z]      ✅ NEW association: 320198442185 → 229708311760
+[2025-09-19T11:24:10.919Z]    🔗 Contact 321123839205 has 1 deal associations
+[2025-09-19T11:24:10.920Z]      ✅ NEW association: 321123839205 → 230588085472
+[2025-09-19T11:24:10.920Z]    🔗 Contact 322203564229 has 1 deal associations
+[2025-09-19T11:24:10.922Z]      ✅ NEW association: 322203564229 → 231371492595
+[2025-09-19T11:24:10.922Z]    🔗 Contact 303816914151 has 3 deal associations
+[2025-09-19T11:24:10.923Z]      ✅ NEW association: 303816914151 → 191319282919
+[2025-09-19T11:24:10.925Z]      ✅ NEW association: 303816914151 → 217518864618
+[2025-09-19T11:24:10.926Z]      ✅ NEW association: 303816914151 → 259627157712
+[2025-09-19T11:24:10.926Z]    🔗 Contact 297625556188 has 1 deal associations
+[2025-09-19T11:24:10.928Z]      ✅ NEW association: 297625556188 → 211446415550
+[2025-09-19T11:24:10.928Z]    🔗 Contact 298475928821 has 1 deal associations
+[2025-09-19T11:24:10.929Z]      ✅ NEW association: 298475928821 → 211911559385
+[2025-09-19T11:24:10.929Z]    🔗 Contact 299780694247 has 1 deal associations
+[2025-09-19T11:24:10.931Z]      ✅ NEW association: 299780694247 → 213069930745
+[2025-09-19T11:24:10.931Z]    🔗 Contact 302133913832 has 1 deal associations
+[2025-09-19T11:24:10.932Z]      ✅ NEW association: 302133913832 → 214883844327
+[2025-09-19T11:24:10.932Z]    🔗 Contact 303278812355 has 1 deal associations
+[2025-09-19T11:24:10.934Z]      ✅ NEW association: 303278812355 → 215617705187
+[2025-09-19T11:24:10.934Z]    🔗 Contact 304139143402 has 1 deal associations
+[2025-09-19T11:24:10.935Z]      ✅ NEW association: 304139143402 → 216463001835
+[2025-09-19T11:24:10.935Z]    🔗 Contact 307190751424 has 1 deal associations
+[2025-09-19T11:24:10.937Z]      ✅ NEW association: 307190751424 → 219144180967
+[2025-09-19T11:24:10.937Z]    🔗 Contact 307147934948 has 1 deal associations
+[2025-09-19T11:24:10.938Z]      ✅ NEW association: 307147934948 → 219135819976
+[2025-09-19T11:24:10.938Z]    🔗 Contact 307268034806 has 1 deal associations
+[2025-09-19T11:24:10.940Z]      ✅ NEW association: 307268034806 → 219166793963
+[2025-09-19T11:24:10.940Z]    🔗 Contact 307764743415 has 1 deal associations
+[2025-09-19T11:24:10.941Z]      ✅ NEW association: 307764743415 → 219783366860
+[2025-09-19T11:24:10.941Z]    🔗 Contact 307775437032 has 1 deal associations
+[2025-09-19T11:24:10.943Z]      ✅ NEW association: 307775437032 → 219787130091
+[2025-09-19T11:24:10.943Z]    🔗 Contact 307872544990 has 1 deal associations
+[2025-09-19T11:24:10.945Z]      ✅ NEW association: 307872544990 → 219969243366
+[2025-09-19T11:24:10.945Z]    🔗 Contact 307904470225 has 1 deal associations
+[2025-09-19T11:24:10.947Z]      ✅ NEW association: 307904470225 → 219927041269
+[2025-09-19T11:24:10.947Z]    🔗 Contact 308021961960 has 1 deal associations
+[2025-09-19T11:24:10.949Z]      ✅ NEW association: 308021961960 → 219983477998
+[2025-09-19T11:24:10.949Z]    🔗 Contact 309140764890 has 1 deal associations
+[2025-09-19T11:24:10.951Z]      ✅ NEW association: 309140764890 → 221090130165
+[2025-09-19T11:24:10.951Z]    🔗 Contact 309346333892 has 1 deal associations
+[2025-09-19T11:24:10.952Z]      ✅ NEW association: 309346333892 → 221323065538
+[2025-09-19T11:24:10.952Z]    🔗 Contact 309444965624 has 1 deal associations
+[2025-09-19T11:24:10.954Z]      ✅ NEW association: 309444965624 → 221290706149
+[2025-09-19T11:24:10.954Z]    🔗 Contact 309442726088 has 1 deal associations
+[2025-09-19T11:24:10.955Z]      ✅ NEW association: 309442726088 → 221331828956
+[2025-09-19T11:24:10.955Z]    🔗 Contact 309496985802 has 1 deal associations
+[2025-09-19T11:24:10.957Z]      ✅ NEW association: 309496985802 → 221344293064
+[2025-09-19T11:24:10.957Z]    🔗 Contact 310518711509 has 1 deal associations
+[2025-09-19T11:24:10.958Z]      ✅ NEW association: 310518711509 → 222138010860
+[2025-09-19T11:24:10.958Z]    🔗 Contact 311852362967 has 1 deal associations
+[2025-09-19T11:24:10.960Z]      ✅ NEW association: 311852362967 → 222976219324
+[2025-09-19T11:24:10.960Z]    🔗 Contact 311789973700 has 1 deal associations
+[2025-09-19T11:24:10.962Z]      ✅ NEW association: 311789973700 → 222968934587
+[2025-09-19T11:24:10.962Z]    🔗 Contact 311997476040 has 1 deal associations
+[2025-09-19T11:24:10.963Z]      ✅ NEW association: 311997476040 → 222976665796
+[2025-09-19T11:24:10.963Z]    🔗 Contact 312146651379 has 1 deal associations
+[2025-09-19T11:24:10.965Z]      ✅ NEW association: 312146651379 → 223208411349
+[2025-09-19T11:24:10.965Z]    🔗 Contact 314651848895 has 1 deal associations
+[2025-09-19T11:24:10.967Z]      ✅ NEW association: 314651848895 → 225149016298
+[2025-09-19T11:24:10.967Z]    🔗 Contact 316762097872 has 1 deal associations
+[2025-09-19T11:24:10.968Z]      ✅ NEW association: 316762097872 → 226772569294
+[2025-09-19T11:24:10.968Z]    🔗 Contact 317957418189 has 1 deal associations
+[2025-09-19T11:24:10.970Z]      ✅ NEW association: 317957418189 → 227772049596
+[2025-09-19T11:24:10.970Z]    🔗 Contact 286849742035 has 1 deal associations
+[2025-09-19T11:24:10.971Z]      ✅ NEW association: 286849742035 → 196394318050
+[2025-09-19T11:24:10.972Z]    🔗 Contact 288696575195 has 1 deal associations
+[2025-09-19T11:24:10.973Z]      ✅ NEW association: 288696575195 → 203733300418
+[2025-09-19T11:24:10.973Z]    🔗 Contact 291278913771 has 1 deal associations
+[2025-09-19T11:24:10.974Z]      ✅ NEW association: 291278913771 → 205673998578
+[2025-09-19T11:24:10.974Z]    🔗 Contact 291868814534 has 1 deal associations
+[2025-09-19T11:24:10.976Z]      ✅ NEW association: 291868814534 → 206253450449
+[2025-09-19T11:24:10.976Z]    🔗 Contact 300975968488 has 1 deal associations
+[2025-09-19T11:24:10.980Z]      ✅ NEW association: 300975968488 → 207004850385
+[2025-09-19T11:24:10.980Z]    🔗 Contact 295294700768 has 1 deal associations
+[2025-09-19T11:24:10.982Z]      ✅ NEW association: 295294700768 → 209366592707
+[2025-09-19T11:24:10.982Z]    🔗 Contact 295982211260 has 1 deal associations
+[2025-09-19T11:24:10.983Z]      ✅ NEW association: 295982211260 → 209938931904
+[2025-09-19T11:24:10.983Z]    🔗 Contact 300756215029 has 1 deal associations
+[2025-09-19T11:24:10.985Z]      ✅ NEW association: 300756215029 → 213778547898
+[2025-09-19T11:24:10.985Z]    🔗 Contact 300767357124 has 1 deal associations
+[2025-09-19T11:24:10.987Z]      ✅ NEW association: 300767357124 → 213831300308
+[2025-09-19T11:24:10.987Z]    🔗 Contact 300991284469 has 1 deal associations
+[2025-09-19T11:24:10.989Z]      ✅ NEW association: 300991284469 → 214017341642
+[2025-09-19T11:24:10.989Z]    🔗 Contact 301389964496 has 1 deal associations
+[2025-09-19T11:24:10.990Z]      ✅ NEW association: 301389964496 → 214238726390
+[2025-09-19T11:24:10.990Z]    🔗 Contact 301965288682 has 1 deal associations
+[2025-09-19T11:24:10.992Z]      ✅ NEW association: 301965288682 → 214778154198
+[2025-09-19T11:24:10.992Z]    🔗 Contact 302049253589 has 1 deal associations
+[2025-09-19T11:24:10.994Z]      ✅ NEW association: 302049253589 → 214843588798
+[2025-09-19T11:24:10.994Z]    🔗 Contact 302718003444 has 1 deal associations
+[2025-09-19T11:24:10.995Z]      ✅ NEW association: 302718003444 → 215389640925
+[2025-09-19T11:24:10.995Z]    🔗 Contact 302830380241 has 1 deal associations
+[2025-09-19T11:24:10.997Z]      ✅ NEW association: 302830380241 → 215393402045
+[2025-09-19T11:24:10.997Z]    🔗 Contact 302914596077 has 1 deal associations
+[2025-09-19T11:24:10.998Z]      ✅ NEW association: 302914596077 → 215435952370
+[2025-09-19T11:24:10.998Z]    🔗 Contact 303516139720 has 1 deal associations
+[2025-09-19T11:24:11.000Z]      ✅ NEW association: 303516139720 → 215679661278
+[2025-09-19T11:24:11.000Z]    🔗 Contact 303898019015 has 1 deal associations
+[2025-09-19T11:24:11.001Z]      ✅ NEW association: 303898019015 → 216224432360
+[2025-09-19T11:24:11.001Z]    🔗 Contact 304077095161 has 1 deal associations
+[2025-09-19T11:24:11.003Z]      ✅ NEW association: 304077095161 → 216342071498
+[2025-09-19T11:24:11.003Z]    🔗 Contact 304065743046 has 1 deal associations
+[2025-09-19T11:24:11.005Z]      ✅ NEW association: 304065743046 → 216421723356
+[2025-09-19T11:24:11.005Z]    🔗 Contact 304223341755 has 1 deal associations
+[2025-09-19T11:24:11.006Z]      ✅ NEW association: 304223341755 → 216525516023
+[2025-09-19T11:24:11.006Z]    🔗 Contact 305400509679 has 1 deal associations
+[2025-09-19T11:24:11.008Z]      ✅ NEW association: 305400509679 → 217671893241
+[2025-09-19T11:24:11.008Z]    🔗 Contact 306583175365 has 1 deal associations
+[2025-09-19T11:24:11.009Z]      ✅ NEW association: 306583175365 → 218772161723
+[2025-09-19T11:24:11.009Z]    🔗 Contact 286850026714 has 1 deal associations
+[2025-09-19T11:24:11.011Z]      ✅ NEW association: 286850026714 → 166767058110
+[2025-09-19T11:24:11.011Z]    🔗 Contact 278657312977 has 1 deal associations
+[2025-09-19T11:24:11.012Z]      ✅ NEW association: 278657312977 → 195208077536
+[2025-09-19T11:24:11.012Z]    🔗 Contact 283205793995 has 1 deal associations
+[2025-09-19T11:24:11.014Z]      ✅ NEW association: 283205793995 → 196249325794
+[2025-09-19T11:24:11.014Z]    🔗 Contact 280136561886 has 1 deal associations
+[2025-09-19T11:24:11.015Z]      ✅ NEW association: 280136561886 → 196406374609
+[2025-09-19T11:24:11.015Z]    🔗 Contact 280374295757 has 1 deal associations
+[2025-09-19T11:24:11.017Z]      ✅ NEW association: 280374295757 → 196419626228
+[2025-09-19T11:24:11.017Z]    🔗 Contact 280923397364 has 1 deal associations
+[2025-09-19T11:24:11.018Z]      ✅ NEW association: 280923397364 → 197187185894
+[2025-09-19T11:24:11.018Z]    🔗 Contact 281480870130 has 1 deal associations
+[2025-09-19T11:24:11.019Z]      ✅ NEW association: 281480870130 → 197697738981
+[2025-09-19T11:24:11.019Z]    🔗 Contact 281544100026 has 1 deal associations
+[2025-09-19T11:24:11.021Z]      ✅ NEW association: 281544100026 → 197743508698
+[2025-09-19T11:24:11.021Z]    🔗 Contact 281839752380 has 1 deal associations
+[2025-09-19T11:24:11.026Z]      ✅ NEW association: 281839752380 → 197894494401
+[2025-09-19T11:24:11.026Z]    🔗 Contact 282141398211 has 1 deal associations
+[2025-09-19T11:24:11.028Z]      ✅ NEW association: 282141398211 → 198285928665
+[2025-09-19T11:24:11.028Z]    🔗 Contact 282444388562 has 1 deal associations
+[2025-09-19T11:24:11.030Z]      ✅ NEW association: 282444388562 → 198515280089
+[2025-09-19T11:24:11.030Z]    🔗 Contact 282609352905 has 1 deal associations
+[2025-09-19T11:24:11.031Z]      ✅ NEW association: 282609352905 → 198638295280
+[2025-09-19T11:24:11.032Z]    🔗 Contact 283263655128 has 1 deal associations
+[2025-09-19T11:24:11.033Z]      ✅ NEW association: 283263655128 → 199156339903
+[2025-09-19T11:24:11.033Z]    🔗 Contact 283461050560 has 1 deal associations
+[2025-09-19T11:24:11.034Z]      ✅ NEW association: 283461050560 → 199315897549
+[2025-09-19T11:24:11.034Z]    🔗 Contact 284533501176 has 1 deal associations
+[2025-09-19T11:24:11.036Z]      ✅ NEW association: 284533501176 → 200227396838
+[2025-09-19T11:24:11.036Z]    🔗 Contact 285376414907 has 1 deal associations
+[2025-09-19T11:24:11.041Z]      ✅ NEW association: 285376414907 → 200891745497
+[2025-09-19T11:24:11.041Z]    🔗 Contact 286303204593 has 1 deal associations
+[2025-09-19T11:24:11.042Z]      ✅ NEW association: 286303204593 → 201645992143
+[2025-09-19T11:24:11.042Z]    🔗 Contact 286959949035 has 1 deal associations
+[2025-09-19T11:24:11.044Z]      ✅ NEW association: 286959949035 → 202275651826
+[2025-09-19T11:24:11.044Z]    🔗 Contact 287772367067 has 1 deal associations
+[2025-09-19T11:24:11.045Z]      ✅ NEW association: 287772367067 → 212591437024
+[2025-09-19T11:24:11.045Z]    🔗 Contact 288017230061 has 1 deal associations
+[2025-09-19T11:24:11.047Z]      ✅ NEW association: 288017230061 → 203224799445
+[2025-09-19T11:24:11.047Z]    🔗 Contact 288256899314 has 1 deal associations
+[2025-09-19T11:24:11.049Z]      ✅ NEW association: 288256899314 → 203380544707
+[2025-09-19T11:24:11.049Z]    🔗 Contact 288543622348 has 1 deal associations
+[2025-09-19T11:24:11.051Z]      ✅ NEW association: 288543622348 → 203638623462
+[2025-09-19T11:24:11.051Z]    🔗 Contact 282092126446 has 1 deal associations
+[2025-09-19T11:24:11.053Z]      ✅ NEW association: 282092126446 → 204279328974
+[2025-09-19T11:24:11.053Z]    🔗 Contact 291044547818 has 1 deal associations
+[2025-09-19T11:24:11.054Z]      ✅ NEW association: 291044547818 → 204457058496
+[2025-09-19T11:24:11.055Z]    🔗 Contact 290192459984 has 1 deal associations
+[2025-09-19T11:24:11.056Z]      ✅ NEW association: 290192459984 → 204930170068
+[2025-09-19T11:24:11.056Z]    🔗 Contact 290792570102 has 1 deal associations
+[2025-09-19T11:24:11.058Z]      ✅ NEW association: 290792570102 → 205300411633
+[2025-09-19T11:24:11.058Z]    🔗 Contact 292761391302 has 1 deal associations
+[2025-09-19T11:24:11.059Z]      ✅ NEW association: 292761391302 → 207027873991
+[2025-09-19T11:24:11.059Z]    🔗 Contact 294984233164 has 1 deal associations
+[2025-09-19T11:24:11.060Z]      ✅ NEW association: 294984233164 → 208943511767
+[2025-09-19T11:24:11.061Z]    🔗 Contact 270475863232 has 1 deal associations
+[2025-09-19T11:24:11.062Z]      ✅ NEW association: 270475863232 → 188266175688
+[2025-09-19T11:24:11.062Z]    🔗 Contact 270614249677 has 1 deal associations
+[2025-09-19T11:24:11.063Z]      ✅ NEW association: 270614249677 → 188505592031
+[2025-09-19T11:24:11.063Z]    🔗 Contact 271204420836 has 1 deal associations
+[2025-09-19T11:24:11.065Z]      ✅ NEW association: 271204420836 → 188914909414
+[2025-09-19T11:24:11.065Z]    🔗 Contact 271350881477 has 1 deal associations
+[2025-09-19T11:24:11.067Z]      ✅ NEW association: 271350881477 → 189147180267
+[2025-09-19T11:24:11.268Z]    📦 Processing batch 20/20
+[2025-09-19T11:24:11.454Z]    🔍 API Response for batch: {"status":"COMPLETE","resultsCount":100}
+[2025-09-19T11:24:11.454Z]    🔗 Contact 271567462629 has 1 deal associations
+[2025-09-19T11:24:11.457Z]      ✅ NEW association: 271567462629 → 189224149198
+[2025-09-19T11:24:11.457Z]    🔗 Contact 271610570980 has 1 deal associations
+[2025-09-19T11:24:11.458Z]      ✅ NEW association: 271610570980 → 189301148859
+[2025-09-19T11:24:11.458Z]    🔗 Contact 271662957800 has 1 deal associations
+[2025-09-19T11:24:11.460Z]      ✅ NEW association: 271662957800 → 189305211073
+[2025-09-19T11:24:11.460Z]    🔗 Contact 271878589639 has 1 deal associations
+[2025-09-19T11:24:11.462Z]      ✅ NEW association: 271878589639 → 189658029247
+[2025-09-19T11:24:11.462Z]    🔗 Contact 272082375899 has 1 deal associations
+[2025-09-19T11:24:11.464Z]      ✅ NEW association: 272082375899 → 189763128515
+[2025-09-19T11:24:11.464Z]    🔗 Contact 276129981681 has 1 deal associations
+[2025-09-19T11:24:11.465Z]      ✅ NEW association: 276129981681 → 189850617033
+[2025-09-19T11:24:11.466Z]    🔗 Contact 272536961223 has 1 deal associations
+[2025-09-19T11:24:11.467Z]      ✅ NEW association: 272536961223 → 190049525997
+[2025-09-19T11:24:11.467Z]    🔗 Contact 273093055711 has 1 deal associations
+[2025-09-19T11:24:11.468Z]      ✅ NEW association: 273093055711 → 190709608687
+[2025-09-19T11:24:11.468Z]    🔗 Contact 274150325446 has 1 deal associations
+[2025-09-19T11:24:11.470Z]      ✅ NEW association: 274150325446 → 191507896513
+[2025-09-19T11:24:11.470Z]    🔗 Contact 274920702181 has 1 deal associations
+[2025-09-19T11:24:11.472Z]      ✅ NEW association: 274920702181 → 192185877716
+[2025-09-19T11:24:11.472Z]    🔗 Contact 274921095378 has 1 deal associations
+[2025-09-19T11:24:11.473Z]      ✅ NEW association: 274921095378 → 192177553642
+[2025-09-19T11:24:11.473Z]    🔗 Contact 275561943281 has 1 deal associations
+[2025-09-19T11:24:11.475Z]      ✅ NEW association: 275561943281 → 192609653973
+[2025-09-19T11:24:11.475Z]    🔗 Contact 275609044186 has 1 deal associations
+[2025-09-19T11:24:11.481Z]      ✅ NEW association: 275609044186 → 192738237640
+[2025-09-19T11:24:11.481Z]    🔗 Contact 276438697148 has 1 deal associations
+[2025-09-19T11:24:11.483Z]      ✅ NEW association: 276438697148 → 193284739287
+[2025-09-19T11:24:11.483Z]    🔗 Contact 276540491966 has 1 deal associations
+[2025-09-19T11:24:11.485Z]      ✅ NEW association: 276540491966 → 193410463930
+[2025-09-19T11:24:11.485Z]    🔗 Contact 276629989608 has 1 deal associations
+[2025-09-19T11:24:11.487Z]      ✅ NEW association: 276629989608 → 193419693255
+[2025-09-19T11:24:11.487Z]    🔗 Contact 276936505534 has 1 deal associations
+[2025-09-19T11:24:11.489Z]      ✅ NEW association: 276936505534 → 193594139870
+[2025-09-19T11:24:11.489Z]    🔗 Contact 276738874566 has 1 deal associations
+[2025-09-19T11:24:11.491Z]      ✅ NEW association: 276738874566 → 194752370895
+[2025-09-19T11:24:11.491Z]    🔗 Contact 278275728589 has 1 deal associations
+[2025-09-19T11:24:11.493Z]      ✅ NEW association: 278275728589 → 194876882164
+[2025-09-19T11:24:11.493Z]    🔗 Contact 278559115488 has 1 deal associations
+[2025-09-19T11:24:11.494Z]      ✅ NEW association: 278559115488 → 195187359991
+[2025-09-19T11:24:11.495Z]    🔗 Contact 280343138543 has 1 deal associations
+[2025-09-19T11:24:11.496Z]      ✅ NEW association: 280343138543 → 196420803774
+[2025-09-19T11:24:11.496Z]    🔗 Contact 281315476694 has 1 deal associations
+[2025-09-19T11:24:11.498Z]      ✅ NEW association: 281315476694 → 197537307845
+[2025-09-19T11:24:11.498Z]    🔗 Contact 282168990938 has 1 deal associations
+[2025-09-19T11:24:11.500Z]      ✅ NEW association: 282168990938 → 198262448375
+[2025-09-19T11:24:11.500Z]    🔗 Contact 283163803875 has 1 deal associations
+[2025-09-19T11:24:11.501Z]      ✅ NEW association: 283163803875 → 199140542667
+[2025-09-19T11:24:11.501Z]    🔗 Contact 283352248521 has 1 deal associations
+[2025-09-19T11:24:11.503Z]      ✅ NEW association: 283352248521 → 199284571364
+[2025-09-19T11:24:11.503Z]    🔗 Contact 268171908325 has 1 deal associations
+[2025-09-19T11:24:11.504Z]      ✅ NEW association: 268171908325 → 186416647354
+[2025-09-19T11:24:11.505Z]    🔗 Contact 268899496175 has 1 deal associations
+[2025-09-19T11:24:11.506Z]      ✅ NEW association: 268899496175 → 186945112269
+[2025-09-19T11:24:11.506Z]    🔗 Contact 269047483620 has 1 deal associations
+[2025-09-19T11:24:11.508Z]      ✅ NEW association: 269047483620 → 187122645229
+[2025-09-19T11:24:11.508Z]    🔗 Contact 269165658320 has 1 deal associations
+[2025-09-19T11:24:11.509Z]      ✅ NEW association: 269165658320 → 187162826995
+[2025-09-19T11:24:11.510Z]    🔗 Contact 269208665284 has 1 deal associations
+[2025-09-19T11:24:11.511Z]      ✅ NEW association: 269208665284 → 187243477231
+[2025-09-19T11:24:11.511Z]    🔗 Contact 269641316550 has 1 deal associations
+[2025-09-19T11:24:11.513Z]      ✅ NEW association: 269641316550 → 187607427304
+[2025-09-19T11:24:11.513Z]    🔗 Contact 269697926385 has 1 deal associations
+[2025-09-19T11:24:11.515Z]      ✅ NEW association: 269697926385 → 187605723331
+[2025-09-19T11:24:11.515Z]    🔗 Contact 269703571649 has 1 deal associations
+[2025-09-19T11:24:11.517Z]      ✅ NEW association: 269703571649 → 187695926497
+[2025-09-19T11:24:11.517Z]    🔗 Contact 269901618397 has 1 deal associations
+[2025-09-19T11:24:11.519Z]      ✅ NEW association: 269901618397 → 187791337686
+[2025-09-19T11:24:11.519Z]    🔗 Contact 274971815130 has 1 deal associations
+[2025-09-19T11:24:11.520Z]      ✅ NEW association: 274971815130 → 192199314655
+[2025-09-19T11:24:11.520Z]    🔗 Contact 266409945281 has 1 deal associations
+[2025-09-19T11:24:11.521Z]      ✅ NEW association: 266409945281 → 184949239009
+[2025-09-19T11:24:11.521Z]    🔗 Contact 266566240461 has 1 deal associations
+[2025-09-19T11:24:11.523Z]      ✅ NEW association: 266566240461 → 185168995537
+[2025-09-19T11:24:11.523Z]    🔗 Contact 266677823720 has 1 deal associations
+[2025-09-19T11:24:11.524Z]      ✅ NEW association: 266677823720 → 185167352006
+[2025-09-19T11:24:11.524Z]    🔗 Contact 267474525419 has 1 deal associations
+[2025-09-19T11:24:11.526Z]      ✅ NEW association: 267474525419 → 185812482275
+[2025-09-19T11:24:11.526Z]    🔗 Contact 267779622130 has 1 deal associations
+[2025-09-19T11:24:11.528Z]      ✅ NEW association: 267779622130 → 185954875610
+[2025-09-19T11:24:11.528Z]    🔗 Contact 268259106025 has 1 deal associations
+[2025-09-19T11:24:11.529Z]      ✅ NEW association: 268259106025 → 186358397136
+[2025-09-19T11:24:11.530Z]    🔗 Contact 268626339035 has 1 deal associations
+[2025-09-19T11:24:11.532Z]      ✅ NEW association: 268626339035 → 186764826837
+[2025-09-19T11:24:11.532Z]    🔗 Contact 268686374100 has 1 deal associations
+[2025-09-19T11:24:11.534Z]      ✅ NEW association: 268686374100 → 186796000482
+[2025-09-19T11:24:11.534Z]    🔗 Contact 268824204522 has 1 deal associations
+[2025-09-19T11:24:11.536Z]      ✅ NEW association: 268824204522 → 186854132952
+[2025-09-19T11:24:11.536Z]    🔗 Contact 268867296468 has 1 deal associations
+[2025-09-19T11:24:11.537Z]      ✅ NEW association: 268867296468 → 186965243080
+[2025-09-19T11:24:11.537Z]    🔗 Contact 264799981817 has 1 deal associations
+[2025-09-19T11:24:11.539Z]      ✅ NEW association: 264799981817 → 183648262358
+[2025-09-19T11:24:11.540Z]    🔗 Contact 264943185088 has 1 deal associations
+[2025-09-19T11:24:11.541Z]      ✅ NEW association: 264943185088 → 183750919390
+[2025-09-19T11:24:11.541Z]    🔗 Contact 265148007629 has 1 deal associations
+[2025-09-19T11:24:11.542Z]      ✅ NEW association: 265148007629 → 183831909584
+[2025-09-19T11:24:11.543Z]    🔗 Contact 265681758439 has 1 deal associations
+[2025-09-19T11:24:11.544Z]      ✅ NEW association: 265681758439 → 184403471583
+[2025-09-19T11:24:11.544Z]    🔗 Contact 265847261405 has 1 deal associations
+[2025-09-19T11:24:11.546Z]      ✅ NEW association: 265847261405 → 184501992636
+[2025-09-19T11:24:11.546Z]    🔗 Contact 266505154784 has 1 deal associations
+[2025-09-19T11:24:11.548Z]      ✅ NEW association: 266505154784 → 185250972858
+[2025-09-19T11:24:11.548Z]    🔗 Contact 266935511236 has 1 deal associations
+[2025-09-19T11:24:11.549Z]      ✅ NEW association: 266935511236 → 185252833482
+[2025-09-19T11:24:11.550Z]    🔗 Contact 266994148556 has 1 deal associations
+[2025-09-19T11:24:11.551Z]      ✅ NEW association: 266994148556 → 185315922149
+[2025-09-19T11:24:11.551Z]    🔗 Contact 266999381195 has 1 deal associations
+[2025-09-19T11:24:11.552Z]      ✅ NEW association: 266999381195 → 185436269805
+[2025-09-19T11:24:11.552Z]    🔗 Contact 267022103778 has 1 deal associations
+[2025-09-19T11:24:11.554Z]      ✅ NEW association: 267022103778 → 185253050588
+[2025-09-19T11:24:11.554Z]    🔗 Contact 262977068264 has 1 deal associations
+[2025-09-19T11:24:11.556Z]      ✅ NEW association: 262977068264 → 181929602255
+[2025-09-19T11:24:11.556Z]    🔗 Contact 263173184713 has 1 deal associations
+[2025-09-19T11:24:11.558Z]      ✅ NEW association: 263173184713 → 182212529375
+[2025-09-19T11:24:11.558Z]    🔗 Contact 263232635082 has 1 deal associations
+[2025-09-19T11:24:11.560Z]      ✅ NEW association: 263232635082 → 182279565535
+[2025-09-19T11:24:11.560Z]    🔗 Contact 263673135311 has 1 deal associations
+[2025-09-19T11:24:11.561Z]      ✅ NEW association: 263673135311 → 182683137248
+[2025-09-19T11:24:11.561Z]    🔗 Contact 263759258833 has 1 deal associations
+[2025-09-19T11:24:11.562Z]      ✅ NEW association: 263759258833 → 182717473016
+[2025-09-19T11:24:11.562Z]    🔗 Contact 263787542743 has 1 deal associations
+[2025-09-19T11:24:11.564Z]      ✅ NEW association: 263787542743 → 182771538130
+[2025-09-19T11:24:11.564Z]    🔗 Contact 263871820002 has 1 deal associations
+[2025-09-19T11:24:11.566Z]      ✅ NEW association: 263871820002 → 182818260217
+[2025-09-19T11:24:11.566Z]    🔗 Contact 263890660578 has 1 deal associations
+[2025-09-19T11:24:11.567Z]      ✅ NEW association: 263890660578 → 182873108666
+[2025-09-19T11:24:11.567Z]    🔗 Contact 264655955130 has 1 deal associations
+[2025-09-19T11:24:11.569Z]      ✅ NEW association: 264655955130 → 183542211810
+[2025-09-19T11:24:11.569Z]    🔗 Contact 264760913117 has 1 deal associations
+[2025-09-19T11:24:11.570Z]      ✅ NEW association: 264760913117 → 183593057512
+[2025-09-19T11:24:11.570Z]    🔗 Contact 264761094333 has 1 deal associations
+[2025-09-19T11:24:11.572Z]      ✅ NEW association: 264761094333 → 184858132669
+[2025-09-19T11:24:11.572Z]    🔗 Contact 264939745495 has 1 deal associations
+[2025-09-19T11:24:11.573Z]      ✅ NEW association: 264939745495 → 183797290210
+[2025-09-19T11:24:11.573Z]    🔗 Contact 265213644990 has 1 deal associations
+[2025-09-19T11:24:11.575Z]      ✅ NEW association: 265213644990 → 184057278700
+[2025-09-19T11:24:11.575Z]    🔗 Contact 262026521786 has 1 deal associations
+[2025-09-19T11:24:11.576Z]      ✅ NEW association: 262026521786 → 181000840417
+[2025-09-19T11:24:11.576Z]    🔗 Contact 262032210168 has 1 deal associations
+[2025-09-19T11:24:11.578Z]      ✅ NEW association: 262032210168 → 181036114142
+[2025-09-19T11:24:11.578Z]    🔗 Contact 262185708744 has 1 deal associations
+[2025-09-19T11:24:11.579Z]      ✅ NEW association: 262185708744 → 181197019330
+[2025-09-19T11:24:11.579Z]    🔗 Contact 262594649319 has 1 deal associations
+[2025-09-19T11:24:11.581Z]      ✅ NEW association: 262594649319 → 181550939377
+[2025-09-19T11:24:11.581Z]    🔗 Contact 262917301484 has 1 deal associations
+[2025-09-19T11:24:11.583Z]      ✅ NEW association: 262917301484 → 181869582532
+[2025-09-19T11:24:11.583Z]    🔗 Contact 263062631623 has 1 deal associations
+[2025-09-19T11:24:11.584Z]      ✅ NEW association: 263062631623 → 182062456052
+[2025-09-19T11:24:11.584Z]    🔗 Contact 260401657019 has 1 deal associations
+[2025-09-19T11:24:11.586Z]      ✅ NEW association: 260401657019 → 179657062624
+[2025-09-19T11:24:11.586Z]    🔗 Contact 261383903458 has 1 deal associations
+[2025-09-19T11:24:11.587Z]      ✅ NEW association: 261383903458 → 180449036526
+[2025-09-19T11:24:11.587Z]    🔗 Contact 261485217986 has 1 deal associations
+[2025-09-19T11:24:11.589Z]      ✅ NEW association: 261485217986 → 180590042321
+[2025-09-19T11:24:11.589Z]    🔗 Contact 261746828523 has 1 deal associations
+[2025-09-19T11:24:11.591Z]      ✅ NEW association: 261746828523 → 180688220406
+[2025-09-19T11:24:11.591Z]    🔗 Contact 259463322821 has 1 deal associations
+[2025-09-19T11:24:11.592Z]      ✅ NEW association: 259463322821 → 178812676318
+[2025-09-19T11:24:11.592Z]    🔗 Contact 259621438693 has 1 deal associations
+[2025-09-19T11:24:11.594Z]      ✅ NEW association: 259621438693 → 178968168684
+[2025-09-19T11:24:11.594Z]    🔗 Contact 260353372364 has 1 deal associations
+[2025-09-19T11:24:11.595Z]      ✅ NEW association: 260353372364 → 179619349718
+[2025-09-19T11:24:11.595Z]    🔗 Contact 260446513368 has 1 deal associations
+[2025-09-19T11:24:11.597Z]      ✅ NEW association: 260446513368 → 179683045574
+[2025-09-19T11:24:11.597Z]    🔗 Contact 257640341716 has 1 deal associations
+[2025-09-19T11:24:11.598Z]      ✅ NEW association: 257640341716 → 177335598291
+[2025-09-19T11:24:11.598Z]    🔗 Contact 258331866311 has 1 deal associations
+[2025-09-19T11:24:11.600Z]      ✅ NEW association: 258331866311 → 177996763327
+[2025-09-19T11:24:11.600Z]    🔗 Contact 258712014048 has 1 deal associations
+[2025-09-19T11:24:11.601Z]      ✅ NEW association: 258712014048 → 178065185992
+[2025-09-19T11:24:11.601Z]    🔗 Contact 259246803134 has 1 deal associations
+[2025-09-19T11:24:11.603Z]      ✅ NEW association: 259246803134 → 178732881098
+[2025-09-19T11:24:11.603Z]    🔗 Contact 259268424912 has 1 deal associations
+[2025-09-19T11:24:11.604Z]      ✅ NEW association: 259268424912 → 178746708189
+[2025-09-19T11:24:11.604Z]    🔗 Contact 256291882220 has 1 deal associations
+[2025-09-19T11:24:11.605Z]      ✅ NEW association: 256291882220 → 175977958612
+[2025-09-19T11:24:11.605Z]    🔗 Contact 256591123684 has 1 deal associations
+[2025-09-19T11:24:11.606Z]      ✅ NEW association: 256591123684 → 176339394796
+[2025-09-19T11:24:11.608Z]    🔗 Contact 256782389443 has 1 deal associations
+[2025-09-19T11:24:11.610Z]      ✅ NEW association: 256782389443 → 176317758668
+[2025-09-19T11:24:11.610Z]    🔗 Contact 257138313456 has 1 deal associations
+[2025-09-19T11:24:11.612Z]      ✅ NEW association: 257138313456 → 176890150133
+[2025-09-19T11:24:11.612Z]    🔗 Contact 257521799366 has 1 deal associations
+[2025-09-19T11:24:11.614Z]      ✅ NEW association: 257521799366 → 177240465641
+[2025-09-19T11:24:11.614Z]    🔗 Contact 257599146230 has 1 deal associations
+[2025-09-19T11:24:11.615Z]      ✅ NEW association: 257599146230 → 177404459218
+[2025-09-19T11:24:11.615Z]    🔗 Contact 255400886470 has 1 deal associations
+[2025-09-19T11:24:11.617Z]      ✅ NEW association: 255400886470 → 175203566820
+[2025-09-19T11:24:11.617Z]    🔗 Contact 255560954051 has 1 deal associations
+[2025-09-19T11:24:11.619Z]      ✅ NEW association: 255560954051 → 175289394391
+[2025-09-19T11:24:11.619Z]    🔗 Contact 255683126501 has 1 deal associations
+[2025-09-19T11:24:11.620Z]      ✅ NEW association: 255683126501 → 175408823482
+[2025-09-19T11:24:11.621Z]    🔗 Contact 255953482965 has 1 deal associations
+[2025-09-19T11:24:11.622Z]      ✅ NEW association: 255953482965 → 175664968947
+[2025-09-19T11:24:11.622Z]    🔗 Contact 256115340530 has 1 deal associations
+[2025-09-19T11:24:11.624Z]      ✅ NEW association: 256115340530 → 175702103273
+[2025-09-19T11:24:11.624Z]    🔗 Contact 256259649776 has 1 deal associations
+[2025-09-19T11:24:11.626Z]      ✅ NEW association: 256259649776 → 175953770695
+[2025-09-19T11:24:11.626Z]    🔗 Contact 256379157741 has 1 deal associations
+[2025-09-19T11:24:11.628Z]      ✅ NEW association: 256379157741 → 176122296523
+[2025-09-19T11:24:11.828Z] ✅ Associations sync complete: 2150 associations processed
+[2025-09-19T11:24:11.828Z]    📊 Contacts with associations: 1744
+[2025-09-19T11:24:11.828Z] 🎉 FIXED sync completed successfully!
+[2025-09-19T11:24:11.828Z] 📊 Synced: 76 contacts, 300 deals
+[2025-09-19T11:24:11.829Z] 🔗 Contact-Deal Associations: 2150 via API v4
+[2025-09-19T11:24:11.829Z] 🔧 Using lastmodifieddate: Captures both new records AND updates

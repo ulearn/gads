@@ -9,6 +9,7 @@
  */
 
 const fieldMap = require('./fieldmap');
+const { syncLogger } = require('../../logger');
 
 /**
  * Create association table if it doesn't exist
@@ -31,10 +32,10 @@ async function ensureAssociationTableExists(connection) {
     `;
     
     await connection.execute(createAssociationTable);
-    console.log('✅ Association table ready');
+    syncLogger.log('✅ Association table ready');
     
   } catch (error) {
-    console.error('❌ Failed to create association table:', error.message);
+    syncLogger.error('❌ Failed to create association table: ' + error.message);
     throw error;
   }
 }
@@ -62,14 +63,14 @@ async function saveContactAssociations(connection, contactId, associations) {
         savedCount++;
         
       } catch (error) {
-        console.error(`   ⚠️ Failed to save association ${contactId} → ${dealId}:`, error.message);
+        syncLogger.error(`   ⚠️ Failed to save association ${contactId} → ${dealId}: ` + error.message);
       }
     }
     
     return savedCount;
     
   } catch (error) {
-    console.error(`❌ Error saving associations for contact ${contactId}:`, error.message);
+    syncLogger.error(`❌ Error saving associations for contact ${contactId}: ` + error.message);
     return 0;
   }
 }
@@ -80,9 +81,9 @@ async function saveContactAssociations(connection, contactId, associations) {
  */
 async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connection, objectType, startDate, endDate, allPropertyNames) {
   try {
-    console.log(`🔄 Syncing ${objectType} with associations (${allPropertyNames.length} properties)...`);
-    console.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    console.log(`🔧 USING lastmodifieddate filter (captures both new records AND updates)`);
+    syncLogger.log(`🔄 Syncing ${objectType} with associations (${allPropertyNames.length} properties)...`);
+    syncLogger.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    syncLogger.log(`🔧 USING lastmodifieddate filter (captures both new records AND updates)`);
     
     let after = undefined;
     let totalSynced = 0;
@@ -94,7 +95,7 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
       
       // 🔧 FIXED: Use lastmodifieddate for BOTH contacts and deals to capture updates
       const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
-      console.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
+      syncLogger.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
       
       if (objectType === 'contacts') {
         response = await hubspotClient.crm.contacts.searchApi.doSearch({
@@ -142,16 +143,16 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
         break;
       }
       
-      console.log(`   📄 Page ${page}: Processing ${objects.length} ${objectType}...`);
+      syncLogger.log(`   📄 Page ${page}: Processing ${objects.length} ${objectType}...`);
       
       // Process objects
       for (const obj of objects) {
         // Debug logging for important records
         if (objectType === 'deals' && (obj.properties?.dealname?.includes('Aika') || obj.properties?.amount)) {
-          console.log(`   🔍 Processing deal: ${obj.properties?.dealname} | Stage: ${obj.properties?.dealstage} | Amount: ${obj.properties?.amount}`);
+          syncLogger.log(`   🔍 Processing deal: ${obj.properties?.dealname} | Stage: ${obj.properties?.dealstage} | Amount: ${obj.properties?.amount}`);
         }
         if (objectType === 'contacts' && obj.properties?.email?.includes('aika')) {
-          console.log(`   🔍 Processing contact: ${obj.properties?.email} | Modified: ${obj.properties?.lastmodifieddate}`);
+          syncLogger.log(`   🔍 Processing contact: ${obj.properties?.email} | Modified: ${obj.properties?.lastmodifieddate}`);
         }
         
         // Save the main object (contact or deal)
@@ -165,7 +166,7 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
             const dealAssociations = obj.associations?.deals?.results?.map(d => d.id) || [];
             
             if (dealAssociations.length > 0) {
-              console.log(`   🔗 Contact ${obj.id} has ${dealAssociations.length} deal associations`);
+              syncLogger.log(`   🔗 Contact ${obj.id} has ${dealAssociations.length} deal associations`);
               const associationCount = await saveContactAssociations(
                 connection, 
                 obj.id, 
@@ -187,15 +188,15 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
     }
     
     if (objectType === 'contacts') {
-      console.log(`✅ ${objectType} sync complete: ${totalSynced} records, ${totalAssociations} associations`);
+      syncLogger.log(`✅ ${objectType} sync complete: ${totalSynced} records, ${totalAssociations} associations`);
     } else {
-      console.log(`✅ ${objectType} sync complete: ${totalSynced} records`);
+      syncLogger.log(`✅ ${objectType} sync complete: ${totalSynced} records`);
     }
     
     return { synced: totalSynced, associations: totalAssociations };
     
   } catch (error) {
-    console.error(`❌ ${objectType} sync failed:`, error.message);
+    syncLogger.error(`❌ ${objectType} sync failed: ` + error.message);
     throw error;
   }
 }
@@ -260,7 +261,7 @@ const SKIP_PROPERTIES = [
  */
 async function getAllAvailableProperties(hubspotClient, objectType) {
   try {
-    console.log(`🔍 Getting ${objectType} properties from HubSpot...`);
+    syncLogger.log(`🔍 Getting ${objectType} properties from HubSpot...`);
     
     const response = await hubspotClient.crm.properties.coreApi.getAll(objectType);
     const allProperties = response.results.map(prop => ({
@@ -277,15 +278,15 @@ async function getAllAvailableProperties(hubspotClient, objectType) {
       );
       
       const skippedCount = allProperties.length - filteredProperties.length;
-      console.log(`⚠️ Skipped ${skippedCount} problematic properties to avoid row size limits`);
+      syncLogger.log(`⚠️ Skipped ${skippedCount} problematic properties to avoid row size limits`);
     }
     
-    console.log(`✅ Found ${allProperties.length} ${objectType} properties, using ${filteredProperties.length} safe ones`);
+    syncLogger.log(`✅ Found ${allProperties.length} ${objectType} properties, using ${filteredProperties.length} safe ones`);
     
     return filteredProperties;
     
   } catch (error) {
-    console.error(`❌ Failed to get ${objectType} properties:`, error.message);
+    syncLogger.error(`❌ Failed to get ${objectType} properties: ` + error.message);
     throw error;
   }
 }
@@ -304,7 +305,7 @@ async function getExistingColumns(connection, tableName) {
     return columns.map(col => col.COLUMN_NAME);
     
   } catch (error) {
-    console.error(`❌ Failed to get existing columns for ${tableName}:`, error.message);
+    syncLogger.error(`❌ Failed to get existing columns for ${tableName}: ` + error.message);
     throw error;
   }
 }
@@ -337,11 +338,11 @@ function getColumnType(hubspotPropertyType, fieldType) {
  */
 async function addMissingColumns(connection, tableName, missingColumns) {
   if (missingColumns.length === 0) {
-    console.log(`✅ ${tableName}: Schema up to date`);
+    syncLogger.log(`✅ ${tableName}: Schema up to date`);
     return;
   }
 
-  console.log(`🔧 ${tableName}: Adding ${missingColumns.length} missing columns...`);
+  syncLogger.log(`🔧 ${tableName}: Adding ${missingColumns.length} missing columns...`);
   
   for (const column of missingColumns) {
     try {
@@ -349,10 +350,10 @@ async function addMissingColumns(connection, tableName, missingColumns) {
       const alterQuery = `ALTER TABLE ${tableName} ADD COLUMN \`${column.name}\` ${columnType}`;
       
       await connection.execute(alterQuery);
-      console.log(`   ✅ Added column: ${column.name}`);
+      syncLogger.log(`   ✅ Added column: ${column.name}`);
       
     } catch (error) {
-      console.error(`   ❌ Failed to add column ${column.name}:`, error.message);
+      syncLogger.error(`   ❌ Failed to add column ${column.name}: ` + error.message);
     }
   }
 }
@@ -362,7 +363,7 @@ async function addMissingColumns(connection, tableName, missingColumns) {
  */
 async function syncSchema(hubspotClient, getDbConnection) {
   try {
-    console.log('🚀 Starting schema sync...');
+    syncLogger.log('🚀 Starting schema sync...');
     
     const connection = await getDbConnection();
     
@@ -382,8 +383,8 @@ async function syncSchema(hubspotClient, getDbConnection) {
         prop => !existingContactColumns.includes(prop.name)
       );
       
-      console.log(`📊 Contacts: ${contactProperties.length} properties, ${missingContactColumns.length} missing`);
-      console.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
+      syncLogger.log(`📊 Contacts: ${contactProperties.length} properties, ${missingContactColumns.length} missing`);
+      syncLogger.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
       
       // Process deals schema  
       const dealProperties = await getAllAvailableProperties(hubspotClient, 'deals');
@@ -393,10 +394,10 @@ async function syncSchema(hubspotClient, getDbConnection) {
         prop => !existingDealColumns.includes(prop.name)
       );
       
-      console.log(`📊 Deals: ${dealProperties.length} properties, ${missingDealColumns.length} missing`);
-      console.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
+      syncLogger.log(`📊 Deals: ${dealProperties.length} properties, ${missingDealColumns.length} missing`);
+      syncLogger.log(`   ⚠️ SKIPPING old schema sync - using dynamic field mapping with extension tables instead`);
       
-      console.log('✅ Schema sync completed');
+      syncLogger.log('✅ Schema sync completed');
       
       return {
         success: true,
@@ -417,7 +418,7 @@ async function syncSchema(hubspotClient, getDbConnection) {
     }
     
   } catch (error) {
-    console.error('💥 Schema sync failed:', error.message);
+    syncLogger.error('💥 Schema sync failed:' + error.message);
     throw error;
   }
 }
@@ -428,7 +429,7 @@ async function syncSchema(hubspotClient, getDbConnection) {
  */
 async function syncContactDealAssociations(hubspotClient, connection) {
   try {
-    console.log('🔗 Starting contact-deal associations sync using Associations API v4...');
+    syncLogger.log('🔗 Starting contact-deal associations sync using Associations API v4...');
     
     // FIXED: Get contacts that either have deals OR were recently modified
     const [contacts] = await connection.execute(`
@@ -442,10 +443,10 @@ async function syncContactDealAssociations(hubspotClient, connection) {
       LIMIT 2000
     `);
     
-    console.log(`   📊 Found ${contacts.length} contacts to check (existing + recently modified)`);
+    syncLogger.log(`   📊 Found ${contacts.length} contacts to check (existing + recently modified)`);
     
     if (contacts.length === 0) {
-      console.log('   ⚠️ No contacts found with deals or recent modifications');
+      syncLogger.log('   ⚠️ No contacts found with deals or recent modifications');
       return { success: true, associations: 0 };
     }
     
@@ -458,7 +459,7 @@ async function syncContactDealAssociations(hubspotClient, connection) {
     for (let i = 0; i < contactIds.length; i += 100) {
       const batch = contactIds.slice(i, i + 100);
       
-      console.log(`   📦 Processing batch ${Math.floor(i/100) + 1}/${Math.ceil(contactIds.length/100)}`);
+      syncLogger.log(`   📦 Processing batch ${Math.floor(i/100) + 1}/${Math.ceil(contactIds.length/100)}`);
       
       try {
         // Use the V3 batch API (V4 doesn't have batch endpoints)
@@ -470,10 +471,10 @@ async function syncContactDealAssociations(hubspotClient, connection) {
           }
         );
         
-        console.log(`   🔍 API Response for batch:`, {
+        syncLogger.log(`   🔍 API Response for batch: ` + JSON.stringify({
           status: response.status,
           resultsCount: response.results?.length || 0
-        });
+        }));
         
         // Step 3: Process the associations
         if (response.results && response.results.length > 0) {
@@ -483,7 +484,7 @@ async function syncContactDealAssociations(hubspotClient, connection) {
             const dealAssociations = result.to || [];
             
             if (contactId && dealAssociations.length > 0) {
-              console.log(`   🔗 Contact ${contactId} has ${dealAssociations.length} deal associations`);
+              syncLogger.log(`   🔗 Contact ${contactId} has ${dealAssociations.length} deal associations`);
               contactsWithAssociations++;
               
               // Save each association
@@ -503,14 +504,14 @@ async function syncContactDealAssociations(hubspotClient, connection) {
                     if (insertResult.affectedRows > 0) {
                       totalAssociations++;
                       if (insertResult.insertId > 0) {
-                        console.log(`     ✅ NEW association: ${contactId} → ${dealId}`);
+                        syncLogger.log(`     ✅ NEW association: ${contactId} → ${dealId}`);
                       } else {
-                        console.log(`     🔄 Updated association: ${contactId} → ${dealId}`);
+                        syncLogger.log(`     🔄 Updated association: ${contactId} → ${dealId}`);
                       }
                     }
                     
                   } catch (error) {
-                    console.error(`     ❌ Failed to save association ${contactId} → ${dealId}:`, error.message);
+                    syncLogger.error(`     ❌ Failed to save association ${contactId} → ${dealId}:` + error.message);
                   }
                 }
               }
@@ -522,13 +523,13 @@ async function syncContactDealAssociations(hubspotClient, connection) {
         await delay(200);
         
       } catch (error) {
-        console.error(`   ❌ Failed to fetch associations for batch:`, error.message);
-        console.error(`   📋 Batch sample:`, batch.slice(0, 3)); // Log first 3 for debugging
+        syncLogger.error(`   ❌ Failed to fetch associations for batch:` + error.message);
+        syncLogger.error(`   📋 Batch sample: ` + JSON.stringify(batch.slice(0, 3))); // Log first 3 for debugging
       }
     }
     
-    console.log(`✅ Associations sync complete: ${totalAssociations} associations processed`);
-    console.log(`   📊 Contacts with associations: ${contactsWithAssociations}`);
+    syncLogger.log(`✅ Associations sync complete: ${totalAssociations} associations processed`);
+    syncLogger.log(`   📊 Contacts with associations: ${contactsWithAssociations}`);
     
     return {
       success: true,
@@ -538,7 +539,7 @@ async function syncContactDealAssociations(hubspotClient, connection) {
     };
     
   } catch (error) {
-    console.error('❌ Associations sync failed:', error.message);
+    syncLogger.error('❌ Associations sync failed:' + error.message);
     throw error;
   }
 }
@@ -549,11 +550,11 @@ async function syncContactDealAssociations(hubspotClient, connection) {
 async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = {}) {
   try {
     // Step 1: Sync schema first
-    console.log('🔧 STEP 1: Syncing schema...');
+    syncLogger.log('🔧 STEP 1: Syncing schema...');
     await syncSchema(hubspotClient, getDbConnection);
     
     // Step 2: Get current complete property lists
-    console.log('📋 STEP 2: Getting property lists for data sync...');
+    syncLogger.log('📋 STEP 2: Getting property lists for data sync...');
     const contactProperties = await getAllAvailableProperties(hubspotClient, 'contacts');
     const dealProperties = await getAllAvailableProperties(hubspotClient, 'deals');
     
@@ -561,7 +562,7 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
     const dealPropertyNames = dealProperties.map(p => p.name);
     
     // Step 3: FIXED date range calculation - includes TODAY
-    console.log('🚀 STEP 3: Calculating date range for sync...');
+    syncLogger.log('🚀 STEP 3: Calculating date range for sync...');
     
     let startDate, endDate;
     if (options.startDate && options.endDate) {
@@ -584,8 +585,8 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
       startDate.setHours(0, 0, 0, 0);
     }
     
-    console.log(`📅 SYNC DATE RANGE: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
-    console.log(`🔧 USING lastmodifieddate filter - captures NEW records AND updates!`);
+    syncLogger.log(`📅 SYNC DATE RANGE: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+    syncLogger.log(`🔧 USING lastmodifieddate filter - captures NEW records AND updates!`);
     
     const connection = await getDbConnection();
     
@@ -600,13 +601,13 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
       );
       
       // Step 4: Sync associations using Associations API v4
-      console.log('🔗 STEP 4: Syncing contact-deal associations...');
+      syncLogger.log('🔗 STEP 4: Syncing contact-deal associations...');
       const associationsResult = await syncContactDealAssociations(hubspotClient, connection);
       
-      console.log('🎉 FIXED sync completed successfully!');
-      console.log(`📊 Synced: ${contactResult.synced} contacts, ${dealResult.synced} deals`);
-      console.log(`🔗 Contact-Deal Associations: ${associationsResult.associations} via API v4`);
-      console.log(`🔧 Using lastmodifieddate: Captures both new records AND updates`);
+      syncLogger.log('🎉 FIXED sync completed successfully!');
+      syncLogger.log(`📊 Synced: ${contactResult.synced} contacts, ${dealResult.synced} deals`);
+      syncLogger.log(`🔗 Contact-Deal Associations: ${associationsResult.associations} via API v4`);
+      syncLogger.log(`🔧 Using lastmodifieddate: Captures both new records AND updates`);
       
       return {
         success: true,
@@ -628,7 +629,7 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
     }
     
   } catch (error) {
-    console.error('💥 Enhanced sync failed:', error.message);
+    syncLogger.error('💥 Enhanced sync failed:' + error.message);
     throw error;
   }
 }
