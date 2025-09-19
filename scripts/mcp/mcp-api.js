@@ -1,4 +1,4 @@
-const { GoogleAdsApi } = require('google-ads-api');
+const { GoogleAdsApi, ResourceNames, enums, toMicros } = require('google-ads-api');
 const path = require('path');
 
 // Ensure environment variables are loaded
@@ -776,78 +776,81 @@ async function createCampaignFromTemplate({
     const templateCampaign = templateResults[0].campaign;
     log('✅ Template campaign found:', templateCampaign.name);
 
-    // Step 2: Create budget first
-    log('💰 Creating campaign budget...');
-    const budgetResource = `customers/${account_id}/campaignBudgets/-1`;
-    const budgetOperation = {
-      create: {
-        resource_name: budgetResource,
-        name: `Budget for ${new_campaign_name}`,
-        amount_micros: daily_budget_micros || 50000000, // Default $50/day
-        delivery_method: 'STANDARD',
-        explicitly_shared: false
-      }
-    };
+    // Step 2: Create budget and campaign atomically using mutateResources
+    log('💰 Creating campaign budget and campaign...');
 
-    const budgetResponse = await customer.campaignBudgets.mutateCampaignBudgets([budgetOperation]);
-    const newBudgetResourceName = budgetResponse.results[0].resource_name;
-    log('✅ Budget created:', newBudgetResourceName);
+    // Create a resource name with a temporary resource id (-1)
+    const budgetResourceName = ResourceNames.campaignBudget(account_id, "-1");
 
-    // Step 3: Create the new campaign
-    log('🎯 Creating new campaign...');
-    const campaignResource = `customers/${account_id}/campaigns/-1`;
-    const campaignOperation = {
-      create: {
-        resource_name: campaignResource,
-        name: new_campaign_name,
-        advertising_channel_type: templateCampaign.advertising_channel_type,
-        advertising_channel_sub_type: templateCampaign.advertising_channel_sub_type,
-        status: 'PAUSED', // Start paused for safety
-        bidding_strategy_type: templateCampaign.bidding_strategy_type,
-        campaign_budget: newBudgetResourceName,
-        network_settings: {
-          target_google_search: templateCampaign.network_settings.target_google_search,
-          target_search_network: templateCampaign.network_settings.target_search_network,
-          target_content_network: templateCampaign.network_settings.target_content_network,
-          target_partner_search_network: templateCampaign.network_settings.target_partner_search_network
-        },
-        geo_target_type_setting: {
-          positive_geo_target_type: templateCampaign.geo_target_type_setting.positive_geo_target_type,
-          negative_geo_target_type: templateCampaign.geo_target_type_setting.negative_geo_target_type
+    const operations = [
+      {
+        entity: "campaign_budget",
+        operation: "create",
+        resource: {
+          resource_name: budgetResourceName,
+          name: `Budget for ${new_campaign_name}`,
+          delivery_method: enums.BudgetDeliveryMethod.STANDARD,
+          amount_micros: daily_budget_micros || toMicros(50), // Default $50/day
+          explicitly_shared: false
+        }
+      },
+      {
+        entity: "campaign",
+        operation: "create",
+        resource: {
+          name: new_campaign_name,
+          advertising_channel_type: templateCampaign.advertising_channel_type,
+          status: enums.CampaignStatus.PAUSED, // Start paused for safety
+          manual_cpc: {
+            enhanced_cpc_enabled: false
+          },
+          campaign_budget: budgetResourceName, // Use the temporary resource id
+          network_settings: {
+            target_google_search: templateCampaign.network_settings?.target_google_search ?? true,
+            target_search_network: templateCampaign.network_settings?.target_search_network ?? true,
+            target_content_network: templateCampaign.network_settings?.target_content_network ?? false,
+            target_partner_search_network: templateCampaign.network_settings?.target_partner_search_network ?? false
+          }
         }
       }
-    };
+    ];
 
-    const campaignResponse = await customer.campaigns.mutateCampaigns([campaignOperation]);
-    const newCampaignResourceName = campaignResponse.results[0].resource_name;
+    const mutateResponse = await customer.mutateResources(operations);
+
+    // Extract the created resources
+    const newBudgetResourceName = mutateResponse.results[0].resource_name;
+    const newCampaignResourceName = mutateResponse.results[1].resource_name;
     const newCampaignId = newCampaignResourceName.split('/')[3];
-    log('✅ Campaign created:', newCampaignResourceName);
 
-    // Step 4: Add geo targeting for the target country
-    log('🌍 Adding geo targeting...');
-    const geoTargetOperation = {
-      create: {
-        campaign: newCampaignResourceName,
-        criterion_id: getCountryCriterionId(target_country_code),
-        type: 'LOCATION'
+    log('✅ Budget and campaign created:', { budgetResourceName: newBudgetResourceName, campaignResourceName: newCampaignResourceName });
+
+    // Step 3: Add geo and language targeting
+    log('🌍 Adding geo and language targeting...');
+    const targetingOperations = [
+      {
+        entity: "campaign_criterion",
+        operation: "create",
+        resource: {
+          campaign: newCampaignResourceName,
+          location: {
+            geo_target_constant: `geoTargetConstants/${getCountryCriterionId(target_country_code)}`
+          }
+        }
+      },
+      {
+        entity: "campaign_criterion",
+        operation: "create",
+        resource: {
+          campaign: newCampaignResourceName,
+          language: {
+            language_constant: `languageConstants/${getLanguageCriterionId(target_language_code)}`
+          }
+        }
       }
-    };
+    ];
 
-    await customer.campaignCriteria.mutateCampaignCriteria([geoTargetOperation]);
-    log('✅ Geo targeting added for:', target_country_code);
-
-    // Step 5: Add language targeting
-    log('🗣️ Adding language targeting...');
-    const languageTargetOperation = {
-      create: {
-        campaign: newCampaignResourceName,
-        criterion_id: getLanguageCriterionId(target_language_code),
-        type: 'LANGUAGE'
-      }
-    };
-
-    await customer.campaignCriteria.mutateCampaignCriteria([languageTargetOperation]);
-    log('✅ Language targeting added for:', target_language_code);
+    await customer.mutateResources(targetingOperations);
+    log('✅ Geo and language targeting added:', { country: target_country_code, language: target_language_code });
 
     let copiedAssets = {
       ad_groups: 0,
@@ -873,17 +876,21 @@ async function createCampaignFromTemplate({
 
       for (const result of adGroupResults) {
         const templateAdGroup = result.ad_group;
-        const adGroupOperation = {
-          create: {
-            name: `${templateAdGroup.name} - ${target_country_code}`,
-            campaign: newCampaignResourceName,
-            status: 'PAUSED',
-            type: templateAdGroup.type,
-            cpc_bid_micros: templateAdGroup.cpc_bid_micros
+        const adGroupOperations = [
+          {
+            entity: 'ad_group',
+            operation: 'create',
+            resource: {
+              name: `${templateAdGroup.name} - ${target_country_code}`,
+              campaign: newCampaignResourceName,
+              status: 'PAUSED',
+              type: templateAdGroup.type,
+              cpc_bid_micros: templateAdGroup.cpc_bid_micros
+            }
           }
-        };
+        ];
 
-        const adGroupResponse = await customer.adGroups.mutateAdGroups([adGroupOperation]);
+        const adGroupResponse = await customer.mutateResources(adGroupOperations);
         const newAdGroupResourceName = adGroupResponse.results[0].resource_name;
         copiedAssets.ad_groups++;
 
