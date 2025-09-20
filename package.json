@@ -8,7 +8,7 @@
     "axios": "^1.11.0",
     "dotenv": "16.6.1",
     "express": "^4.21.2",
-    "google-ads-api": "^20.0.1",
+    "google-ads-api": "^21.0.1",
     "googleapis": "154.1.0",
     "http-proxy-middleware": "^3.0.5",
     "mysql2": "^3.14.3"

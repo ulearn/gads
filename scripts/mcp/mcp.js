@@ -111,6 +111,14 @@ async function handleToolCall(toolName, args) {
       result = await apiTools.createCampaignFromTemplate(args);
       break;
 
+    case 'GAds_UpdateBudget_API':
+      result = await apiTools.updateCampaignBudget(args);
+      break;
+
+    case 'GAds_UpdateStatus_API':
+      result = await apiTools.updateCampaignStatus(args);
+      break;
+
     // MySQL database tools - Refactored to use proven analytics modules  
     case 'Summary_MySql':
       result = await mysqlTools.getDashboardSummary(args);

@@ -112,6 +112,57 @@ const toolDefinitions = {
     }
   },
 
+  GAds_UpdateBudget_API: {
+    name: 'GAds_UpdateBudget_API',
+    description: 'Update the daily budget of an existing Google Ads campaign (Mutate API)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        campaign_id: {
+          type: 'string',
+          description: 'ID of the campaign to update budget for',
+          required: true
+        },
+        daily_budget_micros: {
+          type: 'number',
+          description: 'New daily budget in micros (e.g., 1000000 = €1/day, 50000000 = €50/day)',
+          required: true
+        }
+      },
+      required: ['campaign_id', 'daily_budget_micros']
+    }
+  },
+
+  GAds_UpdateStatus_API: {
+    name: 'GAds_UpdateStatus_API',
+    description: 'Update the status of an existing Google Ads campaign (enable/pause/remove) (Mutate API)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        campaign_id: {
+          type: 'string',
+          description: 'ID of the campaign to update status for',
+          required: true
+        },
+        status: {
+          type: 'string',
+          description: 'New campaign status',
+          enum: ['ENABLED', 'PAUSED', 'REMOVED'],
+          required: true
+        }
+      },
+      required: ['campaign_id', 'status']
+    }
+  },
+
   GAds_Audience_API: {
     name: 'GAds_Audience_API',
     description: 'Audience Manager access for segments, custom audiences, targeting insights, and demographic data (Direct API)',
