@@ -107,16 +107,21 @@ async function handleToolCall(toolName, args) {
       result = await apiTools.getAudienceAnalysis(args);
       break;
 
-    case 'GAds_Create_API':
-      result = await apiTools.createCampaignFromTemplate(args);
+
+    case 'GAds_Universal_Query_API':
+      result = await apiTools.universalGoogleAdsQuery(args);
       break;
 
-    case 'GAds_UpdateBudget_API':
-      result = await apiTools.updateCampaignBudget(args);
+    case 'GAds_Universal_Write_API':
+      result = await apiTools.universalGoogleAdsWrite(args);
       break;
 
-    case 'GAds_UpdateStatus_API':
-      result = await apiTools.updateCampaignStatus(args);
+    case 'GAds_Keyword_Ideas_API':
+      result = await apiTools.generateKeywordIdeas(args);
+      break;
+
+    case 'GAds_Keyword_Research_API':
+      result = await apiTools.getKeywordResearchReport(args);
       break;
 
     // MySQL database tools - Refactored to use proven analytics modules  

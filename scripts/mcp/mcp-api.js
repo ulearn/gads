@@ -717,15 +717,20 @@ ${demographics.filter(d => d.income_range).map(d => `- ${d.income_range.type}`).
 /**
  * Create a new Google Ads campaign based on an existing successful campaign
  */
-// Import create and update functionality from separate file
-const { createCampaignFromTemplate, updateCampaignBudget, updateCampaignStatus } = require('./mcp-api-create');
+
+// Import full access functionality from separate file
+const { universalGoogleAdsQuery, universalGoogleAdsWrite, updateCampaignTrackingTemplate } = require('./mcp-api-full');
+
+// Import keyword planning functionality from separate file
+const { generateKeywordIdeas, getKeywordResearchReport } = require('./mcp-api-keyword');
 
 module.exports = {
   getAccountOverview,
   getCampaignAnalysis,
   getAudienceAnalysis,
-  createCampaignFromTemplate,
-  updateCampaignBudget,
-  updateCampaignStatus,
-  googleAdsClient // Export client for future extensions
+  universalGoogleAdsQuery,     // Add universal query
+  universalGoogleAdsWrite,      // Add universal write
+  generateKeywordIdeas,        // Add keyword ideas
+  getKeywordResearchReport,    // Add keyword research
+  googleAdsClient
 };

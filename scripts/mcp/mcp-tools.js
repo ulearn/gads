@@ -57,111 +57,6 @@ const toolDefinitions = {
     }
   },
 
-  GAds_Create_API: {
-    name: 'GAds_Create_API',
-    description: 'Create new Google Ads campaigns based on existing successful campaigns with country/language targeting (Mutate API)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        account_id: {
-          type: 'string',
-          description: 'Google Ads account ID (default: live account)'
-        },
-        template_campaign_id: {
-          type: 'string',
-          description: 'ID of the existing successful campaign to copy from',
-          required: true
-        },
-        new_campaign_name: {
-          type: 'string',
-          description: 'Name for the new campaign',
-          required: true
-        },
-        target_country_code: {
-          type: 'string',
-          description: 'Target country code (e.g., IT for Italy, ES for Spain, FR for France)',
-          required: true
-        },
-        target_language_code: {
-          type: 'string',
-          description: 'Target language code (e.g., en, es, it, fr, de)',
-          default: 'en'
-        },
-        daily_budget_micros: {
-          type: 'number',
-          description: 'Daily budget in micros (e.g., 50000000 = $50/day)',
-          default: 50000000
-        },
-        copy_ad_groups: {
-          type: 'boolean',
-          description: 'Copy ad groups from template campaign',
-          default: true
-        },
-        copy_keywords: {
-          type: 'boolean',
-          description: 'Copy keywords from template campaign',
-          default: true
-        },
-        copy_ads: {
-          type: 'boolean',
-          description: 'Copy ads from template campaign',
-          default: true
-        }
-      },
-      required: ['template_campaign_id', 'new_campaign_name', 'target_country_code']
-    }
-  },
-
-  GAds_UpdateBudget_API: {
-    name: 'GAds_UpdateBudget_API',
-    description: 'Update the daily budget of an existing Google Ads campaign (Mutate API)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        account_id: {
-          type: 'string',
-          description: 'Google Ads account ID (default: live account)'
-        },
-        campaign_id: {
-          type: 'string',
-          description: 'ID of the campaign to update budget for',
-          required: true
-        },
-        daily_budget_micros: {
-          type: 'number',
-          description: 'New daily budget in micros (e.g., 1000000 = €1/day, 50000000 = €50/day)',
-          required: true
-        }
-      },
-      required: ['campaign_id', 'daily_budget_micros']
-    }
-  },
-
-  GAds_UpdateStatus_API: {
-    name: 'GAds_UpdateStatus_API',
-    description: 'Update the status of an existing Google Ads campaign (enable/pause/remove) (Mutate API)',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        account_id: {
-          type: 'string',
-          description: 'Google Ads account ID (default: live account)'
-        },
-        campaign_id: {
-          type: 'string',
-          description: 'ID of the campaign to update status for',
-          required: true
-        },
-        status: {
-          type: 'string',
-          description: 'New campaign status',
-          enum: ['ENABLED', 'PAUSED', 'REMOVED'],
-          required: true
-        }
-      },
-      required: ['campaign_id', 'status']
-    }
-  },
 
   GAds_Audience_API: {
     name: 'GAds_Audience_API',
@@ -187,6 +82,153 @@ const toolDefinitions = {
           type: 'boolean',
           description: 'Include audience insights and performance data',
           default: true
+        }
+      }
+    }
+  },
+
+  GAds_Universal_Query_API: {
+    name: 'GAds_Universal_Query_API',
+    description: '📊 Universal READ-ONLY access to Google Ads using GAQL queries - SAFE for all analysis',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        query: {
+          type: 'string',
+          description: 'Google Ads Query Language (GAQL) query - READ ONLY operations',
+          required: true
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum results to return (default: 1000)',
+          default: 1000
+        }
+      },
+      required: ['query']
+    }
+  },
+
+  GAds_Universal_Write_API: {
+    name: 'GAds_Universal_Write_API',
+    description: '⚠️ DANGER: Universal WRITE access to Google Ads - can CREATE, UPDATE, or DELETE anything. Requires explicit confirmation!',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        resource_type: {
+          type: 'string',
+          description: 'Resource type: adGroups, adGroupCriteria (keywords), adGroupAds (ads), campaigns, etc.',
+          required: true
+        },
+        operation_type: {
+          type: 'string',
+          description: 'Operation type: create, update, remove, or mutate',
+          enum: ['create', 'update', 'remove', 'mutate'],
+          required: true
+        },
+        operations: {
+          type: 'array',
+          description: 'Array of operations to perform (structure depends on resource and operation type)',
+          required: true
+        },
+        confirm_danger: {
+          type: 'boolean',
+          description: '⚠️ SAFETY: Must explicitly set to true to confirm this dangerous operation',
+          required: true
+        }
+      },
+      required: ['resource_type', 'operation_type', 'operations', 'confirm_danger']
+    }
+  },
+
+  GAds_Keyword_Ideas_API: {
+    name: 'GAds_Keyword_Ideas_API',
+    description: '🔍 Generate keyword ideas using Google Ads Keyword Planner for campaign optimization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        seed_keywords: {
+          type: 'array',
+          description: 'Starting keywords to generate ideas from (e.g. ["english school dublin", "learn english ireland"])',
+          items: { type: 'string' },
+          default: []
+        },
+        seed_url: {
+          type: 'string',
+          description: 'URL to extract keyword ideas from (optional)'
+        },
+        language_code: {
+          type: 'string',
+          description: 'Language code for targeting (e.g. en, es, it, fr)',
+          default: 'en'
+        },
+        location_codes: {
+          type: 'array',
+          description: 'Location codes for targeting (default: [\"2372\"] for Ireland)',
+          items: { type: 'string' },
+          default: ['2372']
+        },
+        page_size: {
+          type: 'number',
+          description: 'Maximum number of keyword ideas to return',
+          default: 50
+        }
+      }
+    }
+  },
+
+  GAds_Keyword_Research_API: {
+    name: 'GAds_Keyword_Research_API',
+    description: '📋 Comprehensive keyword research report with ideas, competition analysis, and strategic recommendations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        seed_keywords: {
+          type: 'array',
+          description: 'Starting keywords for research (e.g. ["english courses", "dublin language school"])',
+          items: { type: 'string' },
+          default: []
+        },
+        seed_url: {
+          type: 'string',
+          description: 'Website URL to analyze for keyword opportunities'
+        },
+        competitor_domains: {
+          type: 'array',
+          description: 'Competitor domains for analysis (e.g. ["delfinschool.ie", "atlasschool.ie"])',
+          items: { type: 'string' },
+          default: []
+        },
+        language_code: {
+          type: 'string',
+          description: 'Target language code',
+          default: 'en'
+        },
+        location_codes: {
+          type: 'array',
+          description: 'Target location codes',
+          items: { type: 'string' },
+          default: ['2372']
+        },
+        max_cpc_bid_micros: {
+          type: 'number',
+          description: 'Maximum CPC bid in micros for budget planning (e.g. 2000000 = €2.00)',
+          default: 2000000
         }
       }
     }
