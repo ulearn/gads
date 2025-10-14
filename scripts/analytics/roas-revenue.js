@@ -242,41 +242,68 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
       const campaignAttributionMap = new Map();
       
       for (const campaign of campaignSpendResults) {
-        // Enhanced campaign attribution query
+        // Enhanced campaign attribution query - with burn count
         const [attributionResults] = await connection.execute(`
-          SELECT 
+          SELECT
             COUNT(DISTINCT hc.hubspot_id) as attributed_contacts,
             COUNT(DISTINCT hd.hubspot_deal_id) as total_deals,
             COUNT(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.hubspot_deal_id END) as won_deals,
-            COALESCE(SUM(DISTINCT CASE 
-              WHEN hd.dealstage = 'closedwon' AND hd.amount IS NOT NULL 
-              THEN CAST(hd.amount as DECIMAL(15,2)) 
-              ELSE 0 
+            COALESCE(SUM(DISTINCT CASE
+              WHEN hd.dealstage = 'closedwon' AND hd.amount IS NOT NULL
+              THEN CAST(hd.amount as DECIMAL(15,2))
+              ELSE 0
             END), 0) as campaign_revenue
           FROM hub_contacts hc
           LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
-          LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id 
+          LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id
             AND hd.pipeline = 'default'
             AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
           WHERE ${buildEnhancedAttributionQuery()}
             AND (
               -- Match by campaign ID (standard)
-              hc.hs_analytics_source_data_1 = ? 
-              OR 
+              hc.hs_analytics_source_data_1 = ?
+              OR
               -- Match by campaign name (both standard and custom field)
               hc.google_ads_campaign = ?
               OR
               COALESCE(hc.google_ads_campaign, hc.hs_analytics_source_data_1) = ?
             )
             AND (
-              hc.hubspot_owner_id != 10017927 
-              OR hc.hubspot_owner_id IS NULL 
+              hc.hubspot_owner_id != 10017927
+              OR hc.hubspot_owner_id IS NULL
               OR hc.hubspot_owner_id = ''
             )
             AND hc.territory != 'Unsupported Territory'
         `, [
-          startDateStr, endDateStr, 
-          campaign.google_campaign_id, 
+          startDateStr, endDateStr,
+          campaign.google_campaign_id,
+          campaign.campaign_name,
+          campaign.campaign_name
+        ]);
+
+        // Get burned contacts for this campaign
+        const [burnResults] = await connection.execute(`
+          SELECT
+            COUNT(DISTINCT hc.hubspot_id) as burned_contacts
+          FROM hub_contacts hc
+          WHERE ${buildEnhancedAttributionQuery()}
+            AND (
+              -- Match by campaign ID (standard)
+              hc.hs_analytics_source_data_1 = ?
+              OR
+              -- Match by campaign name (both standard and custom field)
+              hc.google_ads_campaign = ?
+              OR
+              COALESCE(hc.google_ads_campaign, hc.hs_analytics_source_data_1) = ?
+            )
+            AND (
+              hc.hubspot_owner_id != 10017927
+              OR hc.hubspot_owner_id IS NULL
+              OR hc.hubspot_owner_id = ''
+            )
+            AND hc.territory = 'Unsupported Territory'
+        `, [
+          campaign.google_campaign_id,
           campaign.campaign_name,
           campaign.campaign_name
         ]);
@@ -285,7 +312,8 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
           attributed_contacts: parseInt(attributionResults[0].attributed_contacts) || 0,
           total_deals: parseInt(attributionResults[0].total_deals) || 0,
           won_deals: parseInt(attributionResults[0].won_deals) || 0,
-          campaign_revenue: parseFloat(attributionResults[0].campaign_revenue) || 0
+          campaign_revenue: parseFloat(attributionResults[0].campaign_revenue) || 0,
+          burned_contacts: parseInt(burnResults[0].burned_contacts) || 0
         });
       }
       
@@ -296,9 +324,13 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
           attributed_contacts: 0,
           total_deals: 0,
           won_deals: 0,
-          campaign_revenue: 0
+          campaign_revenue: 0,
+          burned_contacts: 0
         };
-        
+
+        const totalContacts = attribution.attributed_contacts + attribution.burned_contacts;
+        const burnRate = totalContacts > 0 ? parseFloat(((attribution.burned_contacts / totalContacts) * 100).toFixed(2)) : 0;
+
         return {
           google_campaign_id: campaign.google_campaign_id,
           campaign_name: campaign.campaign_name || 'Unknown Campaign',
@@ -306,12 +338,13 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
           campaign_type_name: campaign.campaign_type_name || 'Unknown',
           total_spend: spend,
           total_contacts: attribution.attributed_contacts,
+          burned_contacts: attribution.burned_contacts,
+          burn_rate: burnRate,
           total_deals: attribution.total_deals,
           won_deals: attribution.won_deals,
           lost_deals: attribution.total_deals - attribution.won_deals,
           total_revenue: attribution.campaign_revenue,
           true_roas: spend > 0 ? parseFloat((attribution.campaign_revenue / spend).toFixed(4)) : 0,
-          contact_rate: spend > 0 ? parseFloat(((attribution.attributed_contacts / spend) * 100).toFixed(2)) : 0,
           win_rate: attribution.total_deals > 0 ? parseFloat(((attribution.won_deals / attribution.total_deals) * 100).toFixed(2)) : 0,
           attribution_issue: spend > 100 && attribution.attributed_contacts === 0
         };
@@ -326,6 +359,7 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
         total_campaigns: campaigns.length,
         total_spend: totalSpend,
         total_contacts: campaigns.reduce((sum, c) => sum + c.total_contacts, 0),
+        total_burned: campaigns.reduce((sum, c) => sum + (c.burned_contacts || 0), 0),
         total_deals: campaigns.reduce((sum, c) => sum + c.total_deals, 0),
         total_won_deals: campaigns.reduce((sum, c) => sum + c.won_deals, 0),
         total_lost_deals: campaigns.reduce((sum, c) => sum + c.lost_deals, 0),
@@ -334,7 +368,7 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
         unattributed_revenue: unattributedRevenue,
         portfolio_roas: totalSpend > 0 ? totalPortfolioRevenue / totalSpend : 0,
         overall_contact_rate: totalSpend > 0 ? (totalAttributedContacts / totalSpend) * 100 : 0,
-        overall_win_rate: campaigns.reduce((sum, c) => sum + c.total_deals, 0) > 0 ? 
+        overall_win_rate: campaigns.reduce((sum, c) => sum + c.total_deals, 0) > 0 ?
           (campaigns.reduce((sum, c) => sum + c.won_deals, 0) / campaigns.reduce((sum, c) => sum + c.total_deals, 0)) * 100 : 0
       };
       

@@ -68,6 +68,8 @@ googleOAuth.setCredentials({
   refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
 });
 
+// SearchConsoleTrawler will be initialized after getDbConnection is defined
+
 // Google Ads API Client - Initialized once
 const googleAdsClient = new GoogleAdsApi({
   client_id: process.env.CLIENT_ID,
@@ -97,6 +99,19 @@ const dbConfig = {
 const getDbConnection = async () => {
   return await mysql.createConnection(dbConfig);
 };
+
+// Initialize RND module AFTER getDbConnection is defined
+try {
+  console.log('🔬 Loading RND module...');
+  const rndModule = require('./scripts/google/rnd/rnd-index');
+  console.log('🔬 Calling RND module...');
+  rndModule(router, googleOAuth, getDbConnection, customer);
+  console.log('✅ RND module loaded successfully');
+} catch (error) {
+  console.error('❌ RND module failed to load:', error.message);
+  console.error('RND Stack:', error.stack);
+}
+
 
 //=============================================================================//
 //   SAFE MODULE LOADING
@@ -413,7 +428,7 @@ if (modules.googleAdsSync) {
 
 // Keep the OLD route for backward compatibility but redirect to new one
 router.get('/dashboard', (req, res) => {
-  res.redirect('/analytics/dashboard');
+  res.redirect('/gads/analytics/dashboard');
 });
 
 
@@ -681,7 +696,7 @@ router.get('/analytics/roas-predicted-campaigns', async (req, res) => {
 //   ENHANCED CONVERSIONS FOR LEADS (ECL) ROUTES - ROUTING ONLY
 //=============================================================================//
 
-// HISTORIAL SECTION - WON'T BE USING ONCE SYSTEM IS UP & RUNNING 
+// HISTORIAL SECTION - WON'T BE USING MUCH ONCE SYSTEM IS UP & RUNNING 
 // PROBABABLY BEST TO KEEP THEM JUST IN CASE THEY ARE REQUIRED IN FUTURE
 
 //============================================================================//
@@ -736,7 +751,6 @@ router.post('/ecl/lost-process', (req, res) => {
   eclLost.handleLostProcessRequest(req, res, hubspotClient);
 });
 
-
 //-------------------------------------------------------
 // Main ECL Webhook Endpoint
 //---------------------------------------------------------
@@ -784,10 +798,6 @@ router.get('/ecl/test-live', async (req, res) => {
 //=============================================================================//
 //   MCP (Model Context Protocol) SERVER INTEGRATION - VERSION 2.1
 //=============================================================================//
-
-//=============================== 
-// MCP Integration - USING WORKING VERSION (mcp.js)
-//=============================== 
 try {
   router.use('/mcp', mcpRouter);
   modules.mcpServer = true;
@@ -797,19 +807,13 @@ try {
   modules.mcpServer = null;
 }
 
-// Remote MCP Server Integration - REMOVED
-// Removed: mcp-remote folder and dependencies
-
-
 // SSE MCP Server Integration (Working Pattern)
 const { spawn } = require('child_process');
 const path = require('path');
 
-
 //=============================================================================//
 //   STATIC FILE ROUTES
 //=============================================================================//
-
 router.get('/scripts/analytics/burn-rate.html', (req, res) => {
   try {
     const fs = require('fs');
@@ -847,7 +851,6 @@ router.get('/scripts/analytics/pipeline-analysis.html', (req, res) => {
 //=============================================================================//
 //   RECOVERY ROUTES
 //=============================================================================//
-
 router.get('/recovery/status', (req, res) => {
   const fs = require('fs');
   const path = require('path');

@@ -6,6 +6,7 @@
     "@hubspot/api-client": "^13.0.0",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
     "dotenv": "16.6.1",
     "express": "^4.21.2",
     "google-ads-api": "^21.0.1",

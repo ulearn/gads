@@ -606,8 +606,8 @@
 
             const exportToCSV = () => {
                 if (!data || !data.campaigns) return;
-                
-                const headers = ['Campaign ID', 'Campaign Name', 'Status', 'Type', 'Spend (€)', 'Contacts', 'Deals', 'WON Deals', 'Revenue (€)', 'Revenue ROAS', 'Contact Rate', 'Win Rate'];
+
+                const headers = ['Campaign ID', 'Campaign Name', 'Status', 'Type', 'Spend (€)', 'Contacts', 'Deals', 'Burn', 'WON Deals', 'Win Rate (%)', 'Revenue (€)', 'ROAS'];
                 const csvData = data.campaigns.map(campaign => [
                     campaign.google_campaign_id || '',
                     campaign.campaign_name || '',
@@ -616,11 +616,11 @@
                     campaign.total_spend || 0,
                     campaign.total_contacts || 0,
                     campaign.total_deals || 0,
+                    campaign.burned_contacts || 0,
                     campaign.won_deals || 0,
+                    campaign.win_rate || 0,
                     campaign.total_revenue || 0,
-                    campaign.true_roas || 0,
-                    campaign.contact_rate || 0,
-                    campaign.win_rate || 0
+                    campaign.true_roas || 0
                 ]);
 
                 const csv = [headers, ...csvData].map(row => 
@@ -842,41 +842,41 @@
                                             >
                                                 Contacts
                                             </th>
-                                            <th 
+                                            <th
                                                 className={`sortable ${sortField === 'total_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
                                                 onClick={() => handleSort('total_deals')}
                                             >
                                                 Deals
                                             </th>
-                                            <th 
+                                            <th
+                                                className={`sortable ${sortField === 'burned_contacts' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('burned_contacts')}
+                                            >
+                                                Burn
+                                            </th>
+                                            <th
                                                 className={`sortable ${sortField === 'won_deals' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
                                                 onClick={() => handleSort('won_deals')}
                                             >
                                                 WON
                                             </th>
-                                            <th 
+                                            <th
+                                                className={`sortable ${sortField === 'win_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
+                                                onClick={() => handleSort('win_rate')}
+                                            >
+                                                Win Rate
+                                            </th>
+                                            <th
                                                 className={`sortable ${sortField === 'total_revenue' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
                                                 onClick={() => handleSort('total_revenue')}
                                             >
                                                 Revenue
                                             </th>
-                                            <th 
+                                            <th
                                                 className={`sortable ${sortField === 'true_roas' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
                                                 onClick={() => handleSort('true_roas')}
                                             >
-                                                Revenue ROAS
-                                            </th>
-                                            <th 
-                                                className={`sortable ${sortField === 'contact_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
-                                                onClick={() => handleSort('contact_rate')}
-                                            >
-                                                Contact Rate
-                                            </th>
-                                            <th 
-                                                className={`sortable ${sortField === 'win_rate' ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : ''}`}
-                                                onClick={() => handleSort('win_rate')}
-                                            >
-                                                Win Rate
+                                                ROAS
                                             </th>
                                         </tr>
                                     </thead>
@@ -896,7 +896,9 @@
                                                 <td>{formatCurrency(campaign.total_spend)}</td>
                                                 <td>{formatNumber(campaign.total_contacts)}</td>
                                                 <td>{formatNumber(campaign.total_deals)}</td>
+                                                <td>{formatNumber(campaign.burned_contacts || 0)}</td>
                                                 <td>{formatNumber(campaign.won_deals)}</td>
+                                                <td>{(campaign.win_rate || 0).toFixed(1)}%</td>
                                                 <td>{formatCurrency(campaign.total_revenue)}</td>
                                                 <td className={getROASClass(campaign.true_roas)}>
                                                     {formatROAS(campaign.true_roas)}
@@ -907,8 +909,6 @@
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td>{(campaign.contact_rate || 0).toFixed(1)}%</td>
-                                                <td>{(campaign.win_rate || 0).toFixed(1)}%</td>
                                             </tr>
                                         ))}
                                         {campaigns.length > 0 && (
@@ -919,13 +919,13 @@
                                                 <td><strong>{formatCurrency(summary.total_spend)}</strong></td>
                                                 <td><strong>{formatNumber(summary.total_contacts)}</strong></td>
                                                 <td><strong>{formatNumber(summary.total_deals)}</strong></td>
+                                                <td><strong>{formatNumber(summary.total_burned || 0)}</strong></td>
                                                 <td><strong>{formatNumber(summary.total_won_deals)}</strong></td>
+                                                <td><strong>{((summary.total_won_deals / Math.max(summary.total_deals, 1)) * 100).toFixed(1)}%</strong></td>
                                                 <td><strong>{formatCurrency(summary.total_revenue)}</strong></td>
                                                 <td className={getROASClass(summary.portfolio_roas)}>
                                                     <strong>{formatROAS(summary.portfolio_roas)}</strong>
                                                 </td>
-                                                <td><strong>{((summary.total_contacts / Math.max(summary.total_spend, 1)) * 100).toFixed(1)}%</strong></td>
-                                                <td><strong>{((summary.total_won_deals / Math.max(summary.total_deals, 1)) * 100).toFixed(1)}%</strong></td>
                                             </tr>
                                         )}
                                     </tbody>
