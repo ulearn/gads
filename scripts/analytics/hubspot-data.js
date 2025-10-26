@@ -20,24 +20,29 @@ const pipelineServer = require('./pipeline-server');
 
 /**
  * Enhanced Google Ads attribution query - handles {campaign} issue
+ * UPDATED: Now includes PAID_SEARCH contacts even with empty campaign data
  */
 function buildEnhancedAttributionQuery() {
   return `
     (
       hc.hs_analytics_source = 'PAID_SEARCH'
       AND (
-        -- Standard attribution: Normal campaign data
+        -- Standard attribution: Has campaign data (not {campaign} placeholder)
         (
           hc.hs_analytics_source_data_1 != '{campaign}'
-          AND hc.hs_analytics_source_data_1 IS NOT NULL
-          AND hc.hs_analytics_source_data_1 != ''
         )
         OR
-        -- FIX: Use custom 'Google Ads Campaign' field for broken tracking template
+        -- Fixed template: Has custom Google Ads Campaign field
         (
           hc.hs_analytics_source_data_1 = '{campaign}'
           AND hc.google_ads_campaign IS NOT NULL
           AND hc.google_ads_campaign != ''
+        )
+        OR
+        -- Empty campaign: Include PAID_SEARCH with no campaign data
+        (
+          (hc.hs_analytics_source_data_1 IS NULL OR hc.hs_analytics_source_data_1 = '')
+          AND hc.hs_analytics_source = 'PAID_SEARCH'
         )
       )
     )
@@ -65,17 +70,22 @@ function getCampaignAttributionLogic() {
 
 /**
  * Get effective campaign name for display
+ * UPDATED: Shows "Campaign Unknown" for empty campaign data
  */
 function getCampaignNameLogic() {
   return `
-    COALESCE(
-      NULLIF(hc.google_ads_campaign, ''),
-      CASE 
-        WHEN hc.hs_analytics_source_data_1 != '{campaign}' 
-        THEN hc.hs_analytics_source_data_1
-        ELSE 'Unknown Campaign'
-      END
-    )
+    CASE
+      -- Use custom Google Ads Campaign field if available
+      WHEN hc.google_ads_campaign IS NOT NULL AND hc.google_ads_campaign != ''
+      THEN hc.google_ads_campaign
+      -- Use source_data_1 if not {campaign} placeholder and not empty
+      WHEN hc.hs_analytics_source_data_1 IS NOT NULL
+           AND hc.hs_analytics_source_data_1 != ''
+           AND hc.hs_analytics_source_data_1 != '{campaign}'
+      THEN hc.hs_analytics_source_data_1
+      -- Default to "Campaign Unknown" for empty or placeholder data
+      ELSE 'Campaign Unknown'
+    END
   `;
 }
 
@@ -258,7 +268,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         SELECT COUNT(*) AS contact_count
         FROM hub_contacts hc
         WHERE ${buildEnhancedAttributionQuery()}
-          AND hc.hubspot_owner_id != 10017927
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND DATE(hc.createdate) >= ?
           AND DATE(hc.createdate) <= ?
       `, [startDateStr, endDateStr]);
@@ -270,7 +280,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         SELECT COUNT(*) AS contact_count
         FROM hub_contacts hc
         WHERE ${buildEnhancedAttributionQuery()}
-          AND hc.hubspot_owner_id != 10017927
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND hc.territory = 'Unsupported Territory'
           AND DATE(hc.createdate) >= ?
           AND DATE(hc.createdate) <= ?
@@ -283,7 +293,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         SELECT COUNT(*) AS contact_count
         FROM hub_contacts hc
         WHERE ${buildEnhancedAttributionQuery()}
-          AND hc.hubspot_owner_id != 10017927
+          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND hc.territory != 'Unsupported Territory'
           AND hc.num_associated_deals > 0
           AND DATE(hc.createdate) >= ?
@@ -300,7 +310,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         // REVENUE MODE: Filter by deal closedate
         dealLogicDescription = `Deals closed ${startDateStr} to ${endDateStr}`;
         [dealResults] = await connection.execute(`
-          SELECT 
+          SELECT
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
             COUNT(CASE WHEN d.dealstage = 'closedwon' THEN d.hubspot_deal_id END) as wonDeals,
             COUNT(CASE WHEN d.dealstage = 'closedlost' THEN d.hubspot_deal_id END) as lostDeals,
@@ -309,8 +319,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
           FROM hub_contact_deal_associations a
           JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE hc.hubspot_owner_id != 10017927
-            AND ${buildEnhancedAttributionQuery()}
+          WHERE ${buildEnhancedAttributionQuery()}
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
             AND d.pipeline = 'default'
@@ -323,7 +332,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
         // PIPELINE MODE: Filter by contact createdate
         dealLogicDescription = `Deals from contacts created ${startDateStr} to ${endDateStr}`;
         [dealResults] = await connection.execute(`
-          SELECT 
+          SELECT
             COUNT(DISTINCT d.hubspot_deal_id) as totalDeals,
             COUNT(CASE WHEN d.dealstage = 'closedwon' THEN d.hubspot_deal_id END) as wonDeals,
             COUNT(CASE WHEN d.dealstage = 'closedlost' THEN d.hubspot_deal_id END) as lostDeals,
@@ -332,8 +341,7 @@ async function getDashboardSummary(getDbConnection, options = {}) {
           FROM hub_contact_deal_associations a
           JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE hc.hubspot_owner_id != 10017927
-            AND ${buildEnhancedAttributionQuery()}
+          WHERE ${buildEnhancedAttributionQuery()}
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
             AND DATE(hc.createdate) >= ?
@@ -1007,8 +1015,7 @@ async function getCampaignPerformance(getDbConnection, options = {}) {
           FROM hub_contact_deal_associations a
           JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE hc.hubspot_owner_id != 10017927
-            AND ${buildEnhancedAttributionQuery()}
+          WHERE ${buildEnhancedAttributionQuery()}
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
             AND d.pipeline = 'default'
@@ -1042,8 +1049,7 @@ async function getCampaignPerformance(getDbConnection, options = {}) {
           FROM hub_contact_deal_associations a
           JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
           JOIN hub_deals d ON a.deal_hubspot_id = d.hubspot_deal_id
-          WHERE hc.hubspot_owner_id != 10017927
-            AND ${buildEnhancedAttributionQuery()}
+          WHERE ${buildEnhancedAttributionQuery()}
             AND hc.territory != 'Unsupported Territory'
             AND hc.num_associated_deals > 0
             AND DATE(hc.createdate) >= ?

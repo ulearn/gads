@@ -12,6 +12,50 @@ const fieldMap = require('./fieldmap');
 const { syncLogger } = require('../../logger');
 
 /**
+ * SMART SYNC: Check if a record needs to be synced
+ * Only sync if lastmodifieddate in HubSpot differs from MySQL OR record doesn't exist
+ */
+async function shouldSyncRecord(connection, hubspotObject, objectType) {
+  try {
+    const dateField = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
+    const tableName = objectType === 'contacts' ? 'hub_contacts' : 'hub_deals';
+    const idField = objectType === 'contacts' ? 'hubspot_id' : 'hubspot_deal_id';
+
+    // Get the lastmodifieddate from HubSpot
+    const hubspotDateStr = hubspotObject.properties[dateField];
+    if (!hubspotDateStr) {
+      return true; // No date in HubSpot, sync it anyway
+    }
+
+    const hubspotDate = new Date(hubspotDateStr);
+
+    // Check if record exists in MySQL and get its lastmodifieddate
+    const [rows] = await connection.execute(
+      `SELECT ${dateField} FROM ${tableName} WHERE ${idField} = ? LIMIT 1`,
+      [hubspotObject.id]
+    );
+
+    // If doesn't exist in MySQL, we need to sync it
+    if (rows.length === 0) {
+      return true;
+    }
+
+    // Record exists - compare dates
+    const mysqlDate = new Date(rows[0][dateField]);
+
+    // Only sync if dates are different
+    const needsSync = hubspotDate.getTime() !== mysqlDate.getTime();
+
+    return needsSync;
+
+  } catch (error) {
+    // If error checking, sync it to be safe
+    syncLogger.error(`   ⚠️ Error checking if sync needed for ${objectType} ${hubspotObject.id}: ${error.message}`);
+    return true;
+  }
+}
+
+/**
  * Create association table if it doesn't exist
  */
 async function ensureAssociationTableExists(connection) {
@@ -78,75 +122,137 @@ async function saveContactAssociations(connection, contactId, associations) {
 /**
  * FIXED: Enhanced sync function that captures BOTH new records AND updates
  * CRITICAL CHANGE: Uses lastmodifieddate instead of createdate
+ *
+ * NEW FIXES:
+ * - Added error handling with retry logic for rate limiting
+ * - Increased delay to 500ms to avoid rate limits
+ * - Added progress tracking (current page / total)
+ * - Always logs completion status (success or failure)
  */
 async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connection, objectType, startDate, endDate, allPropertyNames) {
+  let after = undefined;
+  let totalSynced = 0;
+  let page = 1;
+  let totalCount = null; // Track total count from HubSpot
+  let consecutiveErrors = 0;
+  const MAX_RETRIES = 3;
+  const processedContactIds = new Set(); // Track contact IDs from this batch
+
   try {
     syncLogger.log(`🔄 Syncing ${objectType} with associations (${allPropertyNames.length} properties)...`);
     syncLogger.log(`📅 Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     syncLogger.log(`🔧 USING lastmodifieddate filter (captures both new records AND updates)`);
-    
-    let after = undefined;
-    let totalSynced = 0;
-    let totalAssociations = 0;
-    let page = 1;
-    
+
+    const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
+    syncLogger.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
+
     while (true) {
       let response;
-      
-      // 🔧 FIXED: Use lastmodifieddate for BOTH contacts and deals to capture updates
-      const dateFieldName = objectType === 'contacts' ? 'lastmodifieddate' : 'hs_lastmodifieddate';
-      syncLogger.log(`🔍 Using field: ${dateFieldName} for ${objectType}`);
-      
-      if (objectType === 'contacts') {
-        response = await hubspotClient.crm.contacts.searchApi.doSearch({
-          filterGroups: [{
-            filters: [
-              {
-                propertyName: dateFieldName, // ✅ 'lastmodifieddate' for contacts - CRITICAL FIX
-                operator: 'BETWEEN',
-                value: startDate.getTime().toString(),
-                highValue: endDate.getTime().toString()
-              },
-              {
-                propertyName: 'hs_object_source',
-                operator: 'NEQ',
-                value: 'IMPORT'
-              }
-            ]
-          }],
-          properties: allPropertyNames,
-          associations: ['deals'], // Capture contact-deal associations
-          limit: 100,
-          after: after
-        });
-        
-      } else if (objectType === 'deals') {
-        response = await hubspotClient.crm.deals.searchApi.doSearch({
-          filterGroups: [{
-            filters: [{
-              propertyName: dateFieldName, // ✅ 'hs_lastmodifieddate' for deals
-              operator: 'BETWEEN', 
-              value: startDate.getTime().toString(),
-              highValue: endDate.getTime().toString()
-            }]
-          }],
-          properties: allPropertyNames,
-          associations: ['contacts'], // Capture deal-contact associations
-          limit: 100,
-          after: after
-        });
+      let retryCount = 0;
+      let pageSuccess = false;
+
+      // Retry loop for this page
+      while (!pageSuccess && retryCount < MAX_RETRIES) {
+        try {
+          // Build search request
+          const searchRequest = {
+            filterGroups: [{
+              filters: objectType === 'contacts'
+                ? [
+                    {
+                      propertyName: dateFieldName,
+                      operator: 'BETWEEN',
+                      value: startDate.getTime().toString(),
+                      highValue: endDate.getTime().toString()
+                    },
+                    {
+                      propertyName: 'hs_object_source',
+                      operator: 'NEQ',
+                      value: 'IMPORT'
+                    }
+                  ]
+                : [
+                    {
+                      propertyName: dateFieldName,
+                      operator: 'BETWEEN',
+                      value: startDate.getTime().toString(),
+                      highValue: endDate.getTime().toString()
+                    }
+                  ]
+            }],
+            properties: allPropertyNames,
+            associations: objectType === 'contacts' ? ['deals'] : ['contacts'],
+            limit: 100,
+            after: after
+          };
+
+          // Make API call
+          if (objectType === 'contacts') {
+            response = await hubspotClient.crm.contacts.searchApi.doSearch(searchRequest);
+          } else if (objectType === 'deals') {
+            response = await hubspotClient.crm.deals.searchApi.doSearch(searchRequest);
+          }
+
+          pageSuccess = true;
+          consecutiveErrors = 0; // Reset error counter on success
+
+          // Capture total count on first page
+          if (page === 1 && response.total !== undefined) {
+            totalCount = response.total;
+            const estimatedPages = Math.ceil(totalCount / 100);
+            syncLogger.log(`📊 HubSpot reports ${totalCount} total ${objectType} (≈${estimatedPages} pages)`);
+          }
+
+        } catch (error) {
+          retryCount++;
+          consecutiveErrors++;
+
+          // Check if rate limited (429 error)
+          const isRateLimited = error.statusCode === 429 || error.message?.includes('rate limit');
+          const retryAfter = error.headers?.['retry-after'] || 10;
+
+          if (isRateLimited) {
+            syncLogger.error(`⚠️ Rate limited on page ${page}, waiting ${retryAfter}s before retry ${retryCount}/${MAX_RETRIES}`);
+            await delay(retryAfter * 1000);
+          } else {
+            syncLogger.error(`❌ Error on page ${page} (retry ${retryCount}/${MAX_RETRIES}): ${error.message}`);
+            await delay(2000 * retryCount); // Exponential backoff
+          }
+
+          if (retryCount >= MAX_RETRIES) {
+            throw new Error(`Failed after ${MAX_RETRIES} retries on page ${page}: ${error.message}`);
+          }
+
+          // If too many consecutive errors, abort
+          if (consecutiveErrors >= 10) {
+            throw new Error(`Too many consecutive errors (${consecutiveErrors}), aborting sync`);
+          }
+        }
       }
-      
+
       const objects = response.results || [];
-      
+
       if (objects.length === 0) {
+        syncLogger.log(`   ℹ️ No more results at page ${page}`);
         break;
       }
-      
-      syncLogger.log(`   📄 Page ${page}: Processing ${objects.length} ${objectType}...`);
-      
+
+      // Enhanced progress logging
+      const progressStr = totalCount
+        ? `${page}/${Math.ceil(totalCount / 100)}`
+        : `${page}`;
+      const recordRange = `${totalSynced + 1}-${totalSynced + objects.length}`;
+      const totalStr = totalCount ? ` of ${totalCount}` : '';
+
+      syncLogger.log(`   📄 Page ${progressStr}: Processing ${objects.length} ${objectType} (records ${recordRange}${totalStr})...`);
+
       // Process objects
       for (const obj of objects) {
+        // Track contact IDs from this batch (for STEP 5 deal sync)
+        if (objectType === 'contacts') {
+          processedContactIds.add(obj.id);
+        }
+
         // Debug logging for important records
         if (objectType === 'deals' && (obj.properties?.dealname?.includes('Aika') || obj.properties?.amount)) {
           syncLogger.log(`   🔍 Processing deal: ${obj.properties?.dealname} | Stage: ${obj.properties?.dealstage} | Amount: ${obj.properties?.amount}`);
@@ -154,49 +260,79 @@ async function syncObjectsWithAllPropertiesAndAssociations(hubspotClient, connec
         if (objectType === 'contacts' && obj.properties?.email?.includes('aika')) {
           syncLogger.log(`   🔍 Processing contact: ${obj.properties?.email} | Modified: ${obj.properties?.lastmodifieddate}`);
         }
-        
-        // Save the main object (contact or deal)
+
+        // Check for Alceu specifically
+        if (objectType === 'contacts' && obj.id === '128995339456') {
+          syncLogger.log(`   ✅ FOUND ALCEU CONTACT: ${obj.id} - ${obj.properties?.email}`);
+        }
+        if (objectType === 'deals' && obj.id === '71535187170') {
+          syncLogger.log(`   ✅ FOUND ALCEU DEAL: ${obj.id} - ${obj.properties?.dealname}`);
+        }
+
+        // Note: Search API doesn't return associations, so deals are synced in STEP 5
+        // after fetching associations via Associations API in STEP 4
+
+        // SMART SYNC: Check if this contact/deal record itself needs updating
+        const needsSync = await shouldSyncRecord(connection, obj, objectType);
+        if (!needsSync) {
+          syncLogger.log(`   ⏭️  Skipping ${objectType} ${obj.id} - already up-to-date`);
+          continue; // Skip syncing this record, but deals were already synced above
+        }
+
+        // Save the main object (contact or deal) - only if it needs updating
         const success = await fieldMap.processHubSpotObject(obj, connection, objectType);
-        
         if (success) {
           totalSynced++;
-          
-          // For contacts: save associations to deals
-          if (objectType === 'contacts') {
-            const dealAssociations = obj.associations?.deals?.results?.map(d => d.id) || [];
-            
-            if (dealAssociations.length > 0) {
-              syncLogger.log(`   🔗 Contact ${obj.id} has ${dealAssociations.length} deal associations`);
-              const associationCount = await saveContactAssociations(
-                connection, 
-                obj.id, 
-                dealAssociations
-              );
-              totalAssociations += associationCount;
-            }
-          }
         }
       }
-      
+
       after = response.paging?.next?.after;
       if (!after) {
+        syncLogger.log(`   ℹ️ No more pages (pagination token empty)`);
         break;
       }
-      
+
       page++;
-      await delay(100); // Rate limiting
+
+      // MEMORY OPTIMIZATION: Force garbage collection every 5 pages
+      if (page % 5 === 0) {
+        if (global.gc) {
+          global.gc();
+          syncLogger.log(`   🧹 Memory cleanup at page ${page}`);
+        }
+      }
+
+      // FIXED: Increased delay to 500ms to avoid rate limiting
+      // HubSpot limit: 100 req/10s = max 10 req/s
+      // 500ms = 2 req/s = well under limit
+      await delay(500);
     }
-    
+
+    // ALWAYS log completion
+    const completionMsg = totalCount
+      ? `✅ ${objectType} sync complete: ${totalSynced}/${totalCount} records (${page} pages)`
+      : `✅ ${objectType} sync complete: ${totalSynced} records (${page} pages)`;
+
     if (objectType === 'contacts') {
-      syncLogger.log(`✅ ${objectType} sync complete: ${totalSynced} records, ${totalAssociations} associations`);
+      syncLogger.log(`${completionMsg} (deals will be synced in STEP 5)`);
     } else {
-      syncLogger.log(`✅ ${objectType} sync complete: ${totalSynced} records`);
+      syncLogger.log(completionMsg);
     }
-    
-    return { synced: totalSynced, associations: totalAssociations };
-    
+
+    return {
+      synced: totalSynced,
+      associations: 0, // Associations are handled in STEP 4
+      total: totalCount,
+      pages: page,
+      dealsSynced: 0, // Deals are synced in STEP 5
+      dealIds: [],
+      contactIds: objectType === 'contacts' ? Array.from(processedContactIds) : [] // Contact IDs from this batch
+    };
+
   } catch (error) {
-    syncLogger.error(`❌ ${objectType} sync failed: ` + error.message);
+    // ALWAYS log failure state
+    syncLogger.error(`❌ ${objectType} sync FAILED at page ${page}: ${error.message}`);
+    syncLogger.error(`   Progress: ${totalSynced} of ${totalCount || 'unknown'} records synced before failure`);
     throw error;
   }
 }
@@ -427,40 +563,49 @@ async function syncSchema(hubspotClient, getDbConnection) {
  * NEW: Sync contact-deal associations using the Associations API v4
  * This runs AFTER contacts and deals are synced
  */
-async function syncContactDealAssociations(hubspotClient, connection) {
+async function syncContactDealAssociations(hubspotClient, connection, batchContactIds = null, saveToDb = true) {
   try {
     syncLogger.log('🔗 Starting contact-deal associations sync using Associations API v4...');
-    
-    // FIXED: Get contacts that either have deals OR were recently modified
-    const [contacts] = await connection.execute(`
-      SELECT DISTINCT hubspot_id 
-      FROM hub_contacts 
-      WHERE (
-        num_associated_deals > 0 
-        OR DATE(lastmodifieddate) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-      )
-      ORDER BY lastmodifieddate DESC
-      LIMIT 2000
-    `);
-    
-    syncLogger.log(`   📊 Found ${contacts.length} contacts to check (existing + recently modified)`);
-    
-    if (contacts.length === 0) {
-      syncLogger.log('   ⚠️ No contacts found with deals or recent modifications');
-      return { success: true, associations: 0 };
+
+    let contactIds;
+
+    if (batchContactIds && batchContactIds.length > 0) {
+      // Use provided contact IDs from current batch
+      syncLogger.log(`   📋 Using ${batchContactIds.length} contacts from current batch`);
+      contactIds = batchContactIds.map(id => ({ id }));
+    } else {
+      // Fallback: Get contacts that either have deals OR were recently modified
+      const [contacts] = await connection.execute(`
+        SELECT DISTINCT hubspot_id
+        FROM hub_contacts
+        WHERE (
+          num_associated_deals > 0
+          OR DATE(lastmodifieddate) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        )
+        ORDER BY lastmodifieddate DESC
+        LIMIT 2000
+      `);
+
+      syncLogger.log(`   📊 Found ${contacts.length} contacts to check (existing + recently modified)`);
+
+      if (contacts.length === 0) {
+        syncLogger.log('   ⚠️ No contacts found with deals or recent modifications');
+        return { success: true, associations: 0, associationsList: [], dealIds: [] };
+      }
+
+      contactIds = contacts.map(row => ({ id: row.hubspot_id }));
     }
-    
-    // Step 2: Batch query associations using HubSpot Associations API v4
-    const contactIds = contacts.map(row => ({ id: row.hubspot_id }));
     let totalAssociations = 0;
     let contactsWithAssociations = 0;
-    
+    const associationsList = []; // Collect all associations
+    const dealIdsSet = new Set(); // Collect unique deal IDs
+
     // Process in batches of 100 (API limit)
     for (let i = 0; i < contactIds.length; i += 100) {
       const batch = contactIds.slice(i, i + 100);
-      
+
       syncLogger.log(`   📦 Processing batch ${Math.floor(i/100) + 1}/${Math.ceil(contactIds.length/100)}`);
-      
+
       try {
         // Use the V3 batch API (V4 doesn't have batch endpoints)
         const response = await hubspotClient.crm.associations.batchApi.read(
@@ -470,76 +615,209 @@ async function syncContactDealAssociations(hubspotClient, connection) {
             inputs: batch
           }
         );
-        
+
         syncLogger.log(`   🔍 API Response for batch: ` + JSON.stringify({
           status: response.status,
           resultsCount: response.results?.length || 0
         }));
-        
+
         // Step 3: Process the associations
         if (response.results && response.results.length > 0) {
           for (const result of response.results) {
             // FIXED: Parse the correct structure from V3 API
             const contactId = result._from?.id || result.from?.id;
             const dealAssociations = result.to || [];
-            
+
             if (contactId && dealAssociations.length > 0) {
               syncLogger.log(`   🔗 Contact ${contactId} has ${dealAssociations.length} deal associations`);
               contactsWithAssociations++;
-              
-              // Save each association
+
+              // Collect or save each association
               for (const dealAssoc of dealAssociations) {
                 const dealId = dealAssoc.id;
-                
+
                 if (dealId) {
-                  try {
-                    const [insertResult] = await connection.execute(`
-                      INSERT INTO hub_contact_deal_associations 
-                      (contact_hubspot_id, deal_hubspot_id, association_type) 
-                      VALUES (?, ?, ?)
-                      ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
-                    `, [contactId, dealId, 'primary']);
-                    
-                    // Check if it was a new association
-                    if (insertResult.affectedRows > 0) {
-                      totalAssociations++;
-                      if (insertResult.insertId > 0) {
-                        syncLogger.log(`     ✅ NEW association: ${contactId} → ${dealId}`);
-                      } else {
-                        syncLogger.log(`     🔄 Updated association: ${contactId} → ${dealId}`);
+                  // Add to collections
+                  associationsList.push({ contactId, dealId });
+                  dealIdsSet.add(dealId);
+
+                  if (saveToDb) {
+                    // Save to database
+                    try {
+                      const [insertResult] = await connection.execute(`
+                        INSERT INTO hub_contact_deal_associations
+                        (contact_hubspot_id, deal_hubspot_id, association_type)
+                        VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
+                      `, [contactId, dealId, 'primary']);
+
+                      // Check if it was a new association
+                      if (insertResult.affectedRows > 0) {
+                        totalAssociations++;
+                        if (insertResult.insertId > 0) {
+                          syncLogger.log(`     ✅ NEW association: ${contactId} → ${dealId}`);
+                        } else {
+                          syncLogger.log(`     🔄 Updated association: ${contactId} → ${dealId}`);
+                        }
                       }
+
+                    } catch (error) {
+                      syncLogger.error(`     ❌ Failed to save association ${contactId} → ${dealId}:` + error.message);
                     }
-                    
-                  } catch (error) {
-                    syncLogger.error(`     ❌ Failed to save association ${contactId} → ${dealId}:` + error.message);
+                  } else {
+                    // Just count for logging
+                    totalAssociations++;
                   }
                 }
               }
             }
           }
         }
-        
+
         // Rate limiting
         await delay(200);
-        
+
       } catch (error) {
         syncLogger.error(`   ❌ Failed to fetch associations for batch:` + error.message);
         syncLogger.error(`   📋 Batch sample: ` + JSON.stringify(batch.slice(0, 3))); // Log first 3 for debugging
       }
     }
-    
-    syncLogger.log(`✅ Associations sync complete: ${totalAssociations} associations processed`);
+
+    if (saveToDb) {
+      syncLogger.log(`✅ Associations sync complete: ${totalAssociations} associations saved to DB`);
+    } else {
+      syncLogger.log(`✅ Associations query complete: ${totalAssociations} associations found`);
+    }
     syncLogger.log(`   📊 Contacts with associations: ${contactsWithAssociations}`);
-    
+    syncLogger.log(`   📋 Unique deals found: ${dealIdsSet.size}`);
+
     return {
       success: true,
       associations: totalAssociations,
-      contacts_processed: contacts.length,
-      contacts_with_associations: contactsWithAssociations
+      contacts_processed: contactIds.length,
+      contacts_with_associations: contactsWithAssociations,
+      associationsList: associationsList,
+      dealIds: Array.from(dealIdsSet)
     };
-    
+
   } catch (error) {
     syncLogger.error('❌ Associations sync failed:' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Save associations to database (after deals are synced)
+ */
+async function saveAssociationsToDb(connection, associationsList) {
+  try {
+    syncLogger.log('💾 Saving associations to database...');
+    let saved = 0;
+    let updated = 0;
+    let errors = 0;
+
+    for (const assoc of associationsList) {
+      try {
+        const [insertResult] = await connection.execute(`
+          INSERT INTO hub_contact_deal_associations
+          (contact_hubspot_id, deal_hubspot_id, association_type)
+          VALUES (?, ?, ?)
+          ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP
+        `, [assoc.contactId, assoc.dealId, 'primary']);
+
+        if (insertResult.affectedRows > 0) {
+          if (insertResult.insertId > 0) {
+            saved++;
+          } else {
+            updated++;
+          }
+        }
+      } catch (error) {
+        errors++;
+        syncLogger.error(`   ❌ Failed to save association ${assoc.contactId} → ${assoc.dealId}: ${error.message}`);
+      }
+    }
+
+    syncLogger.log(`✅ Associations saved: ${saved} new, ${updated} updated, ${errors} errors`);
+    return { saved, updated, errors };
+
+  } catch (error) {
+    syncLogger.error('❌ Failed to save associations:' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * NEW: Sync deals by ID list (association-based sync)
+ * No date filtering - gets ALL deals associated with synced contacts
+ */
+async function syncDealsByIds(hubspotClient, connection, dealIds, allPropertyNames) {
+  if (!dealIds || dealIds.length === 0) {
+    syncLogger.log('ℹ️ No deal IDs to sync');
+    return { synced: 0, total: 0 };
+  }
+
+  syncLogger.log(`🔄 Syncing ${dealIds.length} deals by association (no date filter)...`);
+
+  const BATCH_SIZE = 100; // HubSpot batch API limit
+  let totalSynced = 0;
+  let totalBatches = Math.ceil(dealIds.length / BATCH_SIZE);
+
+  try {
+    for (let i = 0; i < dealIds.length; i += BATCH_SIZE) {
+      const batchIds = dealIds.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+
+      syncLogger.log(`   📦 Batch ${batchNum}/${totalBatches}: Fetching ${batchIds.length} deals...`);
+
+      try {
+        const response = await hubspotClient.crm.deals.batchApi.read({
+          properties: allPropertyNames,
+          inputs: batchIds.map(id => ({ id }))
+        });
+
+        const deals = response.results || [];
+        syncLogger.log(`   ✅ Retrieved ${deals.length} deals from HubSpot`);
+
+        // Sync each deal to MySQL
+        for (const deal of deals) {
+          try {
+            // Check for Alceu's deal
+            if (deal.id === '71535187170') {
+              syncLogger.log(`   ✅ FOUND ALCEU DEAL: ${deal.id} - ${deal.properties?.dealname} - €${deal.properties?.amount}`);
+            }
+
+            // Use smart sync check
+            const needsSync = await shouldSyncRecord(connection, deal, 'deals');
+            if (!needsSync) {
+              syncLogger.log(`   ⏭️  Skipping deal ${deal.id} - already up-to-date`);
+              continue;
+            }
+
+            const success = await fieldMap.processHubSpotObject(deal, connection, 'deals');
+            if (success) {
+              totalSynced++;
+            }
+          } catch (error) {
+            syncLogger.error(`   ❌ Failed to sync deal ${deal.id}: ${error.message}`);
+          }
+        }
+
+        syncLogger.log(`   ✅ Batch ${batchNum} complete: ${totalSynced} deals synced so far\n`);
+
+      } catch (error) {
+        syncLogger.error(`   ❌ Batch ${batchNum} failed: ${error.message}`);
+      }
+
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    syncLogger.log(`✅ Association-based deal sync complete: ${totalSynced}/${dealIds.length} deals`);
+    return { synced: totalSynced, total: dealIds.length };
+
+  } catch (error) {
+    syncLogger.error(`❌ Deal sync by IDs failed: ${error.message}`);
     throw error;
   }
 }
@@ -562,61 +840,91 @@ async function runSyncWithSchemaCheck(hubspotClient, getDbConnection, options = 
     const dealPropertyNames = dealProperties.map(p => p.name);
     
     // Step 3: FIXED date range calculation - includes TODAY
+    // NEW: Supports DATETIME filtering for hourly/minute batches
     syncLogger.log('🚀 STEP 3: Calculating date range for sync...');
-    
+
     let startDate, endDate;
+    let hasTimeComponent = false;
+
     if (options.startDate && options.endDate) {
+      // Check if datetime was specified (contains 'T' or ':' indicating time)
+      hasTimeComponent = (options.startDate.includes('T') || options.startDate.includes(':')) &&
+                        (options.endDate.includes('T') || options.endDate.includes(':'));
+
       startDate = new Date(options.startDate);
       endDate = new Date(options.endDate);
-      endDate.setHours(23, 59, 59, 999); // End of day
+
+      // Only force end-of-day if NO time component was provided
+      if (!hasTimeComponent) {
+        endDate.setHours(23, 59, 59, 999); // End of day for date-only filters
+        if (!options.startDate.includes('T') && !options.startDate.includes(':')) {
+          startDate.setHours(0, 0, 0, 0); // Start of day for date-only filters
+        }
+      }
     } else if (options.daysBack) {
       endDate = new Date();
       endDate.setHours(23, 59, 59, 999); // End of today
-      
+
       startDate = new Date();
       startDate.setDate(startDate.getDate() - (options.daysBack - 1)); // Include today in count
       startDate.setHours(0, 0, 0, 0); // Start of day
     } else {
       endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
-      
+
       startDate = new Date();
       startDate.setDate(startDate.getDate() - 364); // Last 365 days including today
       startDate.setHours(0, 0, 0, 0);
     }
-    
-    syncLogger.log(`📅 SYNC DATE RANGE: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+
+    // Show full datetime if time component present, otherwise just date
+    if (hasTimeComponent) {
+      syncLogger.log(`📅 SYNC DATETIME RANGE: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      syncLogger.log(`⏰ HOURLY BATCH MODE: Syncing specific time window`);
+    } else {
+      syncLogger.log(`📅 SYNC DATE RANGE: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+    }
     syncLogger.log(`🔧 USING lastmodifieddate filter - captures NEW records AND updates!`);
     
     const connection = await getDbConnection();
     
     try {
-      // Sync contacts and deals using lastmodifieddate
+      // STEP 3: Sync contacts using date filter
       const contactResult = await syncObjectsWithAllPropertiesAndAssociations(
         hubspotClient, connection, 'contacts', startDate, endDate, contactPropertyNames
       );
-      
-      const dealResult = await syncObjectsWithAllPropertiesAndAssociations(
-        hubspotClient, connection, 'deals', startDate, endDate, dealPropertyNames
+
+      // STEP 4: Query associations via Associations API v4 (don't save yet - deals may not exist)
+      syncLogger.log('🔗 STEP 4: Querying contact-deal associations from HubSpot...');
+      const associationsResult = await syncContactDealAssociations(
+        hubspotClient, connection, contactResult.contactIds, false // saveToDb=false
       );
-      
-      // Step 4: Sync associations using Associations API v4
-      syncLogger.log('🔗 STEP 4: Syncing contact-deal associations...');
-      const associationsResult = await syncContactDealAssociations(hubspotClient, connection);
-      
-      syncLogger.log('🎉 FIXED sync completed successfully!');
+
+      // STEP 5: Sync deals using deal IDs from associations
+      syncLogger.log('🔗 STEP 5: Syncing deals from associations...');
+      syncLogger.log(`   📋 Found ${associationsResult.dealIds.length} unique deals to sync`);
+
+      const dealResult = await syncDealsByIds(
+        hubspotClient, connection, associationsResult.dealIds, dealPropertyNames
+      );
+
+      // STEP 6: Save associations to database (after deals exist)
+      syncLogger.log('🔗 STEP 6: Saving contact-deal associations to database...');
+      const saveResult = await saveAssociationsToDb(connection, associationsResult.associationsList);
+
+      syncLogger.log('🎉 ASSOCIATION-BASED DEAL SYNC completed successfully!');
       syncLogger.log(`📊 Synced: ${contactResult.synced} contacts, ${dealResult.synced} deals`);
-      syncLogger.log(`🔗 Contact-Deal Associations: ${associationsResult.associations} via API v4`);
-      syncLogger.log(`🔧 Using lastmodifieddate: Captures both new records AND updates`);
-      
+      syncLogger.log(`🔗 Contact-Deal Associations: ${saveResult.saved} new, ${saveResult.updated} updated`);
+      syncLogger.log(`✨ Deals synced BEFORE associations saved (correct FK order)!`);
+
       return {
         success: true,
         contacts_synced: contactResult.synced,
         deals_synced: dealResult.synced,
-        associations_synced: associationsResult.associations,
+        associations_synced: saveResult.saved + saveResult.updated,
         contact_properties_used: contactPropertyNames.length,
         deal_properties_used: dealPropertyNames.length,
-        sync_method: 'lastmodifieddate (new + updates)',
+        sync_method: 'association-based (deals synced before associations saved - correct FK order)',
         date_range: {
           start: startDate.toISOString(),
           end: endDate.toISOString()
@@ -638,11 +946,12 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { 
+module.exports = {
   syncSchema,
   runSyncWithSchemaCheck,
   getAllAvailableProperties,
   saveContactAssociations,
   ensureAssociationTableExists,
-  syncContactDealAssociations
+  syncContactDealAssociations,
+  syncDealsByIds // NEW: Association-based deal sync
 };

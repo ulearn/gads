@@ -291,6 +291,85 @@
             font-weight: bold;
         }
 
+        .campaign-burn-table {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+        }
+
+        .campaign-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .campaign-table thead {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+        }
+
+        .campaign-table th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .campaign-table th:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .campaign-table th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.5;
+        }
+
+        .campaign-table th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        .campaign-table th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        .campaign-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .campaign-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .campaign-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .burn-high {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .burn-medium {
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        .burn-low {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             .filters {
                 flex-direction: column;
@@ -355,14 +434,39 @@
                     📈 Burn Rate Timeseries Analysis
                 </h2>
                 <div class="filters">
-                    <select class="filter-select" id="timeRange">
-                        <option value="7">Last 7 days</option>
-                        <option value="30" selected>Last 30 days</option>
-                        <option value="60">Last 60 days</option>
-                        <option value="90">Last 90 days</option>
+                    <input
+                        type="date"
+                        id="startDate"
+                        class="filter-select"
+                        style="width: auto;"
+                    />
+                    <span style="color: #2c3e50; font-weight: 600;">to</span>
+                    <input
+                        type="date"
+                        id="endDate"
+                        class="filter-select"
+                        style="width: auto;"
+                    />
+                    <select id="granularity" class="filter-select" style="width: auto;">
+                        <option value="auto">Auto</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
                     </select>
                     <button class="refresh-btn" onclick="loadBurnRateTimeseries()">
-                        🔄 Refresh Data
+                        Apply
+                    </button>
+                    <button class="refresh-btn" onclick="setQuickRange(7)" style="background: linear-gradient(45deg, #95a5a6, #7f8c8d); padding: 8px 15px; font-size: 0.9rem;">
+                        7d
+                    </button>
+                    <button class="refresh-btn" onclick="setQuickRange(30)" style="background: linear-gradient(45deg, #95a5a6, #7f8c8d); padding: 8px 15px; font-size: 0.9rem;">
+                        30d
+                    </button>
+                    <button class="refresh-btn" onclick="setQuickRange(60)" style="background: linear-gradient(45deg, #95a5a6, #7f8c8d); padding: 8px 15px; font-size: 0.9rem;">
+                        60d
+                    </button>
+                    <button class="refresh-btn" onclick="setQuickRange(90)" style="background: linear-gradient(45deg, #95a5a6, #7f8c8d); padding: 8px 15px; font-size: 0.9rem;">
+                        90d
                     </button>
                 </div>
             </div>
@@ -381,6 +485,27 @@
                 <div class="summary-grid" id="summaryGrid">
                     <!-- Will be populated by JavaScript -->
                 </div>
+            </div>
+
+            <div class="campaign-burn-table" id="campaignBurnTable" style="display: none;">
+                <h3>🔥 Campaign Burn Analysis</h3>
+                <p style="margin-top: 10px; opacity: 0.9; font-size: 0.95rem;">
+                    Campaigns ranked by wasted contacts (Unsupported Territory). Click column headers to sort.
+                </p>
+                <table class="campaign-table" id="campaignTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="campaign_identifier">Name</th>
+                            <th class="sortable" data-sort="total_contacts">Contacts</th>
+                            <th class="sortable" data-sort="supported_contacts">Deals</th>
+                            <th class="sortable" data-sort="burned_contacts">Burn</th>
+                            <th class="sortable" data-sort="burn_rate_percentage">Burn Rate (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaignTableBody">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
             </div>
 
             <div class="nationality-breakdown" id="nationalityBreakdown" style="display: none;">
@@ -406,22 +531,53 @@
 
     <script>
         let burnRateChart;
+        let campaignBurnData = [];
+        let campaignSortField = 'burned_contacts';
+        let campaignSortDirection = 'desc';
+
+        // Initialize dates
+        function getDefaultDates() {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(start.getDate() - 30);
+            return {
+                start: start.toISOString().split('T')[0],
+                end: end.toISOString().split('T')[0]
+            };
+        }
+
+        function setQuickRange(days) {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(start.getDate() - days);
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+            // Auto-fetch after setting dates
+            setTimeout(loadBurnRateTimeseries, 100);
+        }
 
         async function loadBurnRateTimeseries() {
-            const timeRange = document.getElementById('timeRange').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
             const loadingSpinner = document.getElementById('loadingSpinner');
             const errorContainer = document.getElementById('errorContainer');
             const successContainer = document.getElementById('successContainer');
-            
+
+            if (!startDate || !endDate) {
+                errorContainer.innerHTML = '<div class="error">⚠️ Please select both start and end dates</div>';
+                return;
+            }
+
             // Show loading
             loadingSpinner.style.display = 'block';
             errorContainer.innerHTML = '';
             successContainer.innerHTML = '';
 
             try {
-                console.log('🔥 Loading burn rate timeseries: ' + timeRange + ' days...');
+                const granularity = document.getElementById('granularity').value;
+                console.log('🔥 Loading burn rate timeseries: ' + startDate + ' to ' + endDate + ' (' + granularity + ')');
 
-                const response = await fetch('/gads/analytics/burn-rate-timeseries?days=' + timeRange);
+                const response = await fetch('/gads/analytics/burn-rate-timeseries?start=' + startDate + '&end=' + endDate + '&granularity=' + granularity);
                 
                 if (!response.ok) {
                     throw new Error('API error: ' + response.status + ' ' + response.statusText);
@@ -436,9 +592,10 @@
 
                 updateBurnRateStats(data);
                 updateBurnRateChart(data);
+                await loadCampaignBurnData(startDate, endDate);
                 displayNationalityBreakdown(data);
 
-                successContainer.innerHTML = 
+                successContainer.innerHTML =
                     '<div class="success">' +
                     '✅ Burn rate timeseries loaded successfully!<br>' +
                     '<small>Using ' + (data.metadata && data.metadata.granularity ? data.metadata.granularity : 'auto') + ' granularity with ' + (data.data ? data.data.length : 0) + ' data points</small>' +
@@ -449,11 +606,11 @@
             } catch (error) {
                 console.error('❌ Error loading timeseries:', error);
                 loadingSpinner.style.display = 'none';
-                
-                errorContainer.innerHTML = 
+
+                errorContainer.innerHTML =
                     '<div class="error">' +
                     '❌ Critical Error: ' + error.message + '<br><br>' +
-                    '<strong>Endpoint:</strong> /gads/analytics/burn-rate-timeseries?days=' + timeRange + '<br>' +
+                    '<strong>Endpoint:</strong> /gads/analytics/burn-rate-timeseries?start=' + startDate + '&end=' + endDate + '<br>' +
                     '<strong>Status:</strong> Unable to load production data - dashboard unavailable' +
                     '</div>';
                 
@@ -516,26 +673,67 @@
 
         function updateBurnRateChart(data) {
             const ctx = document.getElementById('burnRateChart').getContext('2d');
-            
+
             if (burnRateChart) {
                 burnRateChart.destroy();
             }
 
             const timeseriesData = data.data || [];
             const metadata = data.metadata || {};
-            
-            const labels = timeseriesData.map(function(d) {
+
+            // Build labels and identify weekends for daily view
+            const labels = [];
+            const weekendIndices = [];
+
+            timeseriesData.forEach(function(d, index) {
                 const date = new Date(d.date);
-                if (metadata.granularity === 'weekly') {
-                    return 'Week of ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                if (metadata.granularity === 'monthly') {
+                    labels.push(date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }));
+                } else if (metadata.granularity === 'weekly') {
+                    labels.push('Week of ' + date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                 } else {
-                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    // Daily view - check if weekend
+                    labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    const dayOfWeek = date.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday = 0, Saturday = 6
+                        weekendIndices.push(index);
+                    }
                 }
             });
-            
+
             const burnRateData = timeseriesData.map(function(d) { return d.burnRatePercentage; });
             const totalContactsData = timeseriesData.map(function(d) { return d.totalContacts; });
             
+            // Custom plugin to draw weekend backgrounds (only for daily view)
+            const weekendPlugin = {
+                id: 'weekendBackground',
+                beforeDatasetsDraw: function(chart) {
+                    if (metadata.granularity === 'daily' && weekendIndices.length > 0) {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        const xScale = chart.scales.x;
+
+                        ctx.save();
+                        ctx.fillStyle = 'rgba(189, 195, 199, 0.15)'; // Light gray with transparency
+
+                        weekendIndices.forEach(function(index) {
+                            const x = xScale.getPixelForValue(index);
+                            const width = xScale.width / labels.length;
+
+                            ctx.fillRect(
+                                x - width / 2,
+                                chartArea.top,
+                                width,
+                                chartArea.bottom - chartArea.top
+                            );
+                        });
+
+                        ctx.restore();
+                    }
+                }
+            };
+
             burnRateChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -597,7 +795,7 @@
                             display: true,
                             title: {
                                 display: true,
-                                text: metadata.granularity === 'weekly' ? 'Week' : 'Date'
+                                text: metadata.granularity === 'monthly' ? 'Month' : (metadata.granularity === 'weekly' ? 'Week' : 'Date')
                             }
                         },
                         y: {
@@ -624,7 +822,8 @@
                             },
                         }
                     }
-                }
+                },
+                plugins: [weekendPlugin]
             });
         }
 
@@ -662,12 +861,125 @@
             nationalityContainer.style.display = 'block';
         }
 
+        async function loadCampaignBurnData(startDate, endDate) {
+            try {
+                // Calculate days from date range
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+                console.log('📊 Loading campaign burn data: ' + startDate + ' to ' + endDate + ' (' + days + ' days)...');
+
+                const response = await fetch('/gads/analytics/burn-rate-campaigns?days=' + days);
+
+                if (!response.ok) {
+                    throw new Error('API error: ' + response.status + ' ' + response.statusText);
+                }
+
+                const data = await response.json();
+                console.log('✅ Campaign burn data loaded:', data);
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load campaign burn data');
+                }
+
+                campaignBurnData = data.campaigns || [];
+                displayCampaignBurnTable();
+
+            } catch (error) {
+                console.error('❌ Error loading campaign burn data:', error);
+                document.getElementById('campaignBurnTable').style.display = 'none';
+            }
+        }
+
+        function displayCampaignBurnTable() {
+            if (campaignBurnData.length === 0) {
+                document.getElementById('campaignBurnTable').style.display = 'none';
+                return;
+            }
+
+            // Sort campaigns
+            const sorted = [...campaignBurnData].sort((a, b) => {
+                const aVal = a[campaignSortField];
+                const bVal = b[campaignSortField];
+
+                if (campaignSortDirection === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+
+            // Build table HTML
+            let tableHTML = '';
+            for (let i = 0; i < sorted.length; i++) {
+                const campaign = sorted[i];
+
+                // Determine burn rate class
+                let burnClass = 'burn-low';
+                if (campaign.burn_rate_percentage > 40) {
+                    burnClass = 'burn-high';
+                } else if (campaign.burn_rate_percentage > 25) {
+                    burnClass = 'burn-medium';
+                }
+
+                tableHTML +=
+                    '<tr>' +
+                    '<td>' + campaign.campaign_identifier + '</td>' +
+                    '<td>' + campaign.total_contacts.toLocaleString() + '</td>' +
+                    '<td>' + campaign.supported_contacts.toLocaleString() + '</td>' +
+                    '<td>' + campaign.burned_contacts.toLocaleString() + '</td>' +
+                    '<td class="' + burnClass + '">' + campaign.burn_rate_percentage.toFixed(1) + '%</td>' +
+                    '</tr>';
+            }
+
+            document.getElementById('campaignTableBody').innerHTML = tableHTML;
+            document.getElementById('campaignBurnTable').style.display = 'block';
+
+            // Update sort indicators
+            const headers = document.querySelectorAll('.campaign-table th.sortable');
+            headers.forEach(function(header) {
+                header.classList.remove('sort-asc', 'sort-desc');
+                if (header.getAttribute('data-sort') === campaignSortField) {
+                    header.classList.add('sort-' + campaignSortDirection);
+                }
+            });
+        }
+
+        function handleCampaignSort(field) {
+            if (campaignSortField === field) {
+                // Toggle direction
+                campaignSortDirection = campaignSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New field, default to desc
+                campaignSortField = field;
+                campaignSortDirection = 'desc';
+            }
+
+            displayCampaignBurnTable();
+        }
+
         // PRODUCTION: Mock data function removed for production safety
 
         // Load data on page load
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🔥 Burn Rate Timeseries Analysis page loaded');
+
+            // Initialize date inputs with defaults
+            const defaults = getDefaultDates();
+            document.getElementById('startDate').value = defaults.start;
+            document.getElementById('endDate').value = defaults.end;
+
+            // Load data with default dates
             loadBurnRateTimeseries();
+
+            // Add click handlers to campaign table headers
+            document.querySelectorAll('.campaign-table th.sortable').forEach(function(header) {
+                header.addEventListener('click', function() {
+                    const sortField = this.getAttribute('data-sort');
+                    handleCampaignSort(sortField);
+                });
+            });
         });
     </script>
 </body>

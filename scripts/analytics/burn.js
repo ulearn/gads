@@ -1,13 +1,12 @@
 /**
  * ENHANCED: Burn Rate Analysis Module with Attribution Fix
  * Path: /home/hub/public_html/gads/scripts/analytics/burn.js
- * 
- * ATTRIBUTION FIXES APPLIED:
- * - Enhanced attribution logic for campaign tracking template fix
- * - Uses custom 'google_ads_campaign' field when hs_analytics_source_data_1 = '{campaign}'
- * - Multi-layered attribution matching consistent with other enhanced files
- * - Comprehensive burn rate analysis with attribution quality reporting
- * 
+ *
+ * UPDATED: Now uses google_ads_campaign as PRIMARY attribution field
+ * - google_ads_campaign: Standardized campaign names (96% of contacts)
+ * - hs_analytics_source_data_1: Fallback for unmapped legacy contacts
+ * - Simplified attribution logic prioritizing clean campaign names
+ *
  * Handles all burn rate-related queries and analysis
  * Receives database connection from index.js
  */
@@ -15,42 +14,27 @@
 const mysql = require('mysql2/promise');
 
 /**
- * ENHANCED: Build Google Ads attribution query with fallback logic
- * This matches the same logic used in other enhanced files
+ * SIMPLIFIED: Build Google Ads attribution query - prioritizes google_ads_campaign
  */
 function buildEnhancedGoogleAdsAttributionQuery() {
   return `
     (
-      -- Standard PAID_SEARCH attribution (when tracking template works)
+      -- PRIMARY: PAID_SEARCH contacts with google_ads_campaign populated
       (
-        hc.hs_analytics_source = 'PAID_SEARCH' 
-        AND hc.hs_analytics_source_data_1 != '{campaign}'
+        hc.hs_analytics_source = 'PAID_SEARCH'
+        AND hc.google_ads_campaign IS NOT NULL
+        AND hc.google_ads_campaign != ''
+      )
+
+      OR
+
+      -- FALLBACK: PAID_SEARCH contacts without google_ads_campaign (legacy/unmapped)
+      (
+        hc.hs_analytics_source = 'PAID_SEARCH'
+        AND (hc.google_ads_campaign IS NULL OR hc.google_ads_campaign = '')
         AND hc.hs_analytics_source_data_1 IS NOT NULL
         AND hc.hs_analytics_source_data_1 != ''
-      )
-      
-      OR
-      
-      -- ENHANCED: Fixed attribution for broken tracking template
-      (
-        hc.hs_analytics_source = 'PAID_SEARCH'
-        AND hc.hs_analytics_source_data_1 = '{campaign}'
-        AND hc.google_ads_campaign IS NOT NULL
-        AND hc.google_ads_campaign != ''
-      )
-      
-      OR
-      
-      -- ENHANCED: Fallback attribution when google_ads_campaign field available
-      (
-        hc.hs_analytics_source = 'PAID_SEARCH'
-        AND hc.google_ads_campaign IS NOT NULL
-        AND hc.google_ads_campaign != ''
-        AND (
-          hc.hs_analytics_source_data_1 IS NULL
-          OR hc.hs_analytics_source_data_1 = ''
-          OR hc.hs_analytics_source_data_1 = '{campaign}'
-        )
+        AND hc.hs_analytics_source_data_1 != '{campaign}'
       )
     )
   `;
@@ -396,82 +380,114 @@ async function getBurnRateByCampaign(getDbConnection, options = {}) {
       const startDateStr = startDate.toISOString().slice(0, 10);
       const endDateStr = endDate.toISOString().slice(0, 10);
       
-      // ENHANCED: Get burn rate by campaign using enhanced attribution
-      const [campaignResults] = await connection.execute(`
-        SELECT 
-          -- Campaign identification (enhanced attribution logic)
-          CASE 
-            -- Standard: Use normal source data 1
-            WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
-                 AND hc.hs_analytics_source_data_1 != '{campaign}'
-                 AND hc.hs_analytics_source_data_1 IS NOT NULL
-            THEN hc.hs_analytics_source_data_1
-            
-            -- Enhanced: Use custom Google Ads Campaign field
-            WHEN hc.hs_analytics_source = 'PAID_SEARCH'
-                 AND hc.hs_analytics_source_data_1 = '{campaign}'
-                 AND hc.google_ads_campaign IS NOT NULL
-            THEN hc.google_ads_campaign
-            
-            -- Fallback: Use google_ads_campaign when available
-            WHEN hc.google_ads_campaign IS NOT NULL
-            THEN hc.google_ads_campaign
-            
-            ELSE 'attribution-unknown'
-          END as campaign_identifier,
-          
-          COUNT(*) as total_contacts,
-          COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as burned_contacts,
-          COUNT(CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN 1 END) as supported_contacts,
-          
-          -- Attribution type breakdown
-          COUNT(CASE 
-            WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
-            AND hc.hs_analytics_source_data_1 != '{campaign}'
-            AND hc.hs_analytics_source_data_1 IS NOT NULL
-            AND hc.hs_analytics_source_data_1 != ''
-            THEN 1 
-          END) as standard_attribution_count,
-          COUNT(CASE 
-            WHEN hc.hs_analytics_source = 'PAID_SEARCH'
-            AND hc.hs_analytics_source_data_1 = '{campaign}'
-            AND hc.google_ads_campaign IS NOT NULL
-            AND hc.google_ads_campaign != ''
-            THEN 1 
-          END) as enhanced_attribution_count
-          
-        FROM hub_contacts hc
-        WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
-          AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
-          AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
-        GROUP BY campaign_identifier
-        HAVING total_contacts > 0
-        ORDER BY burned_contacts DESC, total_contacts DESC
-      `, [startDateStr, endDateStr]);
+      // STEP 1: Get all campaigns (same as ROAS dashboard)
+      const [allCampaigns] = await connection.execute(`
+        SELECT
+          google_campaign_id,
+          campaign_name,
+          status,
+          campaign_type_name
+        FROM gads_campaigns
+        WHERE status IN (2, 3)
+        ORDER BY campaign_name
+      `);
+
+      console.log(`📊 Found ${allCampaigns.length} campaigns to analyze`);
+
+      // STEP 2: Get contacts for each campaign (same matching logic as ROAS dashboard)
+      const campaignResults = [];
+
+      for (const campaign of allCampaigns) {
+        const [contactResults] = await connection.execute(`
+          SELECT
+            COUNT(DISTINCT hc.hubspot_id) as total_contacts,
+            COUNT(DISTINCT CASE WHEN hc.territory = 'Unsupported Territory' THEN hc.hubspot_id END) as burned_contacts,
+            COUNT(DISTINCT CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN hc.hubspot_id END) as supported_contacts,
+            COUNT(DISTINCT CASE
+              WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+              AND hc.hs_analytics_source_data_1 != '{campaign}'
+              AND hc.hs_analytics_source_data_1 IS NOT NULL
+              AND hc.hs_analytics_source_data_1 != ''
+              THEN hc.hubspot_id
+            END) as standard_attribution_count,
+            COUNT(DISTINCT CASE
+              WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+              AND hc.hs_analytics_source_data_1 = '{campaign}'
+              AND hc.google_ads_campaign IS NOT NULL
+              AND hc.google_ads_campaign != ''
+              THEN hc.hubspot_id
+            END) as enhanced_attribution_count
+          FROM hub_contacts hc
+          WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
+            AND (
+              -- PRIMARY: Match by standardized google_ads_campaign name
+              hc.google_ads_campaign = ?
+              OR
+              -- FALLBACK: Match by legacy campaign ID or name in source_data_1
+              hc.hs_analytics_source_data_1 = ?
+              OR
+              hc.hs_analytics_source_data_1 = ?
+            )
+            AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
+            AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
+        `, [
+          campaign.google_campaign_id,
+          campaign.campaign_name,
+          campaign.campaign_name,
+          startDateStr,
+          endDateStr
+        ]);
+
+        const contacts = contactResults[0];
+        const totalContacts = parseInt(contacts.total_contacts) || 0;
+
+        // Only include campaigns with contacts
+        if (totalContacts > 0) {
+          campaignResults.push({
+            google_campaign_id: campaign.google_campaign_id,
+            campaign_name: campaign.campaign_name,
+            status: campaign.status,
+            campaign_type_name: campaign.campaign_type_name,
+            total_contacts: totalContacts,
+            burned_contacts: parseInt(contacts.burned_contacts) || 0,
+            supported_contacts: parseInt(contacts.supported_contacts) || 0,
+            standard_attribution_count: parseInt(contacts.standard_attribution_count) || 0,
+            enhanced_attribution_count: parseInt(contacts.enhanced_attribution_count) || 0
+          });
+        }
+      }
+
+      console.log(`✅ Found ${campaignResults.length} campaigns with contacts`);
       
-      // Process campaign results
-      const campaigns = campaignResults.map(row => {
-        const totalContacts = parseInt(row.total_contacts) || 0;
-        const burnedContacts = parseInt(row.burned_contacts) || 0;
-        const supportedContacts = parseInt(row.supported_contacts) || 0;
-        const burnRate = totalContacts > 0 ? ((burnedContacts / totalContacts) * 100).toFixed(2) : 0;
-        
-        return {
-          campaign_identifier: row.campaign_identifier,
-          total_contacts: totalContacts,
-          burned_contacts: burnedContacts,
-          supported_contacts: supportedContacts,
-          burn_rate_percentage: parseFloat(burnRate),
-          estimated_waste_eur: burnedContacts * 25, // €25 per wasted contact
-          attribution_breakdown: {
-            standard_count: parseInt(row.standard_attribution_count) || 0,
-            enhanced_count: parseInt(row.enhanced_attribution_count) || 0,
-            enhancement_percentage: totalContacts > 0 ? 
-              (((parseInt(row.enhanced_attribution_count) || 0) / totalContacts) * 100).toFixed(1) : '0'
-          },
-          performance_rating: getBurnRateRating(parseFloat(burnRate))
-        };
-      });
+      // Process campaign results - sort by burned contacts
+      const campaigns = campaignResults
+        .map(row => {
+          const totalContacts = row.total_contacts;
+          const burnedContacts = row.burned_contacts;
+          const supportedContacts = row.supported_contacts;
+          const burnRate = totalContacts > 0 ? ((burnedContacts / totalContacts) * 100).toFixed(2) : 0;
+
+          return {
+            google_campaign_id: row.google_campaign_id,
+            campaign_identifier: row.campaign_name || 'Unknown Campaign',
+            campaign_name: row.campaign_name || 'Unknown Campaign',
+            status: parseInt(row.status) || 0,
+            campaign_type_name: row.campaign_type_name || 'Unknown',
+            total_contacts: totalContacts,
+            burned_contacts: burnedContacts,
+            supported_contacts: supportedContacts,
+            burn_rate_percentage: parseFloat(burnRate),
+            estimated_waste_eur: burnedContacts * 25, // €25 per wasted contact
+            attribution_breakdown: {
+              standard_count: row.standard_attribution_count,
+              enhanced_count: row.enhanced_attribution_count,
+              enhancement_percentage: totalContacts > 0 ?
+                ((row.enhanced_attribution_count / totalContacts) * 100).toFixed(1) : '0'
+            },
+            performance_rating: getBurnRateRating(parseFloat(burnRate))
+          };
+        })
+        .sort((a, b) => b.burned_contacts - a.burned_contacts); // Sort by burned contacts descending
       
       // Calculate summary
       const totalContacts = campaigns.reduce((sum, c) => sum + c.total_contacts, 0);

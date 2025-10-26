@@ -36,7 +36,7 @@ async function syncGoogleAdsData(customer, getDbConnection, options = {}) {
     
     switch (syncType) {
       case 'full':
-        result = await fullSync(customer, connection, options);
+        result = await fullSync(customer, connection, options, syncLogId);
         break;
       case 'incremental':
         result = await incrementalSync(customer, connection, options);
@@ -86,9 +86,9 @@ async function syncGoogleAdsData(customer, getDbConnection, options = {}) {
 /**
  * Full sync - campaigns, targeting, keywords, and recent metrics
  */
-async function fullSync(customer, connection, options) {
+async function fullSync(customer, connection, options, syncLogId) {
   console.log('📊 Full sync: campaigns + targeting + keywords + metrics');
-  
+
   const summary = {
     campaigns_synced: 0,
     metrics_synced: 0,
@@ -96,7 +96,7 @@ async function fullSync(customer, connection, options) {
     targeting_synced: 0,
     api_calls_used: 0
   };
-  
+
   // Step 1: Sync all campaigns
   console.log('📋 Syncing campaigns...');
   const campaignResult = await syncCampaigns(customer, connection, syncLogId);
@@ -129,23 +129,28 @@ async function fullSync(customer, connection, options) {
  */
 async function incrementalSync(customer, connection, options) {
   console.log('⚡ Incremental sync: daily metrics for active campaigns');
-  
+
   const summary = {
     campaigns_checked: 0,
     metrics_synced: 0,
     api_calls_used: 0
   };
-  
+
   // Only sync metrics for active campaigns from recent days
+  console.log('🔍 STEP 1: Starting syncMetricsForActiveCampaigns...');
   const metricsResult = await syncMetricsForActiveCampaigns(customer, connection, options.days || 7);
+  console.log('✅ STEP 1 complete:', metricsResult);
   summary.metrics_synced = metricsResult.metrics_synced;
   summary.api_calls_used = metricsResult.api_calls_used;
-  
+
   // Update campaign status if any campaigns changed
+  console.log('🔍 STEP 2: Starting updateCampaignStatuses...');
   const statusResult = await updateCampaignStatuses(customer, connection);
+  console.log('✅ STEP 2 complete:', statusResult);
   summary.campaigns_checked = statusResult.campaigns_checked;
   summary.api_calls_used += statusResult.api_calls_used;
-  
+
+  console.log('✅ Incremental sync complete');
   return { summary };
 }
 
@@ -231,22 +236,28 @@ async function syncCampaigns(customer, connection, syncId = null) {
     for (const row of results) {
       const campaign = row.campaign;
       const budget = row.campaign_budget;
-      
+
+      // Skip campaigns with missing ID
+      if (!campaign?.id) {
+        console.warn(`⚠️ Skipping campaign with missing ID: ${campaign?.name || 'unknown'}`);
+        continue;
+      }
+
       const campaignData = {
-        google_campaign_id: campaign.id?.toString(),
-        campaign_name: campaign.name,
-        campaign_type: campaign.advertising_channel_type,
-        campaign_type_name: getCampaignTypeName(campaign.advertising_channel_type),
-        status: campaign.status,
+        google_campaign_id: campaign.id.toString(),
+        campaign_name: campaign.name || 'Unnamed Campaign',
+        campaign_type: campaign.advertising_channel_type || 0,
+        campaign_type_name: getCampaignTypeName(campaign.advertising_channel_type) || 'UNKNOWN',
+        status: campaign.status || 'UNKNOWN',
         start_date: campaign.start_date || null,
         end_date: campaign.end_date || null,
-        bidding_strategy: campaign.bidding_strategy_type,
-        budget_id: budget?.id?.toString(),
-        budget_name: budget?.name,
+        bidding_strategy: campaign.bidding_strategy_type || 0,
+        budget_id: budget?.id ? budget.id.toString() : null,
+        budget_name: budget?.name || null,
         daily_budget_micros: budget?.amount_micros || 0,
         daily_budget_eur: budget?.amount_micros ? (budget.amount_micros / 1000000) : 0
       };
-      
+
       await upsertCampaign(connection, campaignData, syncId);
       campaignsSynced++;
     }
@@ -280,12 +291,25 @@ async function syncMetricsForActiveCampaigns(customer, connection, days = 7) {
     }
     
     console.log(`📊 Found ${activeCampaigns.length} active campaigns`);
-    
+
     // Query metrics for active campaigns only
     const campaignIds = activeCampaigns.map(c => c.google_campaign_id).join(',');
-    
+
+    // Calculate date range (Google Ads API requires specific LAST_N_DAYS values or date ranges)
+    // Using date range for flexibility with any number of days
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const formatDate = (date) => {
+      return date.toISOString().split('T')[0].replace(/-/g, '-');
+    };
+
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+
     const metricsQuery = `
-      SELECT 
+      SELECT
         campaign.id,
         segments.date,
         metrics.impressions,
@@ -297,12 +321,12 @@ async function syncMetricsForActiveCampaigns(customer, connection, days = 7) {
         metrics.view_through_conversions
       FROM campaign
       WHERE campaign.id IN (${campaignIds})
-        AND segments.date DURING LAST_${days}_DAYS
+        AND segments.date BETWEEN '${startDateStr}' AND '${endDateStr}'
         AND campaign.status = 'ENABLED'
       ORDER BY segments.date DESC, campaign.id
     `;
-    
-    console.log(`📊 Fetching metrics for ${activeCampaigns.length} campaigns, ${days} days...`);
+
+    console.log(`📊 Fetching metrics for ${activeCampaigns.length} campaigns, ${days} days (${startDateStr} to ${endDateStr})...`);
     const results = await customer.query(metricsQuery);
     
     console.log(`📈 Processing ${results.length} metric records...`);
@@ -310,8 +334,14 @@ async function syncMetricsForActiveCampaigns(customer, connection, days = 7) {
     let metricsSynced = 0;
     
     for (const row of results) {
+      // Skip rows with missing required fields
+      if (!row.campaign?.id || !row.segments?.date) {
+        console.warn(`⚠️ Skipping metrics row with missing campaign ID or date`);
+        continue;
+      }
+
       const metricsData = {
-        google_campaign_id: row.campaign.id?.toString(),
+        google_campaign_id: row.campaign.id.toString(),
         date: row.segments.date,
         impressions: row.metrics?.impressions || 0,
         clicks: row.metrics?.clicks || 0,
@@ -322,12 +352,12 @@ async function syncMetricsForActiveCampaigns(customer, connection, days = 7) {
         ctr: row.metrics?.ctr ? (row.metrics.ctr * 100) : 0,
         cpc_micros: row.metrics?.average_cpc || 0,
         cpc_eur: row.metrics?.average_cpc ? (row.metrics.average_cpc / 1000000) : 0,
-        conversion_rate: (row.metrics?.clicks > 0 && row.metrics?.conversions > 0) ? 
+        conversion_rate: (row.metrics?.clicks > 0 && row.metrics?.conversions > 0) ?
           ((row.metrics.conversions / row.metrics.clicks) * 100) : 0,
-        cost_per_conversion_eur: (row.metrics?.conversions > 0 && row.metrics?.cost_micros > 0) ? 
+        cost_per_conversion_eur: (row.metrics?.conversions > 0 && row.metrics?.cost_micros > 0) ?
           ((row.metrics.cost_micros / 1000000) / row.metrics.conversions) : 0
       };
-      
+
       await upsertCampaignMetrics(connection, metricsData);
       metricsSynced++;
     }
@@ -553,11 +583,24 @@ async function upsertCampaign(connection, data, syncId = null) {
       updated_at = CURRENT_TIMESTAMP
   `;
   
-  await connection.execute(query, [
+  const params = [
     data.google_campaign_id, data.campaign_name, data.campaign_type, data.campaign_type_name,
-    data.status, data.start_date, data.end_date, data.bidding_strategy, data.budget_id, 
+    data.status, data.start_date, data.end_date, data.bidding_strategy, data.budget_id,
     data.budget_name, data.daily_budget_micros, data.daily_budget_eur
-  ]);
+  ];
+
+  // Check for undefined values
+  const undefinedIndex = params.findIndex(p => p === undefined);
+  if (undefinedIndex !== -1) {
+    const fieldNames = ['google_campaign_id', 'campaign_name', 'campaign_type', 'campaign_type_name',
+      'status', 'start_date', 'end_date', 'bidding_strategy', 'budget_id',
+      'budget_name', 'daily_budget_micros', 'daily_budget_eur'];
+    console.error(`❌ Undefined value at index ${undefinedIndex} (${fieldNames[undefinedIndex]})`);
+    console.error(`Campaign data:`, JSON.stringify(data, null, 2));
+    throw new Error(`Undefined parameter: ${fieldNames[undefinedIndex]}`);
+  }
+
+  await connection.execute(query, params);
   
   // Track status change if detected
   if (statusChanged) {
@@ -594,16 +637,16 @@ async function trackStatusChange(connection, data) {
       old_status_name, new_status_name, detected_by_sync, sync_id
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  
+
   await connection.execute(query, [
     data.google_campaign_id,
     data.campaign_name,
-    data.old_status,
+    data.old_status || null,
     data.new_status,
     data.old_status ? getStatusName(data.old_status) : null,
-    getStatusName(data.new_status),
+    getStatusName(data.new_status) || 'UNKNOWN',
     'auto-sync',
-    data.sync_id
+    data.sync_id || null
   ]);
 }
 
@@ -641,12 +684,25 @@ async function upsertCampaignMetrics(connection, data) {
       cost_per_conversion_eur = VALUES(cost_per_conversion_eur),
       synced_at = CURRENT_TIMESTAMP
   `;
-  
-  await connection.execute(query, [
+
+  const params = [
     data.google_campaign_id, data.date, data.impressions, data.clicks,
     data.cost_micros, data.cost_eur, data.conversions, data.view_through_conversions,
     data.ctr, data.cpc_micros, data.cpc_eur, data.conversion_rate, data.cost_per_conversion_eur
-  ]);
+  ];
+
+  // Check for undefined values
+  const undefinedIndex = params.findIndex(p => p === undefined);
+  if (undefinedIndex !== -1) {
+    const fieldNames = ['google_campaign_id', 'date', 'impressions', 'clicks',
+      'cost_micros', 'cost_eur', 'conversions', 'view_through_conversions',
+      'ctr', 'cpc_micros', 'cpc_eur', 'conversion_rate', 'cost_per_conversion_eur'];
+    console.error(`❌ Undefined value in upsertCampaignMetrics at index ${undefinedIndex} (${fieldNames[undefinedIndex]})`);
+    console.error(`Metrics data:`, JSON.stringify(data, null, 2));
+    throw new Error(`Undefined parameter in upsertCampaignMetrics: ${fieldNames[undefinedIndex]}`);
+  }
+
+  await connection.execute(query, params);
 }
 
 async function upsertGeoTargeting(connection, data) {
@@ -661,11 +717,23 @@ async function upsertGeoTargeting(connection, data) {
       target_type = VALUES(target_type),
       is_negative = VALUES(is_negative)
   `;
-  
-  await connection.execute(query, [
+
+  const params = [
     data.google_campaign_id, data.geo_target_constant, data.location_name,
     data.country_code, data.target_type, data.is_negative
-  ]);
+  ];
+
+  // Check for undefined values
+  const undefinedIndex = params.findIndex(p => p === undefined);
+  if (undefinedIndex !== -1) {
+    const fieldNames = ['google_campaign_id', 'geo_target_constant', 'location_name',
+      'country_code', 'target_type', 'is_negative'];
+    console.error(`❌ Undefined value in upsertGeoTargeting at index ${undefinedIndex} (${fieldNames[undefinedIndex]})`);
+    console.error(`Targeting data:`, JSON.stringify(data, null, 2));
+    throw new Error(`Undefined parameter in upsertGeoTargeting: ${fieldNames[undefinedIndex]}`);
+  }
+
+  await connection.execute(query, params);
 }
 
 async function upsertKeyword(connection, data) {
@@ -678,11 +746,23 @@ async function upsertKeyword(connection, data) {
       status = VALUES(status),
       updated_at = CURRENT_TIMESTAMP
   `;
-  
-  await connection.execute(query, [
+
+  const params = [
     data.google_campaign_id, data.google_adgroup_id, data.keyword_text,
     data.match_type, data.match_type_name, data.status
-  ]);
+  ];
+
+  // Check for undefined values
+  const undefinedIndex = params.findIndex(p => p === undefined);
+  if (undefinedIndex !== -1) {
+    const fieldNames = ['google_campaign_id', 'google_adgroup_id', 'keyword_text',
+      'match_type', 'match_type_name', 'status'];
+    console.error(`❌ Undefined value in upsertKeyword at index ${undefinedIndex} (${fieldNames[undefinedIndex]})`);
+    console.error(`Keyword data:`, JSON.stringify(data, null, 2));
+    throw new Error(`Undefined parameter in upsertKeyword: ${fieldNames[undefinedIndex]}`);
+  }
+
+  await connection.execute(query, params);
 }
 
 /**
@@ -693,11 +773,22 @@ async function logSyncStart(connection, syncType, options) {
     INSERT INTO gads_sync_log (sync_type, start_date, end_date, status)
     VALUES (?, ?, ?, 'running')
   `;
-  
+
   const startDate = options.startDate || null;
   const endDate = options.endDate || null;
-  
-  const [result] = await connection.execute(query, [syncType, startDate, endDate]);
+
+  console.log(`📝 logSyncStart params:`, { syncType, startDate, endDate });
+
+  // Check for undefined
+  const params = [syncType, startDate, endDate];
+  const undefinedIndex = params.findIndex(p => p === undefined);
+  if (undefinedIndex !== -1) {
+    const fieldNames = ['syncType', 'startDate', 'endDate'];
+    console.error(`❌ Undefined value in logSyncStart at index ${undefinedIndex} (${fieldNames[undefinedIndex]})`);
+    throw new Error(`Undefined parameter in logSyncStart: ${fieldNames[undefinedIndex]}`);
+  }
+
+  const [result] = await connection.execute(query, params);
   return result.insertId;
 }
 
@@ -774,15 +865,21 @@ async function updateCampaignStatuses(customer, connection) {
     const results = await customer.query(query);
     
     let campaignsChecked = 0;
-    
+
     for (const row of results) {
+      // Skip rows with missing campaign ID
+      if (!row.campaign?.id) {
+        console.warn(`⚠️ Skipping campaign status update for row with missing ID`);
+        continue;
+      }
+
       const updateQuery = `
-        UPDATE gads_campaigns 
+        UPDATE gads_campaigns
         SET status = ?, updated_at = CURRENT_TIMESTAMP
         WHERE google_campaign_id = ?
       `;
-      
-      await connection.execute(updateQuery, [row.campaign.status, row.campaign.id?.toString()]);
+
+      await connection.execute(updateQuery, [row.campaign.status || 'UNKNOWN', row.campaign.id.toString()]);
       campaignsChecked++;
     }
     
@@ -1199,8 +1296,14 @@ async function syncHistoricalMetricsDateRange(customer, getDbConnection, options
     let metricsSynced = 0;
     
     for (const row of results) {
+      // Skip rows with missing required fields
+      if (!row.campaign?.id || !row.segments?.date) {
+        console.warn(`⚠️ Skipping metrics row with missing campaign ID or date`);
+        continue;
+      }
+
       const metricsData = {
-        google_campaign_id: row.campaign.id?.toString(),
+        google_campaign_id: row.campaign.id.toString(),
         date: row.segments.date,
         impressions: row.metrics?.impressions || 0,
         clicks: row.metrics?.clicks || 0,
@@ -1211,12 +1314,12 @@ async function syncHistoricalMetricsDateRange(customer, getDbConnection, options
         ctr: row.metrics?.ctr ? (row.metrics.ctr * 100) : 0,
         cpc_micros: row.metrics?.average_cpc || 0,
         cpc_eur: row.metrics?.average_cpc ? (row.metrics.average_cpc / 1000000) : 0,
-        conversion_rate: (row.metrics?.clicks > 0 && row.metrics?.conversions > 0) ? 
+        conversion_rate: (row.metrics?.clicks > 0 && row.metrics?.conversions > 0) ?
           ((row.metrics.conversions / row.metrics.clicks) * 100) : 0,
-        cost_per_conversion_eur: (row.metrics?.conversions > 0 && row.metrics?.cost_micros > 0) ? 
+        cost_per_conversion_eur: (row.metrics?.conversions > 0 && row.metrics?.cost_micros > 0) ?
           ((row.metrics.cost_micros / 1000000) / row.metrics.conversions) : 0
       };
-      
+
       await upsertCampaignMetrics(connection, metricsData);
       metricsSynced++;
     }

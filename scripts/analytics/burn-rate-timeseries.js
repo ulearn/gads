@@ -238,11 +238,12 @@ function calculateDateRange(days, startDate, endDate) {
 function determineGranularity(granularity, totalDays) {
   if (granularity === 'daily') return 'daily';
   if (granularity === 'weekly') return 'weekly';
-  
+  if (granularity === 'monthly') return 'monthly';
+
   // Auto-determine based on range
   if (totalDays <= 31) return 'daily';   // 7-30 days: daily
   if (totalDays <= 90) return 'weekly';  // 60-90 days: weekly
-  return 'weekly'; // Default to weekly for longer ranges
+  return 'monthly'; // Default to monthly for longer ranges (>90 days)
 }
 
 /**
@@ -288,33 +289,66 @@ function buildEnhancedTimeseriesQuery(granularity) {
       GROUP BY DATE(hc.createdate)
       ORDER BY period_date
     `;
+  } else if (granularity === 'monthly') {
+    // Monthly aggregation
+    return `
+      SELECT
+        DATE_FORMAT(DATE(hc.createdate), '%Y-%m-01') as period_date,
+        'monthly' as granularity,
+        COUNT(*) as total_contacts,
+        COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
+        COUNT(CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN 1 END) as supported_contacts,
+        ROUND(
+          (COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100,
+          2
+        ) as burn_rate_percentage,
+        -- Enhanced attribution breakdown per month
+        COUNT(CASE
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 != '{campaign}'
+          AND hc.hs_analytics_source_data_1 IS NOT NULL
+          AND hc.hs_analytics_source_data_1 != ''
+          THEN 1
+        END) as standard_attribution_count,
+        COUNT(CASE
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND hc.google_ads_campaign IS NOT NULL
+          AND hc.google_ads_campaign != ''
+          THEN 1
+        END) as enhanced_attribution_count
+      FROM hub_contacts hc
+      ${baseWhere}
+      GROUP BY DATE_FORMAT(DATE(hc.createdate), '%Y-%m-01')
+      ORDER BY period_date
+    `;
   } else {
     // Weekly aggregation
     return `
-      SELECT 
+      SELECT
         DATE_SUB(DATE(hc.createdate), INTERVAL WEEKDAY(DATE(hc.createdate)) DAY) as period_date,
         'weekly' as granularity,
         COUNT(*) as total_contacts,
         COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) as unsupported_contacts,
         COUNT(CASE WHEN hc.territory != 'Unsupported Territory' OR hc.territory IS NULL THEN 1 END) as supported_contacts,
         ROUND(
-          (COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100, 
+          (COUNT(CASE WHEN hc.territory = 'Unsupported Territory' THEN 1 END) / COUNT(*)) * 100,
           2
         ) as burn_rate_percentage,
         -- Enhanced attribution breakdown per week
-        COUNT(CASE 
-          WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
+        COUNT(CASE
+          WHEN hc.hs_analytics_source = 'PAID_SEARCH'
           AND hc.hs_analytics_source_data_1 != '{campaign}'
           AND hc.hs_analytics_source_data_1 IS NOT NULL
           AND hc.hs_analytics_source_data_1 != ''
-          THEN 1 
+          THEN 1
         END) as standard_attribution_count,
-        COUNT(CASE 
+        COUNT(CASE
           WHEN hc.hs_analytics_source = 'PAID_SEARCH'
           AND hc.hs_analytics_source_data_1 = '{campaign}'
           AND hc.google_ads_campaign IS NOT NULL
           AND hc.google_ads_campaign != ''
-          THEN 1 
+          THEN 1
         END) as enhanced_attribution_count
       FROM hub_contacts hc
       ${baseWhere}

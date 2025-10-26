@@ -604,6 +604,19 @@ router.get('/analytics/burn-rate-data', async (req, res) => {
   }
 });
 
+// Burn Rate by Campaign API
+router.get('/analytics/burn-rate-campaigns', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const burn = require('./scripts/analytics/burn');
+    const result = await burn.getBurnRateByCampaign(getDbConnection, { days });
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Burn rate campaigns failed:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Campaign Revenue Report -  Cash Basis ROAS - Dashboard Route  
 router.get('/analytics/roas-revenue', (req, res) => {
   try {
@@ -961,6 +974,16 @@ router.use((req, res) => {
       status: 'not_available',
       message: 'MCP server not loaded'
     },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// TEST: Check if new sync code is loaded
+router.get('/hubspot/sync-version', (req, res) => {
+  const hubspotSync = require('./scripts/hubspot/hubspot-sync');
+  res.json({
+    new_code_loaded: typeof hubspotSync.syncDealsByIds !== 'undefined',
+    available_functions: Object.keys(hubspotSync),
     timestamp: new Date().toISOString()
   });
 });

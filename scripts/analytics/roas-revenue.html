@@ -421,14 +421,22 @@
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
             const [campaignStatus, setCampaignStatus] = useState('active');
-            const [dateRange, setDateRange] = useState('30');
-            const [customStartDate, setCustomStartDate] = useState('');
-            const [customEndDate, setCustomEndDate] = useState('');
-            
-            // Track committed dates (only change when user actually selects a day)
-            const [committedStartDate, setCommittedStartDate] = useState('');
-            const [committedEndDate, setCommittedEndDate] = useState('');
-            
+
+            // Calculate default dates (last 30 days)
+            const getDefaultDates = () => {
+                const end = new Date();
+                const start = new Date();
+                start.setDate(start.getDate() - 30);
+                return {
+                    start: start.toISOString().split('T')[0],
+                    end: end.toISOString().split('T')[0]
+                };
+            };
+
+            const defaults = getDefaultDates();
+            const [startDate, setStartDate] = useState(defaults.start);
+            const [endDate, setEndDate] = useState(defaults.end);
+
             const [sortField, setSortField] = useState('true_roas');
             const [sortDirection, setSortDirection] = useState('desc');
 
@@ -436,34 +444,29 @@
                 try {
                     setLoading(true);
                     setError(null);
-                    
-                    // Build API parameters - Cash Basis only
-                    let params = `status=${campaignStatus}&analysisMode=revenue`;
-                    
-                    if (dateRange === 'custom') {
-                        if (committedStartDate && committedEndDate) {
-                            params += `&startDate=${committedStartDate}&endDate=${committedEndDate}`;
-                        } else {
-                            // Provide more specific error message
-                            const missingFields = [];
-                            if (!customStartDate) missingFields.push('start date');
-                            if (!customEndDate) missingFields.push('end date');
-                            throw new Error(`Please select ${missingFields.join(' and ')} for custom range`);
-                        }
-                    } else {
-                        params += `&days=${dateRange}`;
+
+                    if (!startDate || !endDate) {
+                        throw new Error('Please select both start and end dates');
                     }
-                    
-                    console.log(`📊 Fetching Campaign Revenue data: ${params}`);
+
+                    // Build API parameters - Cash Basis only
+                    const params = new URLSearchParams({
+                        status: campaignStatus,
+                        analysisMode: 'revenue',
+                        startDate: startDate,
+                        endDate: endDate
+                    });
+
+                    console.log(`📊 Fetching Campaign Revenue data: ${params.toString()}`);
                     const response = await fetch(`/gads/analytics/roas-revenue-campaigns?${params}`);
-                    
+
                     if (!response.ok) {
                         throw new Error(`Campaign Revenue API Error: ${response.status} ${response.statusText}`);
                     }
-                    
+
                     const result = await response.json();
                     console.log('📊 Campaign Revenue Response:', result);
-                    
+
                     if (result.success) {
                         setData(result);
                     } else {
@@ -478,62 +481,15 @@
                 }
             };
 
-            // Handle start date change with validation
-            const handleStartDateChange = (newDate) => {
-                setCustomStartDate(newDate);
-                
-                // Only commit if it's a valid date and different from current committed date
-                if (newDate && newDate.length === 10 && newDate !== committedStartDate) {
-                    // Check if this is just month navigation (same day, different month)
-                    const oldDateObj = committedStartDate ? new Date(committedStartDate) : null;
-                    const newDateObj = new Date(newDate);
-                    
-                    // If we have an old date and only the month/year changed (same day), don't commit yet
-                    if (oldDateObj && oldDateObj.getDate() === newDateObj.getDate() && 
-                        (oldDateObj.getMonth() !== newDateObj.getMonth() || oldDateObj.getFullYear() !== newDateObj.getFullYear())) {
-                        // This is likely navigation - don't commit
-                        return;
-                    }
-                    
-                    // This appears to be an actual date selection
-                    setCommittedStartDate(newDate);
-                }
-            };
-            
-            // Handle end date change with validation  
-            const handleEndDateChange = (newDate) => {
-                setCustomEndDate(newDate);
-                
-                // Only commit if it's a valid date and different from current committed date
-                if (newDate && newDate.length === 10 && newDate !== committedEndDate) {
-                    // Check if this is just month navigation (same day, different month)
-                    const oldDateObj = committedEndDate ? new Date(committedEndDate) : null;
-                    const newDateObj = new Date(newDate);
-                    
-                    // If we have an old date and only the month/year changed (same day), don't commit yet
-                    if (oldDateObj && oldDateObj.getDate() === newDateObj.getDate() && 
-                        (oldDateObj.getMonth() !== newDateObj.getMonth() || oldDateObj.getFullYear() !== newDateObj.getFullYear())) {
-                        // This is likely navigation - don't commit
-                        return;
-                    }
-                    
-                    // This appears to be an actual date selection
-                    setCommittedEndDate(newDate);
-                }
+            // Apply button handler
+            const handleApply = () => {
+                fetchData();
             };
 
+            // Initial fetch on mount
             useEffect(() => {
-                if (dateRange !== 'custom') {
-                    // For preset ranges, fetch immediately
-                    fetchData();
-                } else {
-                    // For custom dates, only fetch when both committed dates are set
-                    if (committedStartDate && committedEndDate && 
-                        committedStartDate.length === 10 && committedEndDate.length === 10) {
-                        fetchData();
-                    }
-                }
-            }, [campaignStatus, dateRange, committedStartDate, committedEndDate]);
+                fetchData();
+            }, []);
 
             const handleSort = (field) => {
                 if (sortField === field) {
@@ -686,63 +642,35 @@
                             </div>
                             <div className="control-group">
                                 <label>Date Range</label>
-                                <select 
-                                    className="control-select" 
-                                    value={dateRange} 
-                                    onChange={(e) => {
-                                        const newRange = e.target.value;
-                                        setDateRange(newRange);
-                                        
-                                        // Auto-populate custom dates when switching to custom
-                                        if (newRange === 'custom' && (!customStartDate || !customEndDate)) {
-                                            const today = new Date();
-                                            const thirtyDaysAgo = new Date();
-                                            thirtyDaysAgo.setDate(today.getDate() - 30);
-                                            
-                                            const startDateStr = thirtyDaysAgo.toISOString().split('T')[0];
-                                            const endDateStr = today.toISOString().split('T')[0];
-                                            
-                                            if (!customStartDate) {
-                                                setCustomStartDate(startDateStr);
-                                                setCommittedStartDate(startDateStr);
-                                            }
-                                            if (!customEndDate) {
-                                                setCustomEndDate(endDateStr);
-                                                setCommittedEndDate(endDateStr);
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <option value="7">Last 7 days</option>
-                                    <option value="14">Last 14 days</option>
-                                    <option value="30">Last 30 days</option>
-                                    <option value="60">Last 60 days</option>
-                                    <option value="90">Last 90 days</option>
-                                    <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
-                            {dateRange === 'custom' && (
-                                <div className="control-group">
-                                    <label>Custom Dates</label>
-                                    <div className="date-picker-container">
-                                        <input 
-                                            type="date" 
-                                            className="date-picker"
-                                            value={customStartDate}
-                                            onChange={(e) => handleStartDateChange(e.target.value)}
-                                            placeholder="Start Date"
-                                        />
-                                        <span style={{color: 'white'}}>to</span>
-                                        <input 
-                                            type="date" 
-                                            className="date-picker"
-                                            value={customEndDate}
-                                            onChange={(e) => handleEndDateChange(e.target.value)}
-                                            placeholder="End Date"
-                                        />
-                                    </div>
+                                <div className="date-picker-container">
+                                    <input
+                                        type="date"
+                                        className="date-picker"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        placeholder="Start Date"
+                                    />
+                                    <span style={{color: 'white'}}>to</span>
+                                    <input
+                                        type="date"
+                                        className="date-picker"
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        placeholder="End Date"
+                                    />
                                 </div>
-                            )}
+                            </div>
+                            <div className="control-group">
+                                <label>&nbsp;</label>
+                                <button
+                                    onClick={handleApply}
+                                    disabled={loading}
+                                    className="control-select"
+                                    style={{cursor: 'pointer', opacity: loading ? 0.6 : 1}}
+                                >
+                                    {loading ? 'Loading...' : 'Apply'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 

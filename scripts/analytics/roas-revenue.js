@@ -1,43 +1,43 @@
 /**
  * ENHANCED: Campaign Revenue Report with Attribution Fixes
  * /scripts/analytics/roas-revenue.js
- * 
- * ATTRIBUTION FIXES APPLIED:
- * 1. Multi-layered attribution logic for broken tracking template contacts
- * 2. Reclassification of Google Business (gb) sources with GCLID
- * 3. Uses custom "Google Ads Campaign" field when needed
- * 4. Comprehensive attribution quality reporting
+ *
+ * UPDATED: Now uses google_ads_campaign as PRIMARY attribution field
+ * - google_ads_campaign: Standardized campaign names (96% of contacts)
+ * - hs_analytics_source_data_1: Fallback for unmapped legacy contacts
+ * - Simplified attribution logic prioritizing clean campaign names
  */
 
 const mysql = require('mysql2/promise');
 
 /**
- * Enhanced Google Ads attribution logic - handles multiple attribution scenarios
+ * Enhanced Google Ads attribution logic - SIMPLIFIED
+ * UPDATED: Now uses google_ads_campaign as primary attribution field
  */
 function buildEnhancedAttributionQuery() {
   return `
     (
-      -- STANDARD ATTRIBUTION: Normal PAID_SEARCH contacts
-      (
-        hc.hs_analytics_source = 'PAID_SEARCH' 
-        AND hc.hs_analytics_source_data_1 != '{campaign}'
-        AND hc.hs_analytics_source_data_1 IS NOT NULL
-        AND hc.hs_analytics_source_data_1 != ''
-      )
-      
-      OR
-      
-      -- FIX #1: BROKEN TEMPLATE - Use custom "Google Ads Campaign" field
+      -- PRIMARY: PAID_SEARCH contacts with google_ads_campaign populated
       (
         hc.hs_analytics_source = 'PAID_SEARCH'
-        AND hc.hs_analytics_source_data_1 = '{campaign}'
         AND hc.google_ads_campaign IS NOT NULL
         AND hc.google_ads_campaign != ''
       )
-      
+
       OR
-      
-      -- FIX #2: GOOGLE BUSINESS - Reclassify gb sources with GCLID
+
+      -- FALLBACK: PAID_SEARCH contacts without google_ads_campaign (legacy/unmapped)
+      (
+        hc.hs_analytics_source = 'PAID_SEARCH'
+        AND (hc.google_ads_campaign IS NULL OR hc.google_ads_campaign = '')
+        AND hc.hs_analytics_source_data_1 IS NOT NULL
+        AND hc.hs_analytics_source_data_1 != ''
+        AND hc.hs_analytics_source_data_1 != '{campaign}'
+      )
+
+      OR
+
+      -- FIX: GOOGLE BUSINESS - Reclassify gb sources with GCLID
       (
         hc.hs_analytics_source = 'Other Campaigns'
         AND hc.hs_analytics_source_data_1 = 'gb'
@@ -50,29 +50,30 @@ function buildEnhancedAttributionQuery() {
 
 /**
  * Get the effective campaign name for attribution
+ * UPDATED: Prioritizes google_ads_campaign as primary source
  */
 function getCampaignAttributionLogic() {
   return `
-    CASE 
-      -- STANDARD: Use normal source data 1
-      WHEN hc.hs_analytics_source = 'PAID_SEARCH' 
-           AND hc.hs_analytics_source_data_1 != '{campaign}'
-           AND hc.hs_analytics_source_data_1 IS NOT NULL
-      THEN hc.hs_analytics_source_data_1
-      
-      -- FIX #1: Use custom Google Ads Campaign field
-      WHEN hc.hs_analytics_source = 'PAID_SEARCH'
-           AND hc.hs_analytics_source_data_1 = '{campaign}'
-           AND hc.google_ads_campaign IS NOT NULL
+    CASE
+      -- PRIMARY: Use google_ads_campaign field (standardized names)
+      WHEN hc.google_ads_campaign IS NOT NULL AND hc.google_ads_campaign != ''
       THEN hc.google_ads_campaign
-      
-      -- FIX #2: For gb sources, derive from campaign name or GCLID
+
+      -- FALLBACK: Use source_data_1 for unmapped legacy contacts
+      WHEN hc.hs_analytics_source = 'PAID_SEARCH'
+           AND hc.hs_analytics_source_data_1 IS NOT NULL
+           AND hc.hs_analytics_source_data_1 != ''
+           AND hc.hs_analytics_source_data_1 != '{campaign}'
+      THEN hc.hs_analytics_source_data_1
+
+      -- For gb sources, derive from GCLID
       WHEN hc.hs_analytics_source = 'Other Campaigns'
            AND hc.hs_analytics_source_data_1 = 'gb'
            AND hc.gclid IS NOT NULL
-      THEN COALESCE(hc.google_ads_campaign, CONCAT('gb-gclid-', SUBSTRING(hc.gclid, 1, 8)))
-      
-      ELSE 'attribution-unknown'
+      THEN CONCAT('gb-gclid-', SUBSTRING(hc.gclid, 1, 8))
+
+      -- Default to "Campaign Unknown" for unidentifiable data
+      ELSE 'Campaign Unknown'
     END
   `;
 }
@@ -130,20 +131,20 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
       console.log(`🔍 Getting total portfolio revenue with attribution fixes...`);
       
       const [totalRevenueResult] = await connection.execute(`
-        SELECT 
+        SELECT
           COUNT(DISTINCT hd.hubspot_deal_id) as total_won_deals,
-          COALESCE(SUM(DISTINCT hd.amount), 0) as total_revenue,
+          COALESCE(SUM(hd.amount), 0) as total_revenue,
           COUNT(DISTINCT hc.hubspot_id) as total_attributed_contacts
         FROM hub_deals hd
-        JOIN hub_contact_deal_associations a ON hd.hubspot_deal_id = a.deal_hubspot_id  
+        JOIN hub_contact_deal_associations a ON hd.hubspot_deal_id = a.deal_hubspot_id
         JOIN hub_contacts hc ON a.contact_hubspot_id = hc.hubspot_id
         WHERE hd.dealstage = 'closedwon'
           AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
           AND hd.pipeline = 'default'
           AND ${buildEnhancedAttributionQuery()}
           AND (
-            hc.hubspot_owner_id != 10017927 
-            OR hc.hubspot_owner_id IS NULL 
+            hc.hubspot_owner_id != 10017927
+            OR hc.hubspot_owner_id IS NULL
             OR hc.hubspot_owner_id = ''
           )
           AND hc.territory != 'Unsupported Territory'
@@ -158,61 +159,88 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
       
       // STEP 2: Get attribution quality breakdown
       const [attributionBreakdown] = await connection.execute(`
-        SELECT 
+        SELECT
           'Standard PAID_SEARCH' as attribution_type,
           COUNT(DISTINCT hc.hubspot_id) as contact_count,
-          COUNT(DISTINCT hd.hubspot_deal_id) as deal_count,
-          COALESCE(SUM(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.amount ELSE 0 END), 0) as revenue
+          COUNT(DISTINCT CASE
+            WHEN hd.hubspot_deal_id IS NOT NULL
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.hubspot_deal_id
+          END) as deal_count,
+          COALESCE(SUM(CASE
+            WHEN hd.dealstage = 'closedwon'
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.amount
+            ELSE 0
+          END), 0) as revenue
         FROM hub_contacts hc
         LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
-        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id 
-          AND hd.pipeline = 'default'
-          AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
-        WHERE hc.hs_analytics_source = 'PAID_SEARCH' 
+        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id
+        WHERE hc.hs_analytics_source = 'PAID_SEARCH'
           AND hc.hs_analytics_source_data_1 != '{campaign}'
           AND hc.hs_analytics_source_data_1 IS NOT NULL
           AND hc.hs_analytics_source_data_1 != ''
           AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND hc.territory != 'Unsupported Territory'
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
           'Fixed Template (Custom Field)' as attribution_type,
           COUNT(DISTINCT hc.hubspot_id) as contact_count,
-          COUNT(DISTINCT hd.hubspot_deal_id) as deal_count,
-          COALESCE(SUM(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.amount ELSE 0 END), 0) as revenue
+          COUNT(DISTINCT CASE
+            WHEN hd.hubspot_deal_id IS NOT NULL
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.hubspot_deal_id
+          END) as deal_count,
+          COALESCE(SUM(CASE
+            WHEN hd.dealstage = 'closedwon'
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.amount
+            ELSE 0
+          END), 0) as revenue
         FROM hub_contacts hc
         LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
-        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id 
-          AND hd.pipeline = 'default'
-          AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id
         WHERE hc.hs_analytics_source = 'PAID_SEARCH'
-          AND hc.hs_analytics_source_data_1 = '{campaign}'
+          AND (hc.hs_analytics_source_data_1 = '{campaign}' OR hc.hs_analytics_source_data_1 IS NULL OR hc.hs_analytics_source_data_1 = '')
           AND hc.google_ads_campaign IS NOT NULL
           AND hc.google_ads_campaign != ''
           AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND hc.territory != 'Unsupported Territory'
-          
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
           'Fixed Google Business (gb)' as attribution_type,
           COUNT(DISTINCT hc.hubspot_id) as contact_count,
-          COUNT(DISTINCT hd.hubspot_deal_id) as deal_count,
-          COALESCE(SUM(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.amount ELSE 0 END), 0) as revenue
+          COUNT(DISTINCT CASE
+            WHEN hd.hubspot_deal_id IS NOT NULL
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.hubspot_deal_id
+          END) as deal_count,
+          COALESCE(SUM(CASE
+            WHEN hd.dealstage = 'closedwon'
+              AND hd.pipeline = 'default'
+              AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+            THEN hd.amount
+            ELSE 0
+          END), 0) as revenue
         FROM hub_contacts hc
         LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
-        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id 
-          AND hd.pipeline = 'default'
-          AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+        LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id
         WHERE hc.hs_analytics_source = 'Other Campaigns'
           AND hc.hs_analytics_source_data_1 = 'gb'
           AND hc.gclid IS NOT NULL
           AND hc.gclid != ''
           AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
           AND hc.territory != 'Unsupported Territory'
-      `, [startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr]);
+      `, [startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr]);
       
       console.log(`🔧 Attribution fixes breakdown:`);
       attributionBreakdown.forEach(row => {
@@ -246,27 +274,36 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
         const [attributionResults] = await connection.execute(`
           SELECT
             COUNT(DISTINCT hc.hubspot_id) as attributed_contacts,
-            COUNT(DISTINCT hd.hubspot_deal_id) as total_deals,
-            COUNT(DISTINCT CASE WHEN hd.dealstage = 'closedwon' THEN hd.hubspot_deal_id END) as won_deals,
-            COALESCE(SUM(DISTINCT CASE
-              WHEN hd.dealstage = 'closedwon' AND hd.amount IS NOT NULL
+            COUNT(DISTINCT CASE
+              WHEN hd.hubspot_deal_id IS NOT NULL
+                AND hd.pipeline = 'default'
+                AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+              THEN hd.hubspot_deal_id
+            END) as total_deals,
+            COUNT(DISTINCT CASE
+              WHEN hd.dealstage = 'closedwon'
+                AND hd.pipeline = 'default'
+                AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
+              THEN hd.hubspot_deal_id
+            END) as won_deals,
+            COALESCE(SUM(CASE
+              WHEN hd.dealstage = 'closedwon'
+                AND hd.amount IS NOT NULL
+                AND hd.pipeline = 'default'
+                AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
               THEN CAST(hd.amount as DECIMAL(15,2))
               ELSE 0
             END), 0) as campaign_revenue
           FROM hub_contacts hc
           LEFT JOIN hub_contact_deal_associations a ON hc.hubspot_id = a.contact_hubspot_id
           LEFT JOIN hub_deals hd ON a.deal_hubspot_id = hd.hubspot_deal_id
-            AND hd.pipeline = 'default'
-            AND DATE(hd.closedate) >= ? AND DATE(hd.closedate) <= ?
           WHERE ${buildEnhancedAttributionQuery()}
             AND (
-              -- Match by campaign ID (standard)
-              hc.hs_analytics_source_data_1 = ?
-              OR
-              -- Match by campaign name (both standard and custom field)
+              -- PRIMARY: Match by standardized google_ads_campaign name
               hc.google_ads_campaign = ?
               OR
-              COALESCE(hc.google_ads_campaign, hc.hs_analytics_source_data_1) = ?
+              -- FALLBACK: Match by legacy campaign name in source_data_1
+              hc.hs_analytics_source_data_1 = ?
             )
             AND (
               hc.hubspot_owner_id != 10017927
@@ -276,7 +313,8 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
             AND hc.territory != 'Unsupported Territory'
         `, [
           startDateStr, endDateStr,
-          campaign.google_campaign_id,
+          startDateStr, endDateStr,
+          startDateStr, endDateStr,
           campaign.campaign_name,
           campaign.campaign_name
         ]);
@@ -288,13 +326,11 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
           FROM hub_contacts hc
           WHERE ${buildEnhancedAttributionQuery()}
             AND (
-              -- Match by campaign ID (standard)
-              hc.hs_analytics_source_data_1 = ?
-              OR
-              -- Match by campaign name (both standard and custom field)
+              -- PRIMARY: Match by standardized google_ads_campaign name
               hc.google_ads_campaign = ?
               OR
-              COALESCE(hc.google_ads_campaign, hc.hs_analytics_source_data_1) = ?
+              -- FALLBACK: Match by legacy campaign name in source_data_1
+              hc.hs_analytics_source_data_1 = ?
             )
             AND (
               hc.hubspot_owner_id != 10017927
@@ -303,7 +339,6 @@ async function getTrueROASCampaigns(getDbConnection, options = {}) {
             )
             AND hc.territory = 'Unsupported Territory'
         `, [
-          campaign.google_campaign_id,
           campaign.campaign_name,
           campaign.campaign_name
         ]);

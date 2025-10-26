@@ -1,0 +1,18 @@
+CAMPAIGN_ID,CURRENT_GOOGLE_ADS_NAME,CANONICAL_2022_NAME,2023_VARIANTS,2024_VARIANTS,2025_VARIANTS,CONTACTS_2022,STATUS,ACTION
+32907697,1. Search - Spain - ES,spanish - es,spanish - es,spain & latam - es - leads,"32907697|1. search - spain - es|1_search.spain-latam_es|1.search-spain_es",146,ACTIVE,RENAME_AND_UPDATE
+239036407,2. Display - Remarketing (Observation + Placements),dp:remarketing,dp:remarketing,04. display - remarketing,"239036407|2dsply-rmrktng--obs placmnts",129,ACTIVE,RENAME_AND_UPDATE
+35203507,1. Search - Ireland - Gnrl Terms "Ireland/Dublin" - EN,ireland - en - gnrl terms,"ireland - en - gnrl terms|dublin - en - gnrl terms|ireland - en - gnrl terms ""ireland/dublin""",dublin - en - gnrl terms,"35203507|1.search-ireland-gnrlterms ""ireland/dublin""_en|searchdublin-gnrlterms_en|gnrltermsen",68,ACTIVE,RENAME_AND_UPDATE
+35127547,1. Search - Ireland - ES,ireland - es,ireland - es|02. search - ireland - es,ireland - es|02. search - ireland - es,02. search - ireland - es,66,ACTIVE,RENAME_AND_UPDATE
+17486528534,4. Demand Gen - INTRNL-Discovery-Leads,intrnl-discovery-leads,intrnl-discovery-leads,intrnl-discovery-leads,"dgen-int-dscvry-leads|intrnl-discovery-leads",44,PAUSED,RENAME_AND_UPDATE
+682598152,2. Display - In-Market - INTRNTL,dp:influence,dp:influence,04. display - awareness: intl - in-market - dp,,43,PAUSED,RENAME_AND_UPDATE
+20774719371,1. Search - France - FR,france - fr,france - fr|02. search - france - fr,02. search - france - fr,,29,PAUSED,RENAME_AND_UPDATE
+20884739698,1. Search - German - DE,german - de,german - de,german - de,,27,PAUSED,RENAME_AND_UPDATE
+17440682130,3. Perfomance Max,irl-perfom-max,irl-perfom-max,irl-perfom-max,"17440682130|3pmax|3.pmax(new)-ireland_es",22,ACTIVE,RENAME_AND_UPDATE
+695837889,1. Search - Dublin - DSAs - Dynamic Search,dublin - dynamic search,"dublin - dynamic search|02. search - dublin - dsas - dynamic search",02. search - dublin - dsas - dynamic search,"02. search - dublin - dsas - dynamic search|695837889|1_searchdublin.dynamic",8,ACTIVE,RENAME_AND_UPDATE
+149491087,1. Search - Brazil (POR) - Gnrl Terms,brazil - por - gnrl terms,brazil - por - gnrl terms,brazil - por - gnrl terms,"149491087|brazil - por - gnrl terms",0,PAUSED,RENAME_AND_UPDATE
+21010812408,3. Performance Max (New) - Ireland - ES,performance max (new) - ireland - es,,performance max (new) - ireland - es,"21010812408|3.pmax(new)-ireland_es|performance max (new) - ireland - es",0,ACTIVE,KEEP_OR_MERGE
+22097290049,1. Search - EN Countries,1. search - en countries,,,22097290049|1. search - en countries|1_search.intl.en,0,PAUSED,KEEP_AS_NEW
+22099718382,1. Search - ES Countries,1. search - es countries,,,"22099718382|1. search - es countries|1_search.intl.en",0,ACTIVE,KEEP_AS_NEW
+35128987,1. Search - Dublin - Gnrl Terms - EN,dublin - en - gnrl terms,dublin - en - gnrl terms,dublin - en - gnrl terms,dublin - en - gnrl terms,0,ACTIVE,RENAME_AND_UPDATE
+1051942797,2. Display - Smart targeting: Intl-DP,dp:smart campaign,"dp:smart campaign|04. display - smart targeting: intl-dp",04. display - smart targeting: intl-dp,,108,PAUSED,RENAME_AND_UPDATE
+21960244230,1. Search - Broad - BFCRS2024,NEW_2024,,1. search - broad - bfcrs2024,,0,ACTIVE,KEEP_AS_NEW

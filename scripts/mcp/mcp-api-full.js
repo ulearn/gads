@@ -98,6 +98,53 @@ Common issues:
 }
 
 /**
+ * Convert match_type strings to enum values for keyword operations
+ * Also flattens criterion.keyword to just keyword at top level
+ */
+function normalizeKeywordMatchType(operations, resource_type) {
+  if (resource_type !== 'adGroupCriteria' && resource_type !== 'keywords' && resource_type !== 'campaignCriteria') {
+    return operations;
+  }
+
+  const { enums } = require('google-ads-api');
+
+  const normalized = operations.map(op => {
+    let result = { ...op };
+
+    // Handle nested criterion.keyword structure - flatten it
+    if (op.criterion && op.criterion.keyword) {
+      log('🔄 Flattening criterion.keyword structure');
+      result = {
+        ...result,
+        keyword: op.criterion.keyword
+      };
+      delete result.criterion;
+    }
+
+    // Convert string match type to enum value
+    if (result.keyword && result.keyword.match_type) {
+      const matchType = result.keyword.match_type;
+      if (typeof matchType === 'string') {
+        const matchTypeEnum = enums.KeywordMatchType[matchType.toUpperCase()];
+        if (matchTypeEnum !== undefined) {
+          log(`🔄 Converting match_type: "${matchType}" → ${matchTypeEnum}`);
+          result.keyword = {
+            ...result.keyword,
+            match_type: matchTypeEnum
+          };
+        } else {
+          log(`⚠️ Unknown match_type string: "${matchType}"`);
+        }
+      }
+    }
+
+    return result;
+  });
+
+  return normalized;
+}
+
+/**
  * Universal Write Access to Google Ads API
  * ⚠️ DANGEROUS - THIS CAN MODIFY ANYTHING IN YOUR ACCOUNT
  * Requires explicit confirmation via confirm_danger parameter
@@ -143,6 +190,9 @@ This is a DANGEROUS operation that will modify your Google Ads account.
 This safety check prevents accidental modifications.`
     };
   }
+
+  // Normalize keyword match types from strings to enum values
+  operations = normalizeKeywordMatchType(operations, resource_type);
 
   log('⚠️ EXECUTING UNIVERSAL WRITE OPERATION:', {
     account_id,
@@ -263,14 +313,35 @@ ${JSON.stringify(response, null, 2)}
 
   } catch (error) {
     log('❌ Universal write operation failed:', error.message);
+    log('❌ Error details:', JSON.stringify(error, null, 2));
     log('❌ Error stack:', error.stack);
-    
+
+    // Extract error message - handle Google Ads API error formats
+    let errorMsg = 'Unknown error';
+
+    if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
+      // Google Ads API error format
+      const firstError = error.errors[0];
+      errorMsg = firstError.message || JSON.stringify(firstError.error_code);
+
+      // Add details about all errors if multiple
+      if (error.errors.length > 1) {
+        errorMsg += ` (and ${error.errors.length - 1} more errors)`;
+      }
+    } else if (error.message) {
+      errorMsg = error.message;
+    } else if (error.error?.message) {
+      errorMsg = error.error.message;
+    } else {
+      errorMsg = JSON.stringify(error);
+    }
+
     return {
       success: false,
-      error: error.message,
+      error: errorMsg,
       report: `❌ **Universal Write Operation Failed**
-      
-**Error:** ${error.message}
+
+**Error:** ${errorMsg}
 
 **Attempted Operation:**
 - Resource: ${resource_type}
