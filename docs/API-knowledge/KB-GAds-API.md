@@ -743,6 +743,510 @@ newUrl: 'https://ulearnschool.com/it/contatti'  // Correct Italian URL
 
 ---
 
+## Finding Geo Target Constants
+
+**Use Case:** Setting city-level location targeting instead of entire countries or regions.
+
+### Overview
+
+Google Ads uses `geo_target_constant` IDs to identify locations for campaign targeting. Finding city-level IDs requires querying the `geo_target_constant` resource with the country code and city name.
+
+### Query Pattern for Cities
+
+```javascript
+const query = `
+  SELECT
+    geo_target_constant.id,
+    geo_target_constant.name,
+    geo_target_constant.canonical_name,
+    geo_target_constant.country_code,
+    geo_target_constant.target_type
+  FROM geo_target_constant
+  WHERE geo_target_constant.country_code = 'MX'
+    AND geo_target_constant.canonical_name LIKE '%Mexico City%'
+    AND geo_target_constant.status = 'ENABLED'
+`;
+
+const results = await customer.query(query);
+// Returns: id: 1010043, name: "Mexico City", canonical_name: "Mexico City,Mexico"
+```
+
+### Important Query Details
+
+1. **Country Code** - Use ISO 3166-1 alpha-2 codes:
+   - `MX` = Mexico
+   - `BR` = Brazil
+   - `AR` = Argentina
+   - `ES` = Spain
+   - `IE` = Ireland
+   - `FR` = France
+   - `IT` = Italy
+
+2. **Canonical Name** - Use `LIKE` for partial matching:
+   - Cities often have variations (e.g., "Ciudad de México" vs "Mexico City")
+   - The `canonical_name` field shows full location hierarchy
+   - Format: `"City,Region,Country"` or `"City,Country"`
+
+3. **Target Type** - Filter by target type if needed:
+   - `CITY` - City-level targeting
+   - `REGION` - State/province level
+   - `COUNTRY` - Country level
+
+4. **Status** - Always filter for `ENABLED` locations
+
+### Real-World Example: Mexico Cities
+
+**Goal:** Target Mexico City, Guadalajara, and Monterrey specifically (not entire country)
+
+```javascript
+// Query for each city
+const cities = ['Mexico City', 'Guadalajara', 'Monterrey'];
+
+for (const cityName of cities) {
+  const query = `
+    SELECT
+      geo_target_constant.id,
+      geo_target_constant.name,
+      geo_target_constant.canonical_name
+    FROM geo_target_constant
+    WHERE geo_target_constant.country_code = 'MX'
+      AND geo_target_constant.canonical_name LIKE '%${cityName}%'
+      AND geo_target_constant.status = 'ENABLED'
+  `;
+
+  const results = await customer.query(query);
+  console.log(`${cityName}: ID ${results[0].geo_target_constant.id}`);
+}
+
+// Results:
+// Mexico City: ID 1010043
+// Guadalajara: ID 1010079
+// Monterrey: ID 1010132
+```
+
+### Adding Location Targeting to Campaign
+
+Once you have the geo target constant IDs:
+
+```javascript
+const accountId = '1051706978';
+const campaignId = '23210227162';
+
+// Step 1: Remove existing locations (if replacing)
+const currentQuery = `
+  SELECT campaign_criterion.resource_name
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LOCATION
+    AND campaign_criterion.negative = false
+`;
+
+const current = await customer.query(currentQuery);
+const currentResources = current.map(c => c.campaign_criterion.resource_name);
+
+if (currentResources.length > 0) {
+  await customer.campaignCriteria.remove(currentResources);
+}
+
+// Step 2: Add new city-level locations
+const mexicoCities = [
+  { id: 1010043, name: 'Mexico City' },
+  { id: 1010079, name: 'Guadalajara' },
+  { id: 1010132, name: 'Monterrey' }
+];
+
+const operations = mexicoCities.map(city => ({
+  campaign: `customers/${accountId}/campaigns/${campaignId}`,
+  location: {
+    geo_target_constant: `geoTargetConstants/${city.id}`
+  },
+  type: 'LOCATION',
+  negative: false
+}));
+
+await customer.campaignCriteria.create(operations);
+```
+
+### Common Challenges
+
+**Challenge #1: Multiple Results**
+- Some city names return multiple results (e.g., different admin levels, suburbs, metro areas)
+- **Solution:** Review `canonical_name` to confirm correct location
+- **Solution:** Filter by `target_type = 'CITY'` for city-level only
+
+**Challenge #2: City Name Variations**
+- Cities may have multiple names (e.g., "Ciudad de México" vs "Mexico City")
+- **Solution:** Use `LIKE` with multiple queries or search both English and local names
+
+**Challenge #3: Finding Correct Country Code**
+- Not always obvious (e.g., UK uses `GB`, not `UK`)
+- **Solution:** Query without country filter first, check results for correct code
+
+**Challenge #4: No Results**
+- Some smaller cities may not be available for targeting
+- **Solution:** Try broader region/state targeting instead
+- **Solution:** Use proximity targeting (radius around coordinates)
+
+### Verification
+
+After adding locations, verify they're set correctly:
+
+```javascript
+const verifyQuery = `
+  SELECT
+    geo_target_constant.id,
+    geo_target_constant.name,
+    geo_target_constant.canonical_name
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LOCATION
+    AND campaign_criterion.negative = false
+`;
+
+const locations = await customer.query(verifyQuery);
+console.log(`Total locations: ${locations.length}`);
+locations.forEach(loc => {
+  console.log(`  - ${loc.geo_target_constant.name} (ID: ${loc.geo_target_constant.id})`);
+});
+```
+
+### Tips for Efficient Location Targeting
+
+1. **City vs Country Targeting:**
+   - City-level = More precise, higher CPCs typically
+   - Country-level = Broader reach, lower CPCs typically
+   - Consider campaign goals and budget
+
+2. **Major Cities Strategy:**
+   - Target 3-5 major cities instead of entire country
+   - Good for testing new markets with limited budget
+   - Example: Mexico = CDMX, Guadalajara, Monterrey only
+
+3. **Location Exclusions:**
+   - Can also add negative geo targets to exclude specific areas
+   - Use `negative: true` in the operation
+   - Useful for excluding low-performing regions
+
+4. **Performance Analysis:**
+   - After campaign runs, analyze performance by location
+   - Google Ads UI: Reports → Geographic → User locations
+   - Add/remove locations based on performance data
+
+### Negative Location Targeting Strategy
+
+**Important Discovery:** Some Performance Max campaigns use **negative location targeting** instead of positive targeting. Instead of selecting specific countries to target, they target "everywhere EXCEPT these countries".
+
+**How to identify:**
+```javascript
+const query = `
+  SELECT
+    campaign_criterion.type,
+    campaign_criterion.negative,
+    campaign_criterion.location.geo_target_constant
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LOCATION
+`;
+
+const results = await customer.query(query);
+// If ALL location criteria have negative: true, campaign uses exclusion strategy
+```
+
+**Example from PMax-Italy-IT Campaign:**
+- 124 negative location exclusions (all countries EXCEPT Italy)
+- NO positive location criteria
+- Result: Targets Italy + all non-EU countries, excludes all other EU countries
+
+**How to swap countries with negative targeting:**
+
+```javascript
+// Goal: Switch from Spain to Italy
+// Current: Spain targetable (not in exclusion list), Italy excluded
+// Target: Italy targetable, Spain excluded
+
+// Step 1: Remove Italy from exclusions (makes it targetable)
+await customer.campaignCriteria.remove([
+  'customers/${accountId}/campaignCriteria/${campaignId}~2380' // Italy
+]);
+
+// Step 2: Add Spain to exclusions
+await customer.campaignCriteria.create([{
+  campaign: `customers/${accountId}/campaigns/${campaignId}`,
+  location: { geo_target_constant: 'geoTargetConstants/2724' }, // Spain
+  type: 'LOCATION',
+  negative: true
+}]);
+
+// Step 3: Add other EU markets to exclusions (to isolate Italy)
+const euExclusions = [
+  { id: 2250, name: 'France' },
+  { id: 2276, name: 'Germany' },
+  { id: 2756, name: 'Switzerland' }
+];
+
+const operations = euExclusions.map(country => ({
+  campaign: `customers/${accountId}/campaigns/${campaignId}`,
+  location: { geo_target_constant: `geoTargetConstants/${country.id}` },
+  type: 'LOCATION',
+  negative: true
+}));
+
+await customer.campaignCriteria.create(operations);
+```
+
+**Key Points:**
+- **Cannot have zero location criteria** - At least 1 location must always be set (either positive or negative)
+- **Negative strategy is valid** - Useful for "target everywhere except..." scenarios
+- **Check criterion type** - Type 7 = LOCATION, check `negative` field to distinguish
+- **EU market isolation** - When targeting one EU country, explicitly exclude other EU countries to prevent budget waste
+
+**Common Use Case:**
+- Non-EU campaign: Target Latin America, exclude all EU countries
+- Single EU country: Target Italy, exclude Spain, France, Germany, etc.
+- Prevents budget splitting across similar markets
+
+**Geo Target Constants Reference:**
+- Spain: 2724
+- Italy: 2380
+- France: 2250
+- Germany: 2276
+- Switzerland: 2756
+- Portugal: 2620
+- Ireland: 2372
+
+---
+
+## Language Targeting
+
+**Critical Component:** Every campaign MUST have language targeting set. Language targeting determines which users see your ads based on their browser/device language settings and Google's language detection.
+
+### Overview
+
+Language targeting uses `language_constant` IDs to specify which languages your campaign should target. Unlike location targeting, language criteria are ALWAYS positive (no negative language targeting exists).
+
+### Language Constants Reference
+
+**Common Language IDs:**
+```
+1000 = English
+1003 = French
+1004 = German
+1005 = Italian
+1006 = Spanish
+1014 = Portuguese
+1001 = Arabic
+1002 = Chinese (Simplified)
+1009 = Japanese
+1012 = Korean
+1015 = Russian
+```
+
+### Query Current Language Targeting
+
+```javascript
+const query = `
+  SELECT
+    campaign.id,
+    campaign_criterion.type,
+    language_constant.id,
+    language_constant.code,
+    language_constant.name
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LANGUAGE
+`;
+
+const languages = await customer.query(query);
+
+// Example output:
+// { language_constant: { id: 1003, code: 'fr', name: 'French' } }
+// { language_constant: { id: 1000, code: 'en', name: 'English' } }
+```
+
+### Standard Language Targeting by Market
+
+**Current Convention:** All campaigns include English + target market language
+
+```javascript
+// French markets (France, Belgium, Switzerland)
+Languages: French (1003) + English (1000)
+
+// Spanish markets (Spain, Mexico, LATAM)
+Languages: Spanish (1006) + English (1000)
+
+// Portuguese markets (Brazil)
+Languages: Portuguese (1014) + English (1000)
+
+// Italian markets (Italy)
+Languages: Italian (1005) + English (1000)
+
+// German markets (Germany, Austria)
+Languages: German (1004) + English (1000)
+```
+
+**Rationale:** Including English captures international students and expatriates who may be searching in English while located in the target country.
+
+### Add Language Targeting to Campaign
+
+```javascript
+const accountId = '1051706978';
+const campaignId = '23206720478';
+
+// Add French + English targeting
+const operations = [
+  {
+    campaign: `customers/${accountId}/campaigns/${campaignId}`,
+    language: { language_constant: 'languageConstants/1003' }, // French
+    type: 'LANGUAGE'
+  },
+  {
+    campaign: `customers/${accountId}/campaigns/${campaignId}`,
+    language: { language_constant: 'languageConstants/1000' }, // English
+    type: 'LANGUAGE'
+  }
+];
+
+await customer.campaignCriteria.create(operations);
+```
+
+### Replace Language Targeting
+
+When localizing a campaign, you need to swap languages:
+
+```javascript
+// Example: Change from Italian to French
+
+// Step 1: Query current language targeting
+const langQuery = `
+  SELECT
+    campaign_criterion.resource_name,
+    language_constant.id,
+    language_constant.name
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LANGUAGE
+`;
+
+const currentLangs = await customer.query(langQuery);
+console.log('Current languages:', currentLangs.map(l => l.language_constant.name).join(', '));
+
+// Step 2: Remove current languages
+const languageResources = currentLangs.map(l => l.campaign_criterion.resource_name);
+await customer.campaignCriteria.remove(languageResources);
+
+// Step 3: Add new languages
+const newLangs = [
+  {
+    campaign: `customers/${accountId}/campaigns/${campaignId}`,
+    language: { language_constant: 'languageConstants/1003' }, // French
+    type: 'LANGUAGE'
+  },
+  {
+    campaign: `customers/${accountId}/campaigns/${campaignId}`,
+    language: { language_constant: 'languageConstants/1000' }, // English
+    type: 'LANGUAGE'
+  }
+];
+
+await customer.campaignCriteria.create(newLangs);
+console.log('✅ Updated to French + English');
+```
+
+### Finding Language Constants
+
+To find language constant IDs:
+
+```javascript
+const query = `
+  SELECT
+    language_constant.id,
+    language_constant.code,
+    language_constant.name
+  FROM language_constant
+  WHERE language_constant.name LIKE '%French%'
+    AND language_constant.targetable = true
+`;
+
+const results = await customer.query(query);
+// Returns: { id: 1003, code: 'fr', name: 'French' }
+```
+
+### Real-World Example: France Campaign
+
+Successfully configured PMax-France-FR campaign:
+
+```javascript
+// Campaign: PMax-France-FR (ID: 23206720478)
+// Markets: France, Belgium, Switzerland (French-speaking regions)
+
+// Language targeting set to:
+const languages = [
+  { id: 1003, name: 'French' },
+  { id: 1000, name: 'English' }
+];
+
+// This ensures ads show to:
+// 1. Users with French language settings (primary audience)
+// 2. International users searching in English within target locations
+```
+
+### Important Notes
+
+1. **Always Set Language Targeting** - Campaigns without language targeting may show to all users regardless of language, wasting budget
+
+2. **Language vs Location** - Language targeting is based on user's device/browser language settings, NOT their physical location
+
+3. **Multiple Languages Allowed** - You can target multiple languages simultaneously (e.g., French + English)
+
+4. **No Negative Targeting** - Unlike locations, you cannot exclude languages. Language targeting is always positive.
+
+5. **Language Detection** - Google uses multiple signals to determine user language:
+   - Browser language settings
+   - Device language
+   - Previous search behavior
+   - Account language preferences
+
+6. **Performance Consideration** - In markets with strong English-speaking expat populations (like European capitals), including English + local language maximizes reach without sacrificing relevance
+
+### Verification
+
+After setting language targeting, always verify:
+
+```javascript
+const query = `
+  SELECT
+    campaign.id,
+    campaign.name,
+    language_constant.id,
+    language_constant.name
+  FROM campaign_criterion
+  WHERE campaign.id = ${campaignId}
+    AND campaign_criterion.type = LANGUAGE
+`;
+
+const results = await customer.query(query);
+console.log(`\n${results[0].campaign.name} - Language Targeting:`);
+results.forEach(row => {
+  console.log(`  ✓ ${row.language_constant.name} (ID: ${row.language_constant.id})`);
+});
+```
+
+### Troubleshooting
+
+**Issue: Campaign has no language targeting**
+- **Symptom:** Campaign shows to all users regardless of language
+- **Fix:** Add appropriate language criteria as shown above
+
+**Issue: Wrong languages set after cloning**
+- **Symptom:** French campaign still targeting Italian
+- **Fix:** Remove old language criteria and add correct ones
+
+**Issue: "undefined" error when querying languages**
+- **Cause:** Missing campaign.id in SELECT clause
+- **Fix:** Always include `campaign.id` when using `WHERE campaign.id = X`
+
+---
+
 ## WhatsApp Business Message Assets
 
 **Asset Type:** `BUSINESS_MESSAGE` (30)
@@ -946,6 +1450,7 @@ After cloning a Performance Max campaign, the following entities typically requi
 **Targeting:**
 - [ ] **Geographic targets** (`geo_target_constant`) - MUST be set for new region
   - Location Options: **"Presence: People in or regularly in your included locations"**
+  - See [Finding Geo Target Constants](#finding-geo-target-constants) for city-level targeting
 - [ ] **Language targets** (`language_constant`) - Follows location convention:
   - France = French (+English)
   - Spain = Spanish (+English)

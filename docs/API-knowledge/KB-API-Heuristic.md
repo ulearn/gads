@@ -160,7 +160,7 @@ That way, it stops guessing field names and starts reasoning like a seasoned API
 
 ---
 
-If you want, I can give you a ready-to-drop `/flawed-api-utils/` bundle that includes:
+If you want, I can give you a ready-to-drop `/claude-api-utils/` bundle that includes:
 
 * `fetcher.js`
 * `introspect-api.js`
