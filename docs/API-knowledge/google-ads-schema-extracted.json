@@ -1,0 +1,82 @@
+{
+  "extracted_at": "2025-10-30T13:09:08.112Z",
+  "source": "google-ads-api TypeScript definitions",
+  "resources": {
+    "asset_group_asset": {
+      "fields": [
+        {
+          "field": "field_type",
+          "type": "AssetFieldType"
+        },
+        {
+          "field": "performance_label",
+          "type": "AssetPerformanceLabel"
+        },
+        {
+          "field": "policy_summary.approval_status",
+          "type": "PolicyApprovalStatus"
+        },
+        {
+          "field": "policy_summary.review_status",
+          "type": "PolicyReviewStatus"
+        },
+        {
+          "field": "primary_status",
+          "type": "AssetLinkPrimaryStatus"
+        },
+        {
+          "field": "primary_status_reasons",
+          "type": "AssetLinkPrimaryStatusReason"
+        },
+        {
+          "field": "source",
+          "type": "AssetSource"
+        },
+        {
+          "field": "status",
+          "type": "AssetLinkStatus"
+        }
+      ],
+      "service": "AssetGroupAssetService",
+      "methods": [
+        "mutateAssetGroupAssets"
+      ],
+      "resource_name_format": "customers/{customer_id}/assetGroupAssets/{asset_group_id}~{asset_id}~{field_type}"
+    },
+    "campaign_asset": {
+      "fields": [
+        {
+          "field": "field_type",
+          "type": "AssetFieldType"
+        },
+        {
+          "field": "primary_status",
+          "type": "AssetLinkPrimaryStatus"
+        },
+        {
+          "field": "primary_status_reasons",
+          "type": "AssetLinkPrimaryStatusReason"
+        },
+        {
+          "field": "source",
+          "type": "AssetSource"
+        },
+        {
+          "field": "status",
+          "type": "AssetLinkStatus"
+        }
+      ],
+      "service": "CampaignAssetService",
+      "methods": [
+        "mutateCampaignAssets"
+      ],
+      "resource_name_format": "customers/{customer_id}/campaignAssets/{campaign_id}~{asset_id}~{field_type}"
+    }
+  },
+  "notes": [
+    "All field names use snake_case in google-ads-api library",
+    "field_type is always snake_case, never fieldType or camelCase",
+    "Mutations use operations array with create/update/remove",
+    "Resource names use tilde (~) as delimiter"
+  ]
+}

@@ -232,11 +232,17 @@ This safety check prevents accidental modifications.`
       'campaignCriteria': 'campaignCriteria',
       'campaign_criteria': 'campaignCriteria',
       'assets': 'assets',
+      'assetGroups': 'assetGroups',
+      'asset_groups': 'assetGroups',
+      'assetGroupAssets': 'assetGroupAssets',
+      'asset_group_assets': 'assetGroupAssets',
       'audiences': 'audiences',
       'userLists': 'userLists',
       'user_lists': 'userLists',
       'conversionActions': 'conversionActions',
-      'conversion_actions': 'conversionActions'
+      'conversion_actions': 'conversionActions',
+      'campaignAssets': 'campaignAssets',
+      'campaign_asset': 'campaignAssets'
     };
 
     const mappedResource = resourceMap[resource_type] || resource_type;
@@ -550,9 +556,11 @@ async function createSitelinkAsset({
   }
 
   const operations = [{
-    sitelinkAsset: {
-      linkText: link_text,
-      finalUrls: final_urls,
+    type: 'SITELINK',
+    name: `Sitelink: ${link_text}`,
+    final_urls: final_urls,  // At Asset level
+    sitelink_asset: {
+      link_text: link_text,
       description1: description1,
       description2: description2
     }
@@ -597,8 +605,10 @@ async function createCalloutAsset({
   }
 
   const operations = [{
-    calloutAsset: {
-      text: text
+    type: 'CALLOUT',
+    name: `Callout: ${text}`,
+    callout_asset: {
+      callout_text: text
     }
   }];
 
@@ -790,7 +800,7 @@ async function linkAssetToCampaign({
   const operations = [{
     campaign: `customers/${account_id}/campaigns/${campaign_id}`,
     asset: `customers/${account_id}/assets/${asset_id}`,
-    fieldType: field_type
+    field_type: field_type
   }];
 
   return await universalGoogleAdsWrite({
@@ -1043,6 +1053,573 @@ async function updateCampaignTrackingTemplate({
   });
 }
 
+/**
+ * Query Asset Groups from a Performance Max Campaign
+ * Gets all asset groups with their basic info and associated assets
+ */
+async function queryAssetGroups({
+  account_id = process.env.GADS_LIVE_ID,
+  campaign_id
+}) {
+
+  log('🔍 Querying Asset Groups:', { account_id, campaign_id });
+
+  try {
+    const customer = googleAdsClient.Customer({
+      customer_id: account_id,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      login_customer_id: process.env.GADS_LIVE_MCC_ID
+    });
+
+    // Query asset groups
+    const assetGroupQuery = `
+      SELECT
+        asset_group.id,
+        asset_group.name,
+        asset_group.status,
+        asset_group.resource_name,
+        asset_group.final_urls,
+        asset_group.final_mobile_urls,
+        asset_group.path1,
+        asset_group.path2,
+        campaign.id,
+        campaign.name
+      FROM asset_group
+      WHERE campaign.id = ${campaign_id}
+    `;
+
+    const assetGroups = await customer.query(assetGroupQuery);
+
+    log(`✅ Found ${assetGroups.length} asset groups`);
+
+    // For each asset group, get its assets
+    const detailedAssetGroups = [];
+
+    for (const row of assetGroups) {
+      const assetGroupId = row.asset_group.id;
+
+      // Query assets for this asset group
+      const assetQuery = `
+        SELECT
+          asset_group_asset.asset,
+          asset_group_asset.field_type,
+          asset_group_asset.resource_name,
+          asset.id,
+          asset.name,
+          asset.type,
+          asset.text_asset.text,
+          asset.image_asset.full_size.url,
+          asset.youtube_video_asset.youtube_video_id
+        FROM asset_group_asset
+        WHERE asset_group.id = ${assetGroupId}
+      `;
+
+      const assets = await customer.query(assetQuery);
+
+      detailedAssetGroups.push({
+        id: row.asset_group.id?.toString(),
+        name: row.asset_group.name,
+        status: row.asset_group.status,
+        resource_name: row.asset_group.resource_name,
+        final_urls: row.asset_group.final_urls || [],
+        final_mobile_urls: row.asset_group.final_mobile_urls || [],
+        path1: row.asset_group.path1 || '',
+        path2: row.asset_group.path2 || '',
+        campaign_id: row.campaign.id?.toString(),
+        campaign_name: row.campaign.name,
+        assets: assets.map(a => ({
+          asset_resource: a.asset_group_asset.asset,
+          field_type: a.asset_group_asset.field_type,
+          asset_id: a.asset.id?.toString(),
+          asset_name: a.asset.name,
+          asset_type: a.asset.type,
+          text: a.asset.text_asset?.text,
+          image_url: a.asset.image_asset?.full_size?.url,
+          video_id: a.asset.youtube_video_asset?.youtube_video_id
+        }))
+      });
+    }
+
+    return {
+      success: true,
+      data: detailedAssetGroups,
+      count: detailedAssetGroups.length,
+      report: `✅ **Asset Groups Retrieved Successfully**
+
+**Campaign:** ${detailedAssetGroups[0]?.campaign_name || 'N/A'}
+**Asset Groups Found:** ${detailedAssetGroups.length}
+
+${detailedAssetGroups.map((ag, i) => `
+**${i + 1}. ${ag.name}**
+- ID: ${ag.id}
+- Status: ${ag.status}
+- Final URLs: ${ag.final_urls.join(', ')}
+- Assets: ${ag.assets.length} items
+  - Headlines: ${ag.assets.filter(a => a.field_type === 'HEADLINE').length}
+  - Long Headlines: ${ag.assets.filter(a => a.field_type === 'LONG_HEADLINE').length}
+  - Descriptions: ${ag.assets.filter(a => a.field_type === 'DESCRIPTION').length}
+  - Images: ${ag.assets.filter(a => a.field_type === 'MARKETING_IMAGE').length}
+  - Logos: ${ag.assets.filter(a => a.field_type === 'LOGO').length}
+`).join('\n')}
+
+**Note:** These asset groups can be cloned to new PMax campaigns using \`cloneAssetGroups\` function.`
+    };
+
+  } catch (error) {
+    log('❌ Asset group query failed:', error.message);
+    return {
+      success: false,
+      error: error.message,
+      report: `❌ **Failed to Query Asset Groups**
+
+**Error:** ${error.message}
+
+**Possible Causes:**
+- Campaign is not a Performance Max campaign
+- Invalid campaign ID
+- API permissions issue
+- Asset groups don't exist for this campaign`
+    };
+  }
+}
+
+/**
+ * Clone Asset Groups from one PMax campaign to another
+ * This creates new asset groups in the target campaign with the same structure
+ */
+async function cloneAssetGroups({
+  account_id = process.env.GADS_LIVE_ID,
+  source_campaign_id,
+  target_campaign_id,
+  new_final_urls = null,  // Optional: override URLs
+  status = 'PAUSED',      // Default to PAUSED for safety
+  confirm_danger = false
+}) {
+
+  // SAFETY CHECK
+  if (!confirm_danger) {
+    return {
+      success: false,
+      error: 'Safety confirmation required',
+      report: `⚠️ **Asset Group Cloning Blocked - Safety Check**
+
+This operation will create new asset groups in campaign ${target_campaign_id}.
+
+**To proceed:**
+Set 'confirm_danger' parameter to true
+
+**Example:**
+\`\`\`javascript
+{
+  source_campaign_id: ${source_campaign_id},
+  target_campaign_id: ${target_campaign_id},
+  confirm_danger: true  // ← Add this
+}
+\`\`\``
+    };
+  }
+
+  log('🔄 Cloning Asset Groups:', {
+    account_id,
+    source_campaign_id,
+    target_campaign_id,
+    status
+  });
+
+  try {
+    // Step 1: Get source asset groups
+    const sourceResult = await queryAssetGroups({
+      account_id,
+      campaign_id: source_campaign_id
+    });
+
+    if (!sourceResult.success) {
+      throw new Error(`Failed to query source asset groups: ${sourceResult.error}`);
+    }
+
+    const sourceAssetGroups = sourceResult.data;
+
+    if (sourceAssetGroups.length === 0) {
+      return {
+        success: false,
+        error: 'No asset groups found in source campaign',
+        report: `⚠️ **No Asset Groups to Clone**
+
+Source campaign ${source_campaign_id} has no asset groups.`
+      };
+    }
+
+    log(`📋 Found ${sourceAssetGroups.length} asset groups to clone`);
+
+    // Step 2: Create asset groups in target campaign
+    const customer = googleAdsClient.Customer({
+      customer_id: account_id,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      login_customer_id: process.env.GADS_LIVE_MCC_ID
+    });
+
+    const createdAssetGroups = [];
+
+    for (const sourceAG of sourceAssetGroups) {
+      // Create the asset group structure
+      const assetGroupOperation = {
+        campaign: `customers/${account_id}/campaigns/${target_campaign_id}`,
+        name: sourceAG.name,
+        status: status,
+        final_urls: new_final_urls || sourceAG.final_urls,
+        final_mobile_urls: sourceAG.final_mobile_urls,
+        path1: sourceAG.path1,
+        path2: sourceAG.path2
+      };
+
+      // Create asset group
+      const agResponse = await customer.assetGroups.create([assetGroupOperation]);
+
+      const newAssetGroupResourceName = agResponse.results[0].resource_name;
+      const newAssetGroupId = newAssetGroupResourceName.split('/').pop();
+
+      log(`✅ Created asset group: ${sourceAG.name} (ID: ${newAssetGroupId})`);
+
+      // Step 3: Link assets to the new asset group
+      const assetLinkOperations = sourceAG.assets.map(asset => ({
+        asset_group: newAssetGroupResourceName,
+        asset: asset.asset_resource,
+        field_type: asset.field_type
+      }));
+
+      if (assetLinkOperations.length > 0) {
+        await customer.assetGroupAssets.create(assetLinkOperations);
+        log(`✅ Linked ${assetLinkOperations.length} assets to asset group ${newAssetGroupId}`);
+      }
+
+      createdAssetGroups.push({
+        name: sourceAG.name,
+        id: newAssetGroupId,
+        resource_name: newAssetGroupResourceName,
+        assets_linked: assetLinkOperations.length
+      });
+    }
+
+    return {
+      success: true,
+      data: createdAssetGroups,
+      report: `✅ **Asset Groups Cloned Successfully**
+
+**Source Campaign:** ${source_campaign_id}
+**Target Campaign:** ${target_campaign_id}
+**Asset Groups Created:** ${createdAssetGroups.length}
+
+${createdAssetGroups.map((ag, i) => `
+**${i + 1}. ${ag.name}**
+- New ID: ${ag.id}
+- Assets Linked: ${ag.assets_linked}
+- Status: ${status}
+`).join('\n')}
+
+**Next Steps:**
+1. Review asset groups in Google Ads UI
+2. Update target campaign status to ENABLED when ready
+3. Monitor learning period (2-4 weeks for PMax campaigns)
+
+**Timestamp:** ${new Date().toISOString()}`
+    };
+
+  } catch (error) {
+    log('❌ Asset group cloning failed:', error.message);
+    log('❌ Error stack:', error.stack);
+
+    return {
+      success: false,
+      error: error.message,
+      report: `❌ **Asset Group Cloning Failed**
+
+**Error:** ${error.message}
+
+**Operation Details:**
+- Source Campaign: ${source_campaign_id}
+- Target Campaign: ${target_campaign_id}
+
+**Common Issues:**
+- Target campaign is not Performance Max type
+- Assets from source campaign no longer exist
+- Insufficient permissions
+- Invalid campaign IDs
+
+Please verify both campaigns exist and are Performance Max campaigns.`
+    };
+  }
+}
+
+/**
+ * Add assets to a PMax asset group
+ * Properly formatted for Google Ads API assetGroupAssets.mutate()
+ */
+async function addAssetsToAssetGroup({
+  account_id = process.env.GADS_LIVE_ID,
+  asset_group_id,
+  assets,  // Array of { asset_id, field_type }
+  confirm_danger = false
+}) {
+
+  // SAFETY CHECK
+  if (!confirm_danger) {
+    return {
+      success: false,
+      error: 'Safety confirmation required',
+      report: `⚠️ **Asset Addition Blocked - Safety Check**
+
+This operation will add assets to asset group ${asset_group_id}.
+
+**To proceed:**
+Set 'confirm_danger' parameter to true
+
+**Example:**
+\`\`\`javascript
+{
+  asset_group_id: "${asset_group_id}",
+  assets: [
+    { asset_id: "123456", field_type: "HEADLINE" },
+    { asset_id: "789012", field_type: "DESCRIPTION" }
+  ],
+  confirm_danger: true  // ← Add this
+}
+\`\`\``
+    };
+  }
+
+  log('➕ Adding assets to asset group:', { account_id, asset_group_id, count: assets.length });
+
+  try {
+    const customer = googleAdsClient.Customer({
+      customer_id: account_id,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      login_customer_id: process.env.GADS_LIVE_MCC_ID
+    });
+
+    // Format operations for assetGroupAssets.create()
+    const operations = assets.map(asset => ({
+      asset_group: `customers/${account_id}/assetGroups/${asset_group_id}`,
+      asset: `customers/${account_id}/assets/${asset.asset_id}`,
+      field_type: asset.field_type
+    }));
+
+    log(`📤 Adding ${operations.length} assets...`);
+    const result = await customer.assetGroupAssets.create(operations);
+
+    // Check for partial failure errors
+    if (result.partial_failure_error) {
+      log('⚠️ Partial failure in create operation');
+      return {
+        success: false,
+        error: 'Partial failure - some assets could not be added',
+        report: `⚠️ **Partial Failure Adding Assets**
+
+**Asset Group:** ${asset_group_id}
+**Attempted:** ${operations.length} assets
+
+**Error Details:** ${JSON.stringify(result.partial_failure_error, null, 2)}
+
+Some assets may have been added successfully, but others failed.
+Common reasons: duplicate assets, maximum asset count reached, invalid field types.`
+      };
+    }
+
+    log(`✅ Successfully added ${operations.length} assets`);
+    return {
+      success: true,
+      added_count: operations.length,
+      report: `✅ **Assets Added Successfully**
+
+**Asset Group:** ${asset_group_id}
+**Assets Added:** ${operations.length}
+
+${assets.map((a, i) => `${i + 1}. Asset ${a.asset_id} → ${a.field_type}`).join('\n')}
+
+**Timestamp:** ${new Date().toISOString()}`
+    };
+
+  } catch (error) {
+    log('❌ Failed to add assets:', error);
+    log('❌ Error details:', JSON.stringify(error, null, 2));
+
+    // Extract Google Ads API error details
+    let errorMsg = 'Unknown error';
+    let errorDetails = '';
+
+    if (error.errors && error.errors.length > 0) {
+      const firstError = error.errors[0];
+      errorMsg = firstError.message || 'API Error';
+
+      // Extract error code
+      if (firstError.error_code) {
+        const errorCode = Object.keys(firstError.error_code)[0];
+        const errorValue = firstError.error_code[errorCode];
+        errorDetails = `\n**Error Code:** ${errorCode} = ${errorValue}`;
+      }
+
+      // Add request ID if available
+      if (error.request_id) {
+        errorDetails += `\n**Request ID:** ${error.request_id}`;
+      }
+    } else {
+      errorMsg = error.message || error.toString() || 'Unknown error';
+    }
+
+    return {
+      success: false,
+      error: errorMsg,
+      report: `❌ **Failed to Add Assets**
+
+**Error:** ${errorMsg}${errorDetails}
+
+**Asset Group:** ${asset_group_id}
+**Attempted:** ${assets.length} assets
+
+Check that:
+- Asset IDs exist in the account
+- Field types are valid (HEADLINE, LONG_HEADLINE, DESCRIPTION, etc.)
+- Asset group exists and is part of a Performance Max campaign
+- Asset group hasn't reached maximum asset limits (15 headlines, 5 descriptions, etc.)
+- Assets aren't already linked to this asset group
+
+**Full Error:** ${JSON.stringify(error.errors || error, null, 2)}`
+    };
+  }
+}
+
+/**
+ * Remove assets from a PMax asset group
+ * Uses proper resource name format: customers/ID/assetGroupAssets/GROUP~ASSET~FIELD
+ */
+async function removeAssetsFromAssetGroup({
+  account_id = process.env.GADS_LIVE_ID,
+  asset_group_id,
+  assets,  // Array of { asset_id, field_type } to remove
+  confirm_danger = false
+}) {
+
+  // SAFETY CHECK
+  if (!confirm_danger) {
+    return {
+      success: false,
+      error: 'Safety confirmation required',
+      report: `⚠️ **Asset Removal Blocked - Safety Check**
+
+This operation will remove assets from asset group ${asset_group_id}.
+
+**To proceed:**
+Set 'confirm_danger' parameter to true
+
+**Example:**
+\`\`\`javascript
+{
+  asset_group_id: "${asset_group_id}",
+  assets: [
+    { asset_id: "123456", field_type: "HEADLINE" },
+    { asset_id: "789012", field_type: "DESCRIPTION" }
+  ],
+  confirm_danger: true  // ← Add this
+}
+\`\`\``
+    };
+  }
+
+  log('➖ Removing assets from asset group:', { account_id, asset_group_id, count: assets.length });
+
+  try {
+    const customer = googleAdsClient.Customer({
+      customer_id: account_id,
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+      login_customer_id: process.env.GADS_LIVE_MCC_ID
+    });
+
+    // Format resource names for assetGroupAssets.remove()
+    const resourceNames = assets.map(asset =>
+      `customers/${account_id}/assetGroupAssets/${asset_group_id}~${asset.asset_id}~${asset.field_type}`
+    );
+
+    log(`🗑️ Removing ${resourceNames.length} assets...`);
+    const result = await customer.assetGroupAssets.remove(resourceNames);
+
+    // Check for partial failure errors
+    if (result.partial_failure_error) {
+      log('⚠️ Partial failure in remove operation');
+      return {
+        success: false,
+        error: 'Partial failure - some assets could not be removed',
+        report: `⚠️ **Partial Failure Removing Assets**
+
+**Asset Group:** ${asset_group_id}
+**Attempted:** ${resourceNames.length} assets
+
+**Error Details:** ${JSON.stringify(result.partial_failure_error, null, 2)}
+
+Some assets may have been removed successfully, but others failed.`
+      };
+    }
+
+    log(`✅ Successfully removed ${resourceNames.length} assets`);
+    return {
+      success: true,
+      removed_count: resourceNames.length,
+      report: `✅ **Assets Removed Successfully**
+
+**Asset Group:** ${asset_group_id}
+**Assets Removed:** ${resourceNames.length}
+
+${assets.map((a, i) => `${i + 1}. Asset ${a.asset_id} → ${a.field_type}`).join('\n')}
+
+**Timestamp:** ${new Date().toISOString()}`
+    };
+
+  } catch (error) {
+    log('❌ Failed to remove assets:', error);
+    log('❌ Error details:', JSON.stringify(error, null, 2));
+
+    // Extract Google Ads API error details
+    let errorMsg = 'Unknown error';
+    let errorDetails = '';
+
+    if (error.errors && error.errors.length > 0) {
+      const firstError = error.errors[0];
+      errorMsg = firstError.message || 'API Error';
+
+      // Extract error code
+      if (firstError.error_code) {
+        const errorCode = Object.keys(firstError.error_code)[0];
+        const errorValue = firstError.error_code[errorCode];
+        errorDetails = `\n**Error Code:** ${errorCode} = ${errorValue}`;
+      }
+
+      // Add request ID if available
+      if (error.request_id) {
+        errorDetails += `\n**Request ID:** ${error.request_id}`;
+      }
+    } else {
+      errorMsg = error.message || error.toString() || 'Unknown error';
+    }
+
+    return {
+      success: false,
+      error: errorMsg,
+      report: `❌ **Failed to Remove Assets**
+
+**Error:** ${errorMsg}${errorDetails}
+
+**Asset Group:** ${asset_group_id}
+**Attempted:** ${assets.length} assets
+
+Check that:
+- Asset IDs are correct and exist
+- Assets are currently linked to this asset group
+- Assets haven't already been removed
+- Field types match the linked assets
+
+**Full Error:** ${JSON.stringify(error.errors || error, null, 2)}`
+    };
+  }
+}
+
 module.exports = {
   universalGoogleAdsQuery,
   universalGoogleAdsWrite,
@@ -1055,5 +1632,9 @@ module.exports = {
   linkAssetToCampaign,
   linkAssetToAdGroup,
   createCompleteAd,
-  updateCampaignTrackingTemplate
+  updateCampaignTrackingTemplate,
+  queryAssetGroups,
+  cloneAssetGroups,
+  addAssetsToAssetGroup,
+  removeAssetsFromAssetGroup
 };

@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "api": "Google Ads API",
+    "version": "v15",
+    "product": "Performance Max",
+    "base": "https://googleads.googleapis.com/v15",
+    "protocol": "gRPC via REST",
+    "auth": "OAuth2"
+  },
+
+  "entities": {
+    "Campaign": {
+      "service": "CampaignService",
+      "methods": ["mutateCampaigns", "getCampaign"],
+      "example": {
+        "operations": [
+          {
+            "create": {
+              "name": "PMax – Ireland",
+              "advertising_channel_type": "PERFORMANCE_MAX",
+              "status": "PAUSED",
+              "campaign_budget": "customers/123/campaignBudgets/456",
+              "bidding_strategy_type": "MAXIMIZE_CONVERSIONS"
+            }
+          }
+        ]
+      }
+    },
+
+    "AssetGroup": {
+      "service": "AssetGroupService",
+      "methods": ["mutateAssetGroups"],
+      "example": {
+        "operations": [
+          {
+            "create": {
+              "campaign": "customers/123/campaigns/456",
+              "name": "PMax Asset Group EN",
+              "final_urls": ["https://ulearnschool.com"],
+              "path1": "learn",
+              "path2": "english"
+            }
+          }
+        ]
+      }
+    },
+
+    "AssetGroupAsset": {
+      "service": "AssetGroupAssetService",
+      "methods": ["mutateAssetGroupAssets"],
+      "example": {
+        "operations": [
+          {
+            "create": {
+              "asset_group": "customers/123/assetGroups/789",
+              "asset": "customers/123/assets/321",
+              "field_type": "HEADLINE"
+            }
+          }
+        ]
+      },
+      "note": "field_type values: HEADLINE, LONG_HEADLINE, DESCRIPTION, BUSINESS_NAME, IMAGE, YOUTUBE_VIDEO"
+    },
+
+    "AssetGroupSignal": {
+      "service": "AssetGroupSignalService",
+      "methods": ["mutateAssetGroupSignals"],
+      "example": {
+        "operations": [
+          {
+            "create": {
+              "asset_group": "customers/123/assetGroups/789",
+              "audience": "customers/123/audiences/222"
+            }
+          }
+        ]
+      },
+      "note": "Used for audience signals (first-party or interest segments)."
+    },
+
+    "AssetGroupListingGroupFilter": {
+      "service": "AssetGroupListingGroupFilterService",
+      "methods": ["mutateAssetGroupListingGroupFilters"],
+      "note": "Used for Merchant Center product group filters in Shopping-enabled P-Max campaigns."
+    },
+
+    "AssetSet": {
+      "service": "AssetSetService",
+      "methods": ["mutateAssetSets"],
+      "note": "Container for site-links, callouts, price extensions etc."
+    },
+
+    "AssetSetAsset": {
+      "service": "AssetSetAssetService",
+      "methods": ["mutateAssetSetAssets"],
+      "example": {
+        "operations": [
+          {
+            "create": {
+              "asset": "customers/123/assets/555",
+              "asset_set": "customers/123/assetSets/666"
+            }
+          }
+        ]
+      },
+      "note": "Remove or create site-link connections."
+    }
+  },
+
+  "queryTemplates": {
+    "campaignMetrics": "SELECT campaign.id, campaign.name, metrics.clicks, metrics.impressions, metrics.conversions FROM campaign WHERE segments.date DURING LAST_30_DAYS",
+    "assetGroups": "SELECT asset_group.id, asset_group.name, asset_group.status, asset_group.campaign FROM asset_group WHERE campaign.id = {campaign_id}"
+  },
+
+  "notes": [
+    "All mutate operations require an `operations` array.",
+    "`update_mask` must specify changed fields on updates.",
+    "All field names use snake_case when using google-ads-api Node.js library.",
+    "Performance Max campaigns cannot have ad groups or keywords; use AssetGroups instead.",
+    "Site-links are linked through AssetSet + AssetSetAsset, not directly in the campaign.",
+    "Use GoogleAdsService.searchStream for all reporting queries."
+  ]
+}

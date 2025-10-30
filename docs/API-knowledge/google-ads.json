@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "api": "Google Ads API",
+    "version": "v15",
+    "protocol": "gRPC via REST transport",
+    "base": "https://googleads.googleapis.com/v15",
+    "auth": "OAuth2",
+    "headers": {
+      "Authorization": "Bearer <access_token>",
+      "developer-token": "<developer_token>",
+      "login-customer-id": "<manager_id_optional>"
+    }
+  },
+
+  "resources": {
+    "Campaign": "customers/{customer_id}/campaigns/{campaign_id}",
+    "Asset": "customers/{customer_id}/assets/{asset_id}",
+    "AssetGroup": "customers/{customer_id}/assetGroups/{asset_group_id}",
+    "AssetSet": "customers/{customer_id}/assetSets/{asset_set_id}",
+    "AssetSetAsset": "customers/{customer_id}/assetSetAssets/{asset_set_asset_id}"
+  },
+
+  "services": {
+    "CampaignService": {
+      "methods": {
+        "getCampaign": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/campaigns:get",
+          "request": { "resourceName": "customers/123/campaigns/456" }
+        },
+        "mutateCampaigns": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/campaigns:mutate",
+          "request": {
+            "operations": [
+              {
+                "update": {
+                  "resourceName": "customers/123/campaigns/456",
+                  "status": "PAUSED"
+                },
+                "updateMask": "status"
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "AssetService": {
+      "methods": {
+        "mutateAssets": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/assets:mutate",
+          "request": {
+            "operations": [
+              {
+                "remove": "customers/123/assets/789"
+              }
+            ]
+          },
+          "notes": "Use `remove` to delete; `create` or `update` for other ops. Always camelCase fields."
+        }
+      }
+    },
+
+    "AssetGroupAssetService": {
+      "methods": {
+        "mutateAssetGroupAssets": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/assetGroupAssets:mutate",
+          "request": {
+            "operations": [
+              {
+                "remove": "customers/123/assetGroupAssets/111"
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "AssetSetAssetService": {
+      "methods": {
+        "mutateAssetSetAssets": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/assetSetAssets:mutate",
+          "request": {
+            "operations": [
+              {
+                "remove": "customers/123/assetSetAssets/222"
+              }
+            ]
+          },
+          "notes": "Used for site-links. Typical Performance Max issue is incorrect casing on `remove`."
+        }
+      }
+    },
+
+    "GoogleAdsService": {
+      "methods": {
+        "searchStream": {
+          "verb": "POST",
+          "endpoint": "/customers/{customer_id}/googleAds:searchStream",
+          "request": {
+            "query": "SELECT campaign.id, metrics.clicks, metrics.impressions, metrics.conversions FROM campaign WHERE segments.date DURING LAST_30_DAYS"
+          },
+          "response": {
+            "results": [
+              {
+                "campaign": { "id": "123" },
+                "metrics": { "clicks": 120, "impressions": 5400, "conversions": 9 }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+
+  "patterns": {
+    "mutateOperation": ["create", "update", "remove"],
+    "commonFields": ["resource_name", "update_mask", "operations"],
+    "naming": "snake_case",
+    "resourcePrefix": "customers/{customer_id}/"
+  },
+
+  "notes": [
+    "All mutate requests require an operations array.",
+    "Each operation contains exactly one key: create, update, or remove.",
+    "update_mask is required when updating fields.",
+    "All field names are snake_case when using google-ads-api library; REST API may use camelCase.",
+    "Sitelinks in Performance Max are managed via AssetSetAssetService.",
+    "Use GoogleAdsService.searchStream for analytics (metrics).",
+    "Rate limits apply; respect 429 responses."
+  ]
+}

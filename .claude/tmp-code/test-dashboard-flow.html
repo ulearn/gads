@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Burn Rate Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .test-section { background: white; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #667eea; color: white; }
+        .burn-high { color: #e74c3c; font-weight: bold; }
+        .burn-medium { color: #e67e22; font-weight: bold; }
+        .burn-low { color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🔥 Burn Rate Dashboard - Test Results</h1>
+
+    <div class="test-section">
+        <h2>📊 Endpoint Test</h2>
+        <div id="endpointTest">Testing...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Campaign Burn Data</h2>
+        <div id="campaignData">Loading...</div>
+    </div>
+
+    <script>
+        async function testDashboard() {
+            try {
+                // Test the endpoint
+                const response = await fetch('/gads/analytics/burn-rate-campaigns?days=30');
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('endpointTest').innerHTML =
+                        '<span class="success">✅ Endpoint working!</span>' +
+                        '<br>Campaigns found: ' + data.summary.total_campaigns +
+                        '<br>Total contacts: ' + data.summary.total_contacts +
+                        '<br>Burned contacts: ' + data.summary.total_burned +
+                        '<br>Overall burn rate: ' + data.summary.overall_burn_rate.toFixed(2) + '%';
+
+                    // Display campaign data
+                    if (data.campaigns.length > 0) {
+                        let tableHTML = '<table><thead><tr><th>Campaign</th><th>Contacts</th><th>Burned</th><th>Burn Rate</th></tr></thead><tbody>';
+
+                        data.campaigns.forEach(campaign => {
+                            let burnClass = 'burn-low';
+                            if (campaign.burn_rate_percentage > 40) burnClass = 'burn-high';
+                            else if (campaign.burn_rate_percentage > 25) burnClass = 'burn-medium';
+
+                            tableHTML += '<tr>' +
+                                '<td>' + campaign.campaign_name + '</td>' +
+                                '<td>' + campaign.total_contacts + '</td>' +
+                                '<td>' + campaign.burned_contacts + '</td>' +
+                                '<td class="' + burnClass + '">' + campaign.burn_rate_percentage.toFixed(2) + '%</td>' +
+                                '</tr>';
+                        });
+
+                        tableHTML += '</tbody></table>';
+                        document.getElementById('campaignData').innerHTML = tableHTML;
+                    } else {
+                        document.getElementById('campaignData').innerHTML = '<span class="error">❌ No campaigns found</span>';
+                    }
+                } else {
+                    document.getElementById('endpointTest').innerHTML = '<span class="error">❌ Endpoint failed: ' + data.error + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('endpointTest').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+
+        testDashboard();
+    </script>
+</body>
+</html>

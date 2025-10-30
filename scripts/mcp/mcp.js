@@ -124,6 +124,22 @@ async function handleToolCall(toolName, args) {
       result = await apiTools.getKeywordResearchReport(args);
       break;
 
+    case 'GAds_AssetGroup_Query':
+      result = await apiTools.queryAssetGroups(args);
+      break;
+
+    case 'GAds_AssetGroup_Clone':
+      result = await apiTools.cloneAssetGroups(args);
+      break;
+
+    case 'GAds_AssetGroup_AddAssets':
+      result = await apiTools.addAssetsToAssetGroup(args);
+      break;
+
+    case 'GAds_AssetGroup_RemoveAssets':
+      result = await apiTools.removeAssetsFromAssetGroup(args);
+      break;
+
     // MySQL database tools - Refactored to use proven analytics modules  
     case 'Summary_MySql':
       result = await mysqlTools.getDashboardSummary(args);
@@ -154,6 +170,32 @@ async function handleToolCall(toolName, args) {
   }
   
   // Return standardized MCP response
+  // For query operations, include the actual data as JSON
+  if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+    // Limit data to prevent timeouts - show first 25 rows max
+    const displayLimit = 25;
+    const dataToShow = result.data.slice(0, displayLimit);
+    const truncated = result.data.length > displayLimit;
+
+    const dataText = truncated
+      ? `\n\n**Query Results (showing first ${displayLimit} of ${result.data.length} rows):**\n\`\`\`json\n${JSON.stringify(dataToShow, null, 2)}\n\`\`\`\n\n*Note: ${result.data.length - displayLimit} additional rows not shown to prevent timeout. Refine your query with WHERE/LIMIT to see specific data.*`
+      : `\n\n**Query Results (${result.data.length} rows):**\n\`\`\`json\n${JSON.stringify(dataToShow, null, 2)}\n\`\`\``;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result.report
+        },
+        {
+          type: 'text',
+          text: dataText
+        }
+      ]
+    };
+  }
+
+  // For non-query operations or empty results, just return the report
   return {
     content: [{
       type: 'text',

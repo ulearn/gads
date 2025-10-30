@@ -234,6 +234,157 @@ const toolDefinitions = {
     }
   },
 
+  GAds_AssetGroup_Query: {
+    name: 'GAds_AssetGroup_Query',
+    description: '🔍 Query asset groups from a Performance Max campaign - Get all assets (headlines, descriptions, images, logos) for PMax campaigns',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        campaign_id: {
+          type: 'string',
+          description: 'Performance Max campaign ID to query asset groups from',
+          required: true
+        }
+      },
+      required: ['campaign_id']
+    }
+  },
+
+  GAds_AssetGroup_Clone: {
+    name: 'GAds_AssetGroup_Clone',
+    description: '🔄 Clone asset groups from one Performance Max campaign to another - Essential for PMax campaign cloning! Requires explicit confirmation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        source_campaign_id: {
+          type: 'string',
+          description: 'Source Performance Max campaign ID to clone from',
+          required: true
+        },
+        target_campaign_id: {
+          type: 'string',
+          description: 'Target Performance Max campaign ID to clone to',
+          required: true
+        },
+        new_final_urls: {
+          type: 'array',
+          description: 'Optional: Override final URLs for the cloned asset groups',
+          items: { type: 'string' },
+          default: null
+        },
+        status: {
+          type: 'string',
+          description: 'Status for cloned asset groups (default: PAUSED for safety)',
+          enum: ['ENABLED', 'PAUSED', 'REMOVED'],
+          default: 'PAUSED'
+        },
+        confirm_danger: {
+          type: 'boolean',
+          description: '⚠️ SAFETY: Must explicitly set to true to confirm this operation',
+          required: true
+        }
+      },
+      required: ['source_campaign_id', 'target_campaign_id', 'confirm_danger']
+    }
+  },
+
+  GAds_AssetGroup_AddAssets: {
+    name: 'GAds_AssetGroup_AddAssets',
+    description: '➕ Add assets to a Performance Max asset group - Link headlines, descriptions, images to asset groups. Requires explicit confirmation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        asset_group_id: {
+          type: 'string',
+          description: 'Asset group ID to add assets to',
+          required: true
+        },
+        assets: {
+          type: 'array',
+          description: 'Array of assets to add with their field types',
+          items: {
+            type: 'object',
+            properties: {
+              asset_id: {
+                type: 'string',
+                description: 'Asset ID to link'
+              },
+              field_type: {
+                type: 'string',
+                description: 'Field type: HEADLINE, LONG_HEADLINE, DESCRIPTION, MARKETING_IMAGE, LOGO, etc.',
+                enum: ['HEADLINE', 'LONG_HEADLINE', 'DESCRIPTION', 'MARKETING_IMAGE', 'SQUARE_MARKETING_IMAGE', 'PORTRAIT_MARKETING_IMAGE', 'LOGO', 'LANDSCAPE_LOGO', 'YOUTUBE_VIDEO', 'BUSINESS_NAME', 'CALL_TO_ACTION_SELECTION']
+              }
+            },
+            required: ['asset_id', 'field_type']
+          },
+          required: true
+        },
+        confirm_danger: {
+          type: 'boolean',
+          description: '⚠️ SAFETY: Must explicitly set to true to confirm this operation',
+          required: true
+        }
+      },
+      required: ['asset_group_id', 'assets', 'confirm_danger']
+    }
+  },
+
+  GAds_AssetGroup_RemoveAssets: {
+    name: 'GAds_AssetGroup_RemoveAssets',
+    description: '➖ Remove assets from a Performance Max asset group - Unlink headlines, descriptions, images from asset groups. Requires explicit confirmation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account_id: {
+          type: 'string',
+          description: 'Google Ads account ID (default: live account)'
+        },
+        asset_group_id: {
+          type: 'string',
+          description: 'Asset group ID to remove assets from',
+          required: true
+        },
+        assets: {
+          type: 'array',
+          description: 'Array of assets to remove with their field types',
+          items: {
+            type: 'object',
+            properties: {
+              asset_id: {
+                type: 'string',
+                description: 'Asset ID to unlink'
+              },
+              field_type: {
+                type: 'string',
+                description: 'Field type: HEADLINE, LONG_HEADLINE, DESCRIPTION, etc.'
+              }
+            },
+            required: ['asset_id', 'field_type']
+          },
+          required: true
+        },
+        confirm_danger: {
+          type: 'boolean',
+          description: '⚠️ SAFETY: Must explicitly set to true to confirm this operation',
+          required: true
+        }
+      },
+      required: ['asset_group_id', 'assets', 'confirm_danger']
+    }
+  },
+
   // MySQL Database Tools - Historical Data Analysis
   Summary_MySql: {
     name: 'Summary_MySql',

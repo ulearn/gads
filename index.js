@@ -661,7 +661,52 @@ router.get('/analytics/roas-revenue-campaigns', async (req, res) => {
   }
 });
 
-// Pipeline Predicted ROAS - Dashboard Route  
+// ROAS History Chart - Dashboard Route (HTML)
+router.get('/analytics/roas-history', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'scripts', 'analytics', 'roas-history.html');
+
+    if (fs.existsSync(filePath)) {
+      const htmlContent = fs.readFileSync(filePath, 'utf8');
+      res.send(htmlContent);
+    } else {
+      res.status(404).send('<h1>File not found</h1><p>roas-history.html not found</p>');
+    }
+  } catch (error) {
+    res.status(500).send(`<h1>Error</h1><p>${error.message}</p>`);
+  }
+});
+
+// ROAS History Timeseries - API
+router.get('/analytics/roas-history-timeseries', async (req, res) => {
+  try {
+    const { status, startDate, endDate, campaigns, granularity } = req.query;
+    const roasHistory = require('./scripts/analytics/roas-history');
+
+    console.log(`📈 ROAS History Timeseries API: ${startDate} to ${endDate}, granularity=${granularity}`);
+
+    const result = await roasHistory.getROASTimeseries(getDbConnection, {
+      status,
+      startDate,
+      endDate,
+      campaigns: campaigns ? JSON.parse(campaigns) : null,
+      granularity: granularity || 'daily'
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ ROAS History Timeseries API failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Pipeline Predicted ROAS - Dashboard Route
 router.get('/analytics/roas-predicted', (req, res) => {
   try {
     const fs = require('fs');

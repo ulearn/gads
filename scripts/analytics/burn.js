@@ -420,7 +420,7 @@ async function getBurnRateByCampaign(getDbConnection, options = {}) {
           FROM hub_contacts hc
           WHERE ${buildEnhancedGoogleAdsAttributionQuery()}
             AND (
-              -- PRIMARY: Match by standardized google_ads_campaign name
+              -- PRIMARY: Match by standardized google_ads_campaign name (FIXED: use campaign_name not campaign_id)
               hc.google_ads_campaign = ?
               OR
               -- FALLBACK: Match by legacy campaign ID or name in source_data_1
@@ -431,9 +431,9 @@ async function getBurnRateByCampaign(getDbConnection, options = {}) {
             AND (hc.hubspot_owner_id != 10017927 OR hc.hubspot_owner_id IS NULL OR hc.hubspot_owner_id = '')
             AND DATE(hc.createdate) >= ? AND DATE(hc.createdate) <= ?
         `, [
+          campaign.campaign_name,
+          campaign.campaign_name,
           campaign.google_campaign_id,
-          campaign.campaign_name,
-          campaign.campaign_name,
           startDateStr,
           endDateStr
         ]);

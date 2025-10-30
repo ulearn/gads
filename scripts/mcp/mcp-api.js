@@ -719,7 +719,7 @@ ${demographics.filter(d => d.income_range).map(d => `- ${d.income_range.type}`).
  */
 
 // Import full access functionality from separate file
-const { universalGoogleAdsQuery, universalGoogleAdsWrite, updateCampaignTrackingTemplate } = require('./mcp-api-full');
+const { universalGoogleAdsQuery, universalGoogleAdsWrite, updateCampaignTrackingTemplate, queryAssetGroups, cloneAssetGroups, addAssetsToAssetGroup, removeAssetsFromAssetGroup } = require('./mcp-api-full');
 
 // Import keyword planning functionality from separate file
 const { generateKeywordIdeas, getKeywordResearchReport } = require('./mcp-api-keyword');
@@ -732,5 +732,9 @@ module.exports = {
   universalGoogleAdsWrite,      // Add universal write
   generateKeywordIdeas,        // Add keyword ideas
   getKeywordResearchReport,    // Add keyword research
+  queryAssetGroups,            // Add asset group query
+  cloneAssetGroups,            // Add asset group cloning
+  addAssetsToAssetGroup,       // Add assets to asset group
+  removeAssetsFromAssetGroup,  // Remove assets from asset group
   googleAdsClient
 };
