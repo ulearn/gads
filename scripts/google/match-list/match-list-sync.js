@@ -205,72 +205,52 @@ async function createCustomerMatchList() {
 
 /**
  * Upload contacts to Google Ads Customer Match list via OfflineUserDataJob
- * Uses REST API directly (google-ads-api library doesn't support this service)
- * Following GPT guide: docs/API-knowledge/API-CustomerMatch-GPT.md
+ * Uses Python helper script (google-ads-api Node library doesn't support this service)
  */
 async function uploadContacts(customer, userListResourceName, operations, isRemoval = false) {
   if (operations.length === 0) {
     return { success: true, count: 0 };
   }
 
-  const action = isRemoval ? 'remove' : 'create';
-  const jobOperations = operations.map(op => ({
-    [action]: op
-  }));
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
 
   try {
-    // Step 1: Create OfflineUserDataJob using REST API
-    // POST https://googleads.googleapis.com/v16/customers/{CUSTOMER_ID}/offlineUserDataJobs
-    console.log(`Creating offline user data job for ${operations.length} contacts...`);
-
-    const createJobPayload = {
-      type: 'CUSTOMER_MATCH_USER_LIST',
-      customerMatchUserListMetadata: {
-        userList: userListResourceName
-      }
+    // Write operations to JSON file for Python script
+    const jsonFile = path.join(__dirname, '../../../.cache/customer-match-upload.json');
+    const jsonData = {
+      operations: operations,
+      action: isRemoval ? 'remove' : 'create'
     };
 
-    const createResponse = await googleAdsApiCall(
-      'POST',
-      `https://googleads.googleapis.com/v16/customers/${ACCOUNT_ID}/offlineUserDataJobs`,
-      createJobPayload
-    );
+    fs.writeFileSync(jsonFile, JSON.stringify(jsonData, null, 2), 'utf8');
+    console.log(`Wrote ${operations.length} operations to ${jsonFile}`);
 
-    const jobResourceName = createResponse.resourceName;
-    console.log(`Created offline user data job: ${jobResourceName}`);
+    // Call Python helper script
+    const pythonScript = path.join(__dirname, 'upload-customer-match.py');
+    const action = isRemoval ? 'remove' : 'create';
+    const command = `python3 ${pythonScript} ${jsonFile} ${action}`;
 
-    // Step 2: Add operations to the job (in batches if needed)
-    // POST https://googleads.googleapis.com/v16/{jobResourceName}:addOperations
-    const batches = [];
-    for (let i = 0; i < jobOperations.length; i += BATCH_SIZE) {
-      batches.push(jobOperations.slice(i, i + BATCH_SIZE));
+    console.log(`Calling Python helper: ${command}\n`);
+
+    const { stdout, stderr } = await execAsync(command, {
+      env: process.env,
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer for output
+    });
+
+    if (stdout) {
+      console.log(stdout);
     }
 
-    for (let i = 0; i < batches.length; i++) {
-      console.log(`  Uploading batch ${i + 1}/${batches.length} (${batches[i].length} contacts)...`);
-
-      const addOpsPayload = {
-        enablePartialFailure: true,
-        operations: batches[i]
-      };
-
-      await googleAdsApiCall(
-        'POST',
-        `https://googleads.googleapis.com/v16/${jobResourceName}:addOperations`,
-        addOpsPayload
-      );
+    if (stderr && stderr.trim()) {
+      console.error('Python stderr:', stderr);
     }
 
-    // Step 3: Run the job
-    // POST https://googleads.googleapis.com/v16/{jobResourceName}:run
-    console.log(`  Running job...`);
-    await googleAdsApiCall(
-      'POST',
-      `https://googleads.googleapis.com/v16/${jobResourceName}:run`,
-      {}
-    );
+    // Clean up JSON file
+    fs.unlinkSync(jsonFile);
 
-    console.log(`✅ ${isRemoval ? 'Removal' : 'Upload'} job submitted successfully (${operations.length} contacts)`);
+    console.log(`✅ ${isRemoval ? 'Removal' : 'Upload'} completed successfully (${operations.length} contacts)`);
 
     return { success: true, count: operations.length };
 
@@ -278,9 +258,12 @@ async function uploadContacts(customer, userListResourceName, operations, isRemo
     console.error(`❌ Error during ${isRemoval ? 'removal' : 'upload'}:`);
     console.error(error.message);
 
-    if (error.response && error.response.data) {
-      console.error('\nAPI Error Details:');
-      console.error(JSON.stringify(error.response.data, null, 2));
+    if (error.stdout) {
+      console.error('\nPython stdout:', error.stdout);
+    }
+
+    if (error.stderr) {
+      console.error('\nPython stderr:', error.stderr);
     }
 
     return { success: false, count: 0, error: error.message };

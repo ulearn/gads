@@ -32,7 +32,7 @@ def create_google_ads_client():
         "use_proto_plus": True
     }
 
-    return GoogleAdsClient.load_from_dict(credentials, version="v17")
+    return GoogleAdsClient.load_from_dict(credentials, version="v22")
 
 def upload_contacts(client, customer_id, user_list_id, operations, is_removal=False):
     """
@@ -80,23 +80,23 @@ def upload_contacts(client, customer_id, user_list_id, operations, is_removal=Fa
         user_data_operations = []
         for op_data in batch:
             user_data_operation = client.get_type("OfflineUserDataJobOperation")
+            user_data = build_offline_user_data(client, op_data)
 
             if is_removal:
-                user_data_operation.remove.CopyFrom(
-                    build_offline_user_data(client, op_data)
-                )
+                user_data_operation.remove = user_data
             else:
-                user_data_operation.create.CopyFrom(
-                    build_offline_user_data(client, op_data)
-                )
+                user_data_operation.create = user_data
 
             user_data_operations.append(user_data_operation)
 
         # Add operations to job
+        request = client.get_type("AddOfflineUserDataJobOperationsRequest")
+        request.resource_name = job_resource_name
+        request.operations = user_data_operations
+        request.enable_partial_failure = True
+
         offline_user_data_job_service.add_offline_user_data_job_operations(
-            resource_name=job_resource_name,
-            enable_partial_failure=True,
-            operations=user_data_operations
+            request=request
         )
 
     # Step 3: Run the job
